@@ -47,7 +47,7 @@ Il percorso locale previsto è `npm ci`, `npm run setup`, `npm run dev`. Per ver
 
 ## Interfaccia
 
-Italiano chiaro, pulsanti grandi, pochi passaggi, nessun dato di esempio presentato come dato reale. Quantità e unità devono essere esplicite. Tenere distinti carico effettivo, prenotazione e conteggio di produzione. Mostrare l'errore senza cancellare i dati inseriti e disabilitare il doppio invio durante il salvataggio.
+Italiano chiaro, pulsanti compatti ma leggibili (circa 34–40 px su desktop e almeno 44 px sui dispositivi touch), pochi passaggi, nessun dato di esempio presentato come dato reale. Quantità e unità devono essere esplicite. Tenere distinti carico effettivo, prenotazione e conteggio di produzione. Mostrare l'errore senza cancellare i dati inseriti e disabilitare il doppio invio durante il salvataggio.
 
 ### Regola tipografica permanente
 
