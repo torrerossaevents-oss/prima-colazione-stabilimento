@@ -48,3 +48,7 @@ Il percorso locale previsto è `npm ci`, `npm run setup`, `npm run dev`. Per ver
 ## Interfaccia
 
 Italiano chiaro, pulsanti grandi, pochi passaggi, nessun dato di esempio presentato come dato reale. Quantità e unità devono essere esplicite. Tenere distinti carico effettivo, prenotazione e conteggio di produzione. Mostrare l'errore senza cancellare i dati inseriti e disabilitare il doppio invio durante il salvataggio.
+
+### Regola tipografica permanente
+
+Per richiesta dell’utente, tutte le scritte sulle superfici chiare devono essere nero pieno (`#000`) e con peso regolare `400`, compresi titoli, codici, numeri, tabelle, etichette, aiuti e segnaposto. Non usare grassetto, semigrassetto o testo grigio per creare gerarchie: usare dimensioni, spazi e posizione. Conservare gli accenti cromatici su sfondi, bordi e icone. Sulle superfici scure e sui pulsanti pieni mantenere testo bianco con peso `400` per il contrasto. Applicare la stessa regola a ogni nuova sezione e modifica futura.

@@ -2,7 +2,7 @@
 
 In **Magazzino → Prodotti** si consultano codice, descrizione, categoria commerciale, unità di misura e tre listini separati: **Listino 3 - Gel.Cor.**, **GELITRIA SRL** e **Distribuzione**. Il tipo operativo (prodotto finito, materia prima o imballaggio) resta distinto dalla categoria commerciale.
 
-La ricerca filtra subito per codice, descrizione o codice di un lotto associato; il filtro categoria si combina con la ricerca. La scheda dettaglio mostra tutti i campi e le quantità per lotto. **Nuovo prodotto** permette l'inserimento manuale; **Modifica** aggiorna le informazioni.
+La ricerca filtra subito per codice, descrizione o codice di un lotto associato; il filtro categoria si combina con la ricerca. La scheda dettaglio mostra tutti i campi e le quantità per lotto. **Nuovo prodotto** permette l'inserimento manuale; **Modifica**, disponibile direttamente su ogni riga del catalogo, apre la scheda compilata: aggiornare i campi e premere **Salva modifiche**. Lo stesso comando resta disponibile nella scheda dettaglio come **Modifica prodotto**.
 
 ## Importazione ed esportazione
 
