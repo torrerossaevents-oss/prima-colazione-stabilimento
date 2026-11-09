@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "mapConfirmed": false,
+  "host": null,
+  "port": 502,
+  "unitId": null,
+  "functionCode": null,
+  "address": null,
+  "wordCount": null,
+  "wordOrder": null,
+  "timeoutMs": 2000
+}

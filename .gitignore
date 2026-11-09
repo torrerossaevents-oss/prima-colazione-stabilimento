@@ -43,3 +43,10 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+
+# LOGO! local commissioning data and private configuration
+/bridge/*.local.json
+/bridge/data/
+/bridge/output/
+/bridge/**/*.sqlite*
+/bridge/**/*.db*

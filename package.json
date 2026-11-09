@@ -14,7 +14,9 @@
     "db:generate": "drizzle-kit generate",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "check": "tsc --noEmit",
-    "setup": "node scripts/local-setup.mjs"
+    "setup": "node scripts/local-setup.mjs",
+    "test:bridge": "node --test bridge/tests/*.test.mjs",
+    "bridge:simulate": "node bridge/simulate.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

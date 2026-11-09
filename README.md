@@ -15,6 +15,16 @@ Questa prima versione gestisce registrazioni manuali persistenti. Il catalogo e 
 
 Il sito operativo è riservato al proprietario attraverso l'accesso della piattaforma di pubblicazione. La pubblicazione del codice non pubblica il database. Gestione di più utenti con permessi distinti e inviti richiede un passaggio successivo: scrivere un nome nel campo operatore non assegna un ruolo autenticato.
 
+## Preparazione del collegamento LOGO!
+
+In **Configurazione** è disponibile il pacchetto PC per simulare due lavorazioni e verificare il salvataggio locale. Include anche una lettura Modbus TCP diagnostica, da usare a linea ferma soltanto dopo la conferma di modello, rete e mappa dati da parte del tecnico.
+
+`npm run bridge:simulate` esegue la prova con dati fittizi; `npm run test:bridge` verifica il pacchetto. Gli script del ponte usano esclusivamente Node.js 22.13 o successivo, senza installare dipendenze aggiuntive. L’archivio simulato è separato dal gestionale.
+
+Il pacchetto è una preparazione: programma LOGO!, comandi di avvio/chiusura, riscontri, servizio Windows e invio automatico al CRM restano da completare e collaudare. Nessun reset del PLC o carico di magazzino viene eseguito. Guida: [bridge/README.md](bridge/README.md) e [docs/COLLEGAMENTO-LOGO.md](docs/COLLEGAMENTO-LOGO.md).
+
+Dopo una modifica ai file del ponte, rigenerare il download con `python scripts/package-logo.py` (Python 3.9+; sola libreria standard). Il pacchetto usa un elenco esplicito di sorgenti e test: configurazioni locali, database e chiavi non vengono inclusi.
+
 ## Aprire il progetto in un'altra app
 
 Aprire l'intera cartella del repository, non soltanto `app/`. Sono necessari Node.js 22.13 o superiore, npm e Git. Un clone nuovo usa automaticamente il profilo portabile su Windows, macOS e Linux.

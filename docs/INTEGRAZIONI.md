@@ -11,7 +11,7 @@ Il sito registra dati manuali in un database centrale. Il lettore barcode che si
 | Accesso riservato | Gestito dalla piattaforma ospitante |
 | Ruoli distinti e inviti agli operatori | Da implementare prima dell'uso con più ruoli |
 | Fotocellule e programma LOGO! | Da sviluppare/configurare e collaudare sull'impianto |
-| Servizio ponte locale | Da realizzare e installare sul PC di stabilimento |
+| Base del ponte locale | Simulatore con archivio SQLite e lettura diagnostica Modbus disponibili in `bridge/`; servizio operativo e sincronizzazione ancora da completare |
 | TeamSystem | Da verificare versione, accessi e formati disponibili |
 | Etichettatrice | Da verificare interfaccia e caratteristiche del dispositivo |
 | Consumo ingredienti tramite ricette | Da definire e collaudare |
@@ -45,3 +45,9 @@ Ogni evento fisico deve essere registrato una sola volta. Una consegna già scar
 ## Portare il codice altrove
 
 Il repository contiene l'applicazione e le migrazioni; non contiene il database operativo. Per cambiare hosting servono separatamente distribuzione dell'app, binding D1 o adattatore dati equivalente, autenticazione, importazione dei dati e prova di recupero. Pubblicare il codice su GitHub non rende il database pubblico e non configura automaticamente questi servizi.
+
+## Preparazione software del 9 novembre 2026
+
+Il pacchetto scaricabile da **Configurazione** contiene una simulazione locale di due lavorazioni, un archivio SQLite separato con identificativi persistenti e coda eventi, e una lettura diagnostica Modbus TCP senza scritture. Gli eventi della simulazione sono marcati come tali; non vengono inviati al gestionale. Il comando diagnostico richiede configurazione esplicita e linea ferma; due letture coincidenti non sostituiscono il collaudo del programma o la coerenza dei registri durante il moto.
+
+Il servizio sempre acceso, la ricezione autenticata nel CRM, gli scambi di avvio/chiusura con LOGO!, il recupero operativo e la gestione del pulsante fisico non sono ancora implementati. IP, mappa, ritenzione e tempi devono essere confermati sull’hardware ricevuto. Vedere `COLLEGAMENTO-LOGO.md` per i dati da raccogliere e il passaggio dalla prova al collegamento reale.
