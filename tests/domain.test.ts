@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 // @ts-ignore Node's native type stripping requires a .ts extension.
-import { initialState, applyAction, availableForLot, productTotals, reservedForLot, activeSession, todayRome, validateState, type State, type Action } from '../lib/domain.ts';
+import { initialState, applyAction, availableForLot, productTotals, reservedForLot, activeSession, todayRome, validateState, type State, type Action, type ProductInput } from '../lib/domain.ts';
 let sequence=0;
 const context={now:'2026-11-07T10:00:00.000Z',id:()=>`id-${++sequence}`};
 const act=(state:State,action:Action)=>applyAction(state,action,context);
@@ -118,4 +118,94 @@ test('API authentication, CAS conflicts, permanent retries and atomic receipt ro
  for(let n=0;n<205;n++){assert.equal((await post({type:'production.count',sessionId:started.state.sessions[0].id,cartons:1},n+2,`request-count-${n}`)).status,200);}
  const retryOld=await post(start,1,'request-start');assert.equal(retryOld.status,200);const snapshot=await retryOld.json() as {duplicate:boolean;state:State;version:number};assert.equal(snapshot.duplicate,true);assert.equal(snapshot.state.sessions.length,1);assert.equal(snapshot.state.sessions[0].cartons,205);assert.equal(snapshot.version,207);
  delete scope.__testD1Env;sql.close();
+});
+
+
+function catalogProduct(code='0000123'):ProductInput{return {code,name:'Prodotto di prova 50 x 80 g',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0,category:'Croissanteria',priceGelCor:null,priceGelitria:0,priceDistribution:12.345};}
+
+test('product prices preserve missing, free and three-decimal values separately',()=>{
+ const state=act(initialState(),{type:'product.add',product:catalogProduct()});
+ assert.equal(state.products[0].priceGelCor,null);assert.equal(state.products[0].priceGelitria,0);assert.equal(state.products[0].priceDistribution,12.345);
+ assert.equal(state.products[0].code,'0000123');assert.equal(state.products[0].unitsPerBox,1);
+ for(const invalid of [-0.001,1.2345,1_000_000,NaN,Infinity])assert.throws(()=>act(initialState(),{type:'product.add',product:{...catalogProduct(),priceGelCor:invalid}}),/Prezzo GelCor/);
+ const edge=act(initialState(),{type:'product.add',product:{...catalogProduct(),priceGelCor:999_999.999,priceGelitria:0.001,priceDistribution:1.005}});
+ assert.equal(edge.products[0].priceGelCor,999_999.999);assert.equal(edge.products[0].priceGelitria,0.001);assert.equal(edge.products[0].priceDistribution,1.005);
+});
+
+test('old products without optional fields still validate and work',()=>{
+ const state=fixture();delete state.products[0].category;delete state.products[0].priceGelCor;delete state.products[0].priceGelitria;delete state.products[0].priceDistribution;
+ assert.doesNotThrow(()=>validateState(state));
+ const next=reserve(state);assert.equal(next.lots[0].quantity,150);assert.equal(reservedForLot(next,next.lots[0].id),30);assert.equal(next.products[0].priceGelCor,undefined);
+ const updated=act(next,{type:'product.update',productId:next.products[0].id,product:{...next.products[0],name:'Descrizione aggiornata'}});
+ assert.equal(updated.products[0].category,'');assert.equal(updated.products[0].priceGelCor,null);assert.equal(updated.products[0].id,state.products[0].id);
+});
+
+test('CRT means stock in cartons and never infers pieces from the product name',()=>{
+ const state=act(initialState(),{type:'product.add',product:{...catalogProduct(),unit:' crt '}});assert.equal(state.products[0].unit,'CRT');assert.equal(state.products[0].unitsPerBox,1);
+ assert.throws(()=>act(initialState(),{type:'product.add',product:{...catalogProduct(),unitsPerBox:50}}),/già in cartoni/);
+});
+
+test('catalog import is atomic, normalizes codes and retains leading zeroes',()=>{
+ const before=initialState();const products=[catalogProduct(' 00abc '),catalogProduct('000abc')];
+ const state=act(before,{type:'product.import',products,mode:'skip'});
+ assert.deepEqual(state.products.map(p=>p.code),['00ABC','000ABC']);assert.equal(before.products.length,0);assert.equal(state.audit.length,1);assert.equal(state.lots.length,0);
+ const snapshot=structuredClone(state);
+ assert.throws(()=>act(state,{type:'product.import',products:[catalogProduct('NEW'),{...catalogProduct('BAD'),priceGelCor:0.0001}],mode:'update'}),/Riga 2.*3 decimali/);
+ assert.deepEqual(state,snapshot);
+});
+
+test('duplicate normalized codes in an import reject every row',()=>{
+ const before=fixture();const snapshot=structuredClone(before);
+ assert.throws(()=>act(before,{type:'product.import',products:[catalogProduct(' new '),catalogProduct('NEW')],mode:'skip'}),/Riga 2.*duplicato/);
+ assert.deepEqual(before,snapshot);
+});
+
+test('skip imports are repeatable and leave existing product values untouched',()=>{
+ const product=catalogProduct();let state=act(initialState(),{type:'product.import',products:[product],mode:'skip'});const first=structuredClone(state.products);
+ state=act(state,{type:'product.import',products:[{...product,name:'Non sostituire',priceDistribution:99}],mode:'skip'});assert.deepEqual(state.products,first);
+ state=act(state,{type:'product.import',products:[product],mode:'skip'});assert.deepEqual(state.products,first);assert.match(state.audit.at(-1)!.detail,/0 aggiunti, 0 aggiornati, 1/);
+});
+
+test('import updates preserve IDs, stock, order references and production snapshots',()=>{
+ let state=reserve(fixture());state=act(state,{type:'production.start',code:'PC001',operator:'Prova',lotCode:'PROD',expiry:'2026-12-31'});
+ const original=structuredClone(state);const product=state.products[0];
+ state=act(state,{type:'product.import',products:[{...product,code:' pc001 ',name:'Nuova descrizione',category:'Nuova categoria',priceGelCor:0,priceGelitria:null,priceDistribution:8.765,minStock:30}],mode:'update'});
+ assert.equal(state.products[0].id,product.id);assert.equal(state.products[0].name,'Nuova descrizione');assert.equal(state.products[0].priceDistribution,8.765);assert.deepEqual(state.lots,original.lots);assert.deepEqual(state.orders,original.orders);assert.deepEqual(state.sessions,original.sessions);
+ const once=structuredClone(state.products);state=act(state,{type:'product.import',products:[{...state.products[0]}],mode:'update'});assert.deepEqual(state.products,once);
+});
+
+test('referenced product edits block identity and stock-unit changes, including zero-stock lots',()=>{
+ const state=fixture();state.lots[0].quantity=0;const product=state.products[0];
+ const changes:Partial<ProductInput>[]=[{code:'NEWCODE'},{unit:'pacchi'},{unitsPerBox:6},{kind:'raw'}];
+ for(const change of changes)assert.throws(()=>act(state,{type:'product.update',productId:product.id,product:{...product,...change}}),/ha lotti o lavorazioni/);
+ const updated=act(state,{type:'product.update',productId:product.id,product:{...product,name:'Nuovo nome',category:'Nuova',minStock:22,priceGelCor:2.345}});assert.equal(updated.products[0].id,product.id);assert.equal(updated.products[0].name,'Nuovo nome');assert.deepEqual(updated.lots,state.lots);
+});
+
+test('a closed production session also protects product structure',()=>{
+ let state=act(initialState(),{type:'product.add',product:catalogProduct()});state=act(state,{type:'production.start',code:'0000123',operator:'Prova',lotCode:'PROD',expiry:'2026-12-31'});state=act(state,{type:'production.close',sessionId:state.sessions[0].id});
+ assert.equal(state.lots.length,0);assert.throws(()=>act(state,{type:'product.update',productId:state.products[0].id,product:{...state.products[0],code:'NEW'}}),/ha lotti o lavorazioni/);
+});
+
+test('an import with a forbidden referenced update does not partially add or update products',()=>{
+ const state=fixture();const snapshot=structuredClone(state);
+ assert.throws(()=>act(state,{type:'product.import',products:[catalogProduct('NEW'),{...state.products[0],unitsPerBox:6}],mode:'update'}),/ha lotti o lavorazioni/);
+ assert.deepEqual(state,snapshot);
+});
+
+test('unreferenced products may change structure but never collide with another code',()=>{
+ let state=act(initialState(),{type:'product.import',products:[catalogProduct('001'),catalogProduct('002')],mode:'skip'});const product=state.products[0];
+ state=act(state,{type:'product.update',productId:product.id,product:{...product,code:' 00a ',unit:'confezioni',unitsPerBox:20,kind:'raw'}});assert.equal(state.products[0].id,product.id);assert.equal(state.products[0].code,'00A');assert.equal(state.products[0].unitsPerBox,20);
+ assert.throws(()=>act(state,{type:'product.update',productId:product.id,product:{...state.products[0],code:' 002 '}}),/esiste già/);
+});
+
+test('omitted optional fields preserve metadata while explicit null or empty clear it',()=>{
+ let state=act(initialState(),{type:'product.add',product:catalogProduct()});const legacy={code:'0000123',name:'Nome cambiato',kind:'finished' as const,unit:'CRT',unitsPerBox:1,minStock:0};
+ state=act(state,{type:'product.update',productId:state.products[0].id,product:legacy});assert.equal(state.products[0].priceDistribution,12.345);assert.equal(state.products[0].category,'Croissanteria');assert.equal(state.products[0].priceGelitria,0);
+ state=act(state,{type:'product.import',products:[{...legacy,category:'',priceDistribution:null}],mode:'update'});assert.equal(state.products[0].priceDistribution,null);assert.equal(state.products[0].category,'');assert.equal(state.products[0].priceGelitria,0);
+});
+
+test('350-article catalog allows existing updates but rejects additions atomically',()=>{
+ let state=act(initialState(),{type:'product.import',products:Array.from({length:350},(_,i)=>catalogProduct(String(i).padStart(6,'0'))),mode:'skip'});assert.equal(state.products.length,350);
+ state=act(state,{type:'product.import',products:[{...state.products[0],name:'Aggiornato'}],mode:'update'});assert.equal(state.products.length,350);assert.equal(state.products[0].name,'Aggiornato');
+ const snapshot=structuredClone(state);assert.throws(()=>act(state,{type:'product.import',products:[{...state.products[0],name:'Non salvato'},catalogProduct('EXTRA')],mode:'update'}),/fino a 350/);assert.deepEqual(state,snapshot);
 });

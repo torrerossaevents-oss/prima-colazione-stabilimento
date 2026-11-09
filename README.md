@@ -6,7 +6,7 @@ Questa prima versione gestisce registrazioni manuali persistenti. Il catalogo e 
 
 ## Cosa comprende
 
-- Catalogo con codice univoco, unità di misura e confezionamento.
+- Catalogo con codice univoco, descrizione, categoria, unità, confezionamento e tre listini; inserimento e modifica manuali, importazione Excel/CSV con anteprima ed esportazione Excel.
 - Lotti, scadenze, fino a tre aree, ricezioni, quantità bloccate, trasferimenti e rettifiche motivate.
 - Ordini con prenotazione, preparazione, partenza anche parziale e annullamento del residuo.
 - Associazione del riferimento documento senza un secondo scarico della merce.
@@ -46,6 +46,8 @@ Aprire l'indirizzo stampato nel terminale, normalmente `http://localhost:5173`. 
 | Obiettivo | File |
 | --- | --- |
 | Schermate, moduli e navigazione | `components/stabilimento-app.tsx` |
+| Catalogo, schede prodotto e ricerca progressiva | `components/catalog-panel.tsx` |
+| Importazione/esportazione catalogo | `lib/catalog-io.ts` |
 | Stile e comportamento responsive | `app/globals.css` |
 | Pagina iniziale e metadati | `app/page.tsx`, `app/layout.tsx` |
 | Regole di magazzino, ordini e produzione | `lib/domain.ts` |
@@ -78,4 +80,4 @@ Il codice usa l'accesso riservato della piattaforma. Prima di ospitarlo altrove,
 
 Nel repository vanno sorgenti, configurazioni non segrete, lockfile, migrazioni, test e documentazione. Non vanno credenziali, file `.env`, esportazioni operative, documenti dei clienti, database locali, log, `node_modules` o cartelle di build. Questi ultimi sono rigenerabili con i comandi sopra.
 
-Dettagli: [requisiti](docs/REQUISITI.md), [integrazioni](docs/INTEGRAZIONI.md), [collaudo](docs/COLLAUDO.md). Le istruzioni per chi continua lo sviluppo sono in [AGENTS.md](AGENTS.md).
+Dettagli: [requisiti](docs/REQUISITI.md), [catalogo](docs/CATALOGO.md), [integrazioni](docs/INTEGRAZIONI.md), [collaudo](docs/COLLAUDO.md). Le istruzioni per chi continua lo sviluppo sono in [AGENTS.md](AGENTS.md).

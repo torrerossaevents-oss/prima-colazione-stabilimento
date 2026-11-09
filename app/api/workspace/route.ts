@@ -24,7 +24,7 @@ export async function POST(request:Request){
  if(!authorized(request))return json({error:'Accedi prima di salvare.'},401);
  const origin=request.headers.get('origin');if(!origin||origin!==new URL(request.url).origin)return json({error:'Origine della richiesta non autorizzata.'},403);
  try{
-  const raw=await request.text();if(new TextEncoder().encode(raw).length>100_000)return json({error:'Richiesta troppo grande.'},413);
+  const raw=await request.text();if(new TextEncoder().encode(raw).length>500_000)return json({error:'Richiesta troppo grande.'},413);
   let input:{action:Action;expectedVersion:number;requestId:string};try{input=JSON.parse(raw);}catch{return json({error:'Richiesta non valida.'},400);}
   if(!input||!Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<0||typeof input.requestId!=='string'||!/^[a-zA-Z0-9_-]{8,128}$/.test(input.requestId)||!input.action)return json({error:'Richiesta incompleta o versione non valida.'},400);
   const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(input.action))))).map(b=>b.toString(16).padStart(2,'0')).join('');

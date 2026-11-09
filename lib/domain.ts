@@ -1,5 +1,6 @@
 /** Domain rules for the Prima Colazione pilot. Quantities are always base units. */
-export type Product = { id:string; code:string; name:string; kind:'finished'|'raw'|'packaging'; unit:string; unitsPerBox:number; minStock:number };
+export type Product = { id:string; code:string; name:string; kind:'finished'|'raw'|'packaging'; unit:string; unitsPerBox:number; minStock:number; category?:string; priceGelCor?:number|null; priceGelitria?:number|null; priceDistribution?:number|null };
+export type ProductInput = Omit<Product,'id'>;
 export type Lot = { id:string; productId:string; code:string; expiry:string; area:string; quantity:number; blocked:number };
 export type OrderLine = { lotId:string; quantity:number; shipped:number };
 export type Order = { id:string; customer:string; destination:string; date:string; status:'reserved'|'prepared'|'partial'|'dispatched'|'cancelled'; lines:OrderLine[]; documentRef?:string; documents:{reference:string;at:string;quantities:{lotId:string;quantity:number}[]}[] };
@@ -8,6 +9,8 @@ export type Audit = {id:string;at:string;action:string;detail:string;actor?:stri
 export type State = {products:Product[];lots:Lot[];orders:Order[];sessions:Session[];audit:Audit[]};
 export type Action =
  | {type:'product.add';product:Omit<Product,'id'>}
+ | {type:'product.update';productId:string;product:Omit<Product,'id'>}
+ | {type:'product.import';products:Omit<Product,'id'>[];mode:'skip'|'update'}
  | {type:'lot.receive';lot:Omit<Lot,'id'|'blocked'>}
  | {type:'lot.block';lotId:string;blocked:number}
  | {type:'lot.transfer';lotId:string;quantity:number;area:string}
@@ -35,6 +38,39 @@ function number(value:unknown,name:string,min=0):number{
  if(typeof value!=='number'||!Number.isSafeInteger(value)||value<min||value>1_000_000_000)fail(`${name}: inserisci un numero intero valido, almeno ${min}.`);
  return value as number;
 }
+function category(value:unknown):string{
+ if(value===undefined)return '';
+ if(typeof value!=='string'||value.trim().length>120)fail('Categoria: inserisci un testo di massimo 120 caratteri.');
+ return (value as string).trim();
+}
+function price(value:unknown,name:string):number|null{
+ if(value===undefined||value===null)return null;
+ if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>999_999.999)fail(`${name}: inserisci un prezzo da 0 a 999.999,999 oppure lascia vuoto.`);
+ const scaled=(value as number)*1000;
+ // Permit binary floating-point representation noise, never silently drop a fourth decimal.
+ if(Math.abs(scaled-Math.round(scaled))>Math.max(1e-9,Number.EPSILON*Math.abs(scaled)*4))fail(`${name}: sono consentiti al massimo 3 decimali.`);
+ return Math.round(scaled)/1000;
+}
+/** One validator for manual entry, editing and import. Missing optional update fields retain their values. */
+export function normalizeProduct(input:ProductInput,previous?:Product):ProductInput{
+ if(!input||typeof input!=='object'||Array.isArray(input))fail('Dati articolo mancanti o non validi.');
+ if(!['finished','raw','packaging'].includes(input.kind))fail('Tipologia articolo non valida.');
+ const enteredUnit=text(input.unit,'Unità di misura',40);
+ const unit=enteredUnit.toUpperCase()==='CRT'?'CRT':enteredUnit;
+ const unitsPerBox=number(input.unitsPerBox,'Unità di magazzino per cartone',1);
+ if(unit==='CRT'&&unitsPerBox!==1)fail('Con unità CRT la giacenza è già in cartoni: imposta 1 unità di magazzino per cartone.');
+ return {
+  code:text(input.code,'Codice articolo',80).toUpperCase(),name:text(input.name,'Nome articolo'),kind:input.kind,unit,unitsPerBox,minStock:number(input.minStock,'Scorta minima'),
+  category:category(input.category===undefined?previous?.category:input.category),
+  priceGelCor:price(input.priceGelCor===undefined?previous?.priceGelCor:input.priceGelCor,'Prezzo GelCor'),
+  priceGelitria:price(input.priceGelitria===undefined?previous?.priceGelitria:input.priceGelitria,'Prezzo Gelitria'),
+  priceDistribution:price(input.priceDistribution===undefined?previous?.priceDistribution:input.priceDistribution,'Prezzo distribuzione'),
+ };
+}
+function assertProductUpdateAllowed(state:State,previous:Product,next:ProductInput):void{
+ const referenced=state.lots.some(lot=>lot.productId===previous.id)||state.sessions.some(session=>session.productId===previous.id);
+ if(referenced&&(['code','unit','unitsPerBox','kind'] as const).some(key=>previous[key]!==next[key]))fail(`L’articolo ${previous.code} ha lotti o lavorazioni registrati: codice, tipo, unità e confezionamento non possono essere modificati. Puoi aggiornare descrizione, categoria, listini e scorta minima.`);
+}
 function date(value:unknown,name:string,allowEmpty=false):string{
  if(allowEmpty&&value==='')return '';
  const s=text(value,name,10); const parsed=new Date(s);
@@ -60,6 +96,7 @@ export function validateState(state:State):void{
  if(!state||typeof state!=='object')fail('Archivio non valido.');
  for(const key of ['products','lots','orders','sessions','audit'] as const){if(!Array.isArray(state[key]))fail('Archivio non valido.');if(new Set(state[key].map(row=>row.id)).size!==state[key].length)fail('Identificativi duplicati nell’archivio.');}
  if(new Set(state.products.map(p=>p.code)).size!==state.products.length)fail('Codici articolo duplicati.');
+ for(const product of state.products){category(product.category);price(product.priceGelCor,'Prezzo GelCor');price(product.priceGelitria,'Prezzo Gelitria');price(product.priceDistribution,'Prezzo distribuzione');}
  if(state.sessions.filter(s=>s.status==='active').length>1)fail('Può esserci una sola lavorazione attiva.');
  for(const lot of state.lots){if(!state.products.some(p=>p.id===lot.productId))fail('Articolo del lotto inesistente.');number(lot.quantity,'Giacenza');number(lot.blocked,'Quantità bloccata');if(lot.blocked+reservedForLot(state,lot.id)>lot.quantity)fail('Giacenza insufficiente per blocchi e prenotazioni.');}
  for(const order of state.orders)for(const line of order.lines){if(!state.lots.some(l=>l.id===line.lotId))fail('Lotto ordine inesistente.');number(line.quantity,'Quantità richiesta',1);number(line.shipped,'Quantità spedita');if(line.shipped>line.quantity)fail('La quantità spedita supera quella richiesta.');}
@@ -72,9 +109,40 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
  const orderById=(orderId:string)=>state.orders.find(row=>row.id===orderId)??fail('Ordine non trovato.');let detail='';
  switch(action.type){
  case 'product.add':{
-  if(state.products.length>=350)fail('Il catalogo pilota prevede fino a 350 articoli.');const p=action.product??fail('Dati articolo mancanti.');const code=text(p.code,'Codice articolo',80).toUpperCase();
-  if(state.products.some(row=>row.code===code))fail('Questo codice articolo esiste già.');if(!['finished','raw','packaging'].includes(p.kind))fail('Tipologia articolo non valida.');
-  const product:Product={id:id(),code,name:text(p.name,'Nome articolo'),kind:p.kind,unit:text(p.unit,'Unità di misura',40),unitsPerBox:number(p.unitsPerBox,'Pezzi per cartone',1),minStock:number(p.minStock,'Scorta minima')};state.products.push(product);detail=`Articolo ${code} · ${product.name} creato.`;break;
+  if(state.products.length>=350)fail('Il catalogo pilota prevede fino a 350 articoli.');const input=normalizeProduct(action.product);
+  if(state.products.some(row=>row.code===input.code))fail('Questo codice articolo esiste già.');
+  const product:Product={id:id(),...input};state.products.push(product);detail=`Articolo ${product.code} · ${product.name} creato.`;break;
+ }
+ case 'product.update':{
+  const previous=state.products.find(product=>product.id===action.productId)??fail('Articolo non trovato.');
+  const input=normalizeProduct(action.product,previous);
+  if(state.products.some(product=>product.id!==previous.id&&product.code===input.code))fail('Questo codice articolo esiste già.');
+  assertProductUpdateAllowed(state,previous,input);
+  Object.assign(previous,input);detail=`Articolo ${previous.code} · ${previous.name} aggiornato. Giacenze, riferimenti e lavorazioni conservati.`;break;
+ }
+ case 'product.import':{
+  if(action.mode!=='skip'&&action.mode!=='update')fail('Modalità di importazione non valida.');
+  array(action.products,'Importazione articoli',350);
+  const seen=new Set<string>();
+  const products=action.products.map((product,index)=>{
+   try{
+    if(!product||typeof product!=='object'||Array.isArray(product))fail('Dati articolo mancanti o non validi.');
+    const code=text(product.code,'Codice articolo',80).toUpperCase();
+    if(seen.has(code))fail(`Codice ${code} duplicato nel file: ogni articolo deve comparire una sola volta.`);
+    seen.add(code);
+    return normalizeProduct(product,state.products.find(existing=>existing.code===code));
+   }catch(error){if(error instanceof DomainError)fail(`Riga ${index+1}: ${error.message}`);throw error;}
+  });
+  const newCount=products.filter(product=>!state.products.some(existing=>existing.code===product.code)).length;
+  if(state.products.length+newCount>350)fail('Il catalogo pilota prevede fino a 350 articoli. Nessuna riga è stata importata.');
+  let added=0,updated=0,skipped=0;
+  for(const input of products){
+   const previous=state.products.find(product=>product.code===input.code);
+   if(!previous){state.products.push({id:id(),...input});added++;}
+   else if(action.mode==='skip'){skipped++;}
+   else{assertProductUpdateAllowed(state,previous,input);Object.assign(previous,input);updated++;}
+  }
+  detail=`Importazione catalogo: ${added} aggiunti, ${updated} aggiornati, ${skipped} già presenti e ignorati. Giacenze e riferimenti conservati.`;break;
  }
  case 'lot.receive':{
   const l=action.lot??fail('Dati lotto mancanti.');const p=state.products.find(p=>p.id===l.productId)??fail('Articolo non trovato.');const expiry=date(l.expiry,'Scadenza',p.kind==='packaging');

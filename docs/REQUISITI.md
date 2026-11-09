@@ -14,6 +14,8 @@ Il pilota implementato prevede una linea e accesso del solo proprietario. Lo sta
 
 Ogni articolo ha codice univoco, descrizione, tipo, unità di misura e confezionamento. Le soglie minime sono definite dall'azienda. Ogni lotto conserva articolo, codice lotto, scadenza e area.
 
+Dal 9 novembre 2026 il catalogo prevede anche categoria commerciale e tre listini distinti, con importazione Excel/CSV, esportazione Excel, inserimento e modifica manuali. La ricerca progressiva include codice, descrizione e lotti associati. Vedere `CATALOGO.md` per formato e regole: importare prodotti non crea quantità a magazzino.
+
 **Disponibile = presente − bloccato − prenotato.** La disponibilità vendibile esclude inoltre i lotti scaduti. I cartoni sono convertiti nell'unità del prodotto con il confezionamento dichiarato; non sommare unità diverse come se fossero omogenee.
 
 | Passaggio | Effetto previsto |
