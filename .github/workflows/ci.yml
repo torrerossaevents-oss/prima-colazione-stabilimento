@@ -1,0 +1,31 @@
+name: Controlli
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verifica:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+      - run: npm run test:bridge
+      - run: npm run bridge:simulate
+      - run: npm run build
+      - name: Prova di pubblicazione Cloudflare (valori fittizi, nessun invio)
+        run: node scripts/cloudflare-deploy.mjs --check
+        env:
+          CF_D1_DATABASE_ID: 00000000-0000-4000-8000-000000000001
+          CF_D1_DATABASE_NAME: prova
+          CF_CUSTOM_DOMAIN: gestionale.esempio.it
+          ACCESS_TEAM_DOMAIN: prova.cloudflareaccess.com
+          ACCESS_AUD: prova

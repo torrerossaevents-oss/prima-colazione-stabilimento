@@ -1,0 +1,55 @@
+{
+  "_nota": "MODELLO. Copiare in ponte.local.json (escluso da Git). Ogni null è DA CONFERMARE CON IL TECNICO: non inventare valori. Con un solo null il servizio in modalità impianto non parte.",
+  "schemaVersion": 1,
+  "mode": "impianto",
+  "mapConfirmed": false,
+  "line": null,
+  "_line": "Identificativo della linea come registrato nel gestionale (Configurazione → dispositivo). Da confermare.",
+  "server": {
+    "baseUrl": null,
+    "_baseUrl": "Indirizzo https del gestionale pubblicato. Il token va in token.local.json, MAI in questo file.",
+    "timeoutMs": 10000
+  },
+  "plc": {
+    "_nota": "Indirizzi zero-based del PDU Modbus (non 40001). Tutti da confermare con il tecnico sul programma LOGO! trasferito.",
+    "host": null,
+    "port": 502,
+    "unitId": null,
+    "timeoutMs": 2000,
+    "pollIntervalMs": null,
+    "_pollIntervalMs": "Intervallo tra due letture. Da concordare con il tecnico in base al programma LOGO!.",
+    "writesEnabled": false,
+    "_writesEnabled": "Lasciare false finché il registro di riscontro non è collaudato. Con false il ponte non scrive mai sul LOGO!.",
+    "counter": {
+      "functionCode": null,
+      "address": null,
+      "wordOrder": null,
+      "modulo": null,
+      "_modulo": "65536 (contatore a 16 bit) oppure 4294967296 (32 bit su due registri), secondo il programma LOGO!.",
+      "maxStepPerSecond": null,
+      "_maxStepPerSecond": "Massimo di cartoni al secondo fisicamente possibile sulla linea: oltre, la lettura è scartata come corrotta. Da misurare."
+    },
+    "sensors": {
+      "functionCode": null,
+      "address": null,
+      "_codifica": "Proposta: bit 0 = sensore A, bit 1 = sensore B, 1 = fascio interrotto; 0 = sensori liberi. Da confermare."
+    },
+    "closeRequest": {
+      "functionCode": null,
+      "address": null,
+      "_nota": "Contatore a 16 bit delle pressioni del pulsante di chiusura, incrementato dal LOGO!."
+    },
+    "closeAck": {
+      "functionCode": null,
+      "address": null,
+      "_nota": "Registro in cui il ponte scrive il valore della richiesta salvata (funzione 6 oppure 16). Usato solo con writesEnabled true."
+    }
+  },
+  "close": {
+    "sensorsFreeStableMs": null,
+    "_sensorsFreeStableMs": "Per quanto tempo i sensori devono restare liberi prima di accettare la chiusura. Da misurare sulla linea."
+  },
+  "intervals": { "syncMs": 10000, "heartbeatMs": 30000 },
+  "retry": { "baseMs": 5000, "maxMs": 300000 },
+  "log": { "maxBytes": 1048576, "files": 5 }
+}

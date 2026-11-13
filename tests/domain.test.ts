@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-// @ts-ignore Node's native type stripping requires a .ts extension.
 import { initialState, applyAction, availableForLot, productTotals, reservedForLot, activeSession, todayRome, validateState, type State, type Action, type ProductInput } from '../lib/domain.ts';
 let sequence=0;
 const context={now:'2026-11-07T10:00:00.000Z',id:()=>`id-${++sequence}`};
@@ -24,11 +23,11 @@ test('dispatch and later invoice never deduct twice',()=>{
 });
 test('partial dispatch keeps residual reserved, cancellation releases only residual',()=>{
  let state=reserve(fixture(),50);const orderId=state.orders[0].id;const lotId=state.lots[0].id;state=act(state,{type:'order.prepare',orderId});
- state=act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P1',quantities:[{lotId,quantity:20}]});assert.equal(state.orders[0].status,'partial');assert.equal(state.lots[0].quantity,130);assert.equal(reservedForLot(state,lotId),30);assert.equal(availableForLot(state,lotId,'2026-11-07'),100);
+ assert.throws(()=>act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P1',quantities:[{lotId,quantity:20}]}),/motivo/);state=act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P1',quantities:[{lotId,quantity:20}],note:'Mezzo pieno'});assert.equal(state.orders[0].status,'partial');assert.equal(state.orders[0].documents[0].note,'Mezzo pieno');assert.equal(state.lots[0].quantity,130);assert.equal(reservedForLot(state,lotId),30);assert.equal(availableForLot(state,lotId,'2026-11-07'),100);
  state=act(state,{type:'order.cancel',orderId});assert.equal(state.lots[0].quantity,130);assert.equal(state.orders[0].lines[0].shipped,20);assert.equal(availableForLot(state,lotId,'2026-11-07'),130);
 });
 test('partial dispatch can complete remaining quantity exactly',()=>{
- let state=reserve(fixture(),50);const orderId=state.orders[0].id;const lotId=state.lots[0].id;state=act(state,{type:'order.prepare',orderId});state=act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P1',quantities:[{lotId,quantity:20}]});state=act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P2'});assert.equal(state.lots[0].quantity,100);assert.equal(state.orders[0].status,'dispatched');assert.equal(state.orders[0].documents.length,2);
+ let state=reserve(fixture(),50);const orderId=state.orders[0].id;const lotId=state.lots[0].id;state=act(state,{type:'order.prepare',orderId});state=act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P1',quantities:[{lotId,quantity:20}],note:'Consegna in due viaggi'});state=act(state,{type:'order.dispatch',orderId,documentRef:'DDT-P2'});assert.equal(state.lots[0].quantity,100);assert.equal(state.orders[0].status,'dispatched');assert.equal(state.orders[0].documents.length,2);
 });
 test('expired lots cannot be promised or dispatched even if previously reserved',()=>{
  let state=fixture();state.lots[0].expiry='2026-11-06';assert.equal(availableForLot(state,state.lots[0].id,'2026-11-07'),0);assert.throws(()=>reserve(state),/scaduto/);
@@ -74,52 +73,8 @@ test('another genuine receipt of the same lot increments stock and preserves blo
  let state=fixture();const id=state.lots[0].id;state=act(state,{type:'lot.block',lotId:id,blocked:10});state=act(state,{type:'lot.receive',lot:{...state.lots[0],quantity:20}});assert.equal(state.lots.length,1);assert.equal(state.lots[0].quantity,170);assert.equal(state.lots[0].blocked,10);assert.equal(state.lots[0].id,id);
 });
 
-// Exercise the actual route and its SQL against SQLite. Only the platform env
-// import is replaced; API validation, batching and conflict handling are unchanged.
-test('API authentication, CAS conflicts, permanent retries and atomic receipt rollback',async()=>{
- const {DatabaseSync}=await import('node:sqlite');
- const {readFile}=await import('node:fs/promises');
- const {stripTypeScriptTypes}=await import('node:module');
- const sql=new DatabaseSync(':memory:');
- sql.exec('CREATE TABLE workspaces (id TEXT PRIMARY KEY, payload TEXT NOT NULL, version INTEGER NOT NULL, request_ids TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE workspace_requests (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, digest TEXT NOT NULL, version INTEGER NOT NULL, created_at TEXT NOT NULL);');
- let failReceipt=false;
- function prepare(query:string){
-  let values:unknown[]=[];
-  return {
-   query,
-   bind(...args:unknown[]){values=args;return this;},
-   async first(){return sql.prepare(query).get(...values as (string|number)[])??null;},
-   async run(){if(failReceipt&&query.startsWith('INSERT OR IGNORE INTO workspace_requests'))throw new Error('Injected receipt write failure');const result=sql.prepare(query).run(...values as (string|number)[]);return {meta:{changes:Number(result.changes)}};},
-  };
- }
- const db={prepare,async batch(statements:ReturnType<typeof prepare>[]){sql.exec('BEGIN');try{const result=[];for(const stmt of statements)result.push(await stmt.run());sql.exec('COMMIT');return result;}catch(error){sql.exec('ROLLBACK');throw error;}}};
- const scope=globalThis as typeof globalThis & {__testD1Env?:{DB:typeof db}};scope.__testD1Env={DB:db};
- let source=await readFile(new URL('../app/api/workspace/route.ts',import.meta.url),'utf8');
- source=source.replace("import { env } from 'cloudflare:workers';",'const env = globalThis.__testD1Env;').replace("'@/lib/domain'",JSON.stringify(new URL('../lib/domain.ts',import.meta.url).href)).replace('import.meta.env.DEV','false');
- const js=stripTypeScriptTypes(source,{mode:'strip'});
- const route=await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`) as {GET:(r:Request)=>Promise<Response>;POST:(r:Request)=>Promise<Response>};
- const origin='https://stabilimento.example';
- const headers={'origin':origin,'oai-authenticated-user-id':'test-owner','content-type':'application/json'};
- const post=(action:Action,expectedVersion:number,requestId:string,overrides:Record<string,string>={})=>route.POST(new Request(origin+'/api/workspace',{method:'POST',headers:{...headers,...overrides},body:JSON.stringify({action,expectedVersion,requestId})}));
- assert.equal((await route.GET(new Request(origin+'/api/workspace'))).status,401);
- const add:Action={type:'product.add',product:{code:'TEST-API',name:'API test',kind:'finished',unit:'pezzi',unitsPerBox:12,minStock:0}};
- assert.equal((await post(add,0,'request-one',{'origin':'https://other.example'})).status,403);
- assert.equal((await post(add,0,'request-one')).status,200);
- const repeated=await post(add,0,'request-one');assert.equal(repeated.status,200);assert.equal((await repeated.json() as {duplicate:boolean}).duplicate,true);
- assert.equal((await post({...add,product:{...add.product,code:'DIFFERENT'}},1,'request-one')).status,409);
- assert.equal((await post({...add,product:{...add.product,code:'SECOND'}},0,'request-two')).status,409);
- failReceipt=true;
- const originalError=console.error;console.error=()=>{};
- try{assert.equal((await post({...add,product:{...add.product,code:'SECOND'}},1,'request-failure')).status,500);}finally{console.error=originalError;}
- const unchanged=await (await route.GET(new Request(origin+'/api/workspace',{headers}))).json() as {state:State;version:number};assert.equal(unchanged.version,1);assert.equal(unchanged.state.products.length,1);assert.equal(sql.prepare('SELECT count(*) AS n FROM workspace_requests').get()!.n,1);
- failReceipt=false;
- const start:Action={type:'production.start',code:'TEST-API',operator:'Test',lotCode:'TEST',expiry:'2099-12-31'};
- const started=await (await post(start,1,'request-start')).json() as {state:State;version:number};
- for(let n=0;n<205;n++){assert.equal((await post({type:'production.count',sessionId:started.state.sessions[0].id,cartons:1},n+2,`request-count-${n}`)).status,200);}
- const retryOld=await post(start,1,'request-start');assert.equal(retryOld.status,200);const snapshot=await retryOld.json() as {duplicate:boolean;state:State;version:number};assert.equal(snapshot.duplicate,true);assert.equal(snapshot.state.sessions.length,1);assert.equal(snapshot.state.sessions[0].cartons,205);assert.equal(snapshot.version,207);
- delete scope.__testD1Env;sql.close();
-});
-
+// The API test (authentication, CAS conflicts, permanent retries, atomic rollback)
+// moved to tests/api.test.ts, where it runs on both SQLite and the local D1 runtime.
 
 function catalogProduct(code='0000123'):ProductInput{return {code,name:'Prodotto di prova 50 x 80 g',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0,category:'Croissanteria',priceGelCor:null,priceGelitria:0,priceDistribution:12.345};}
 
@@ -127,7 +82,7 @@ test('product prices preserve missing, free and three-decimal values separately'
  const state=act(initialState(),{type:'product.add',product:catalogProduct()});
  assert.equal(state.products[0].priceGelCor,null);assert.equal(state.products[0].priceGelitria,0);assert.equal(state.products[0].priceDistribution,12.345);
  assert.equal(state.products[0].code,'0000123');assert.equal(state.products[0].unitsPerBox,1);
- for(const invalid of [-0.001,1.2345,1_000_000,NaN,Infinity])assert.throws(()=>act(initialState(),{type:'product.add',product:{...catalogProduct(),priceGelCor:invalid}}),/Prezzo GelCor/);
+ for(const invalid of [-0.001,1.2345,1_000_000,NaN,Infinity])assert.throws(()=>act(initialState(),{type:'product.add',product:{...catalogProduct(),priceGelCor:invalid}}),/Listino 3 - Gel\.Cor\./);
  const edge=act(initialState(),{type:'product.add',product:{...catalogProduct(),priceGelCor:999_999.999,priceGelitria:0.001,priceDistribution:1.005}});
  assert.equal(edge.products[0].priceGelCor,999_999.999);assert.equal(edge.products[0].priceGelitria,0.001);assert.equal(edge.products[0].priceDistribution,1.005);
 });

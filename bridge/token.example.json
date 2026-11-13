@@ -1,0 +1,7 @@
+{
+  "_nota": "MODELLO. Copiare in token.local.json (escluso da Git) e incollare il token pcd_… mostrato una sola volta in Configurazione → dispositivo. Non inviarlo via chat o e-mail, non metterlo in ponte.local.json.",
+  "token": null,
+  "_accessNota": "Solo se il gestionale è pubblicato dietro Cloudflare Access: incollare Client ID e Client Secret del token di servizio creato per il ponte (Zero Trust → Access → Service Auth). Altrimenti lasciare null.",
+  "accessClientId": null,
+  "accessClientSecret": null
+}
