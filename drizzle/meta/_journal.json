@@ -15,6 +15,13 @@
       "when": 1794042489390,
       "tag": "0001_omniscient_spirit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794562099299,
+      "tag": "0002_archivio_dispositivi",
+      "breakpoints": true
     }
   ]
 }
