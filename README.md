@@ -17,7 +17,9 @@ Stato di avanzamento, decisioni e domande aperte: [STATO.md](STATO.md).
 - Backup completo con ripristino verificato ([procedura](docs/BACKUP-RIPRISTINO.md)).
 - Stati di salvataggio visibili («in corso», «salvato», «da verificare», «non riuscito»); una richiesta incerta si verifica sul server con lo stesso identificativo, anche dopo aver chiuso il browser.
 
-Il sito operativo è riservato al proprietario attraverso l'accesso della piattaforma di pubblicazione. La pubblicazione del codice non pubblica il database. Gestione di più utenti con permessi distinti e inviti richiede un passaggio successivo: scrivere un nome nel campo operatore non assegna un ruolo autenticato.
+Guida d'uso in poche righe: [docs/GUIDA-RAPIDA.md](docs/GUIDA-RAPIDA.md).
+
+Il sito operativo è riservato al proprietario attraverso l'accesso della piattaforma di pubblicazione. Con la variabile d'ambiente `OWNER_USER_IDS` (identificativi separati da virgola) le route del proprietario accettano solo quegli utenti: va impostata prima di qualsiasi modifica all'accesso del sito o dell'attivazione del ponte. La pubblicazione del codice non pubblica il database. Gestione di più utenti con permessi distinti e inviti richiede un passaggio successivo: scrivere un nome nel campo operatore non assegna un ruolo autenticato.
 
 ## Preparazione del collegamento LOGO!
 
