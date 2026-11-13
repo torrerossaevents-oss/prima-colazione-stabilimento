@@ -4,6 +4,10 @@ declare namespace Cloudflare {
     BUCKET?: R2Bucket;
     /** Comma-separated platform user ids allowed as owner. Unset = any authenticated platform user (previous behaviour). */
     OWNER_USER_IDS?: string;
+    /** Amministrazione profile (comma separated emails / platform ids). */
+    ADMIN_EMAILS?: string;
+    /** Shared credential of the laboratorio profile. */
+    LAB_EMAILS?: string;
     /** "sites" (default) or "cloudflare-access" (see lib/server/auth.ts). */
     AUTH_MODE?: string;
     /** Cloudflare Access team domain, e.g. nome-team.cloudflareaccess.com */

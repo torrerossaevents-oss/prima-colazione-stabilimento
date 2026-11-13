@@ -121,7 +121,9 @@ Pronto nel codice e provato senza account:
 - credenziali di servizio Access nel ponte;
 - conversione dell'esportazione Sites in backup ripristinabile, con test.
 
-Da fare con l'account: dominio, D1, applicazione Access e AUD, token API, prima pubblicazione, collaudo dell'accesso, trasferimento dei dati.
+Risposte di Teo: si parte da zero (nessun dato da trasferire da Sites); dominio nuovo dedicato consigliato; credenziali uniche, al massimo due profili, Amministrazione e Laboratorio. Profili implementati lato server (`lib/permissions.ts`, `ADMIN_EMAILS`/`LAB_EMAILS`) con test; l'elenco delle operazioni del laboratorio è una proposta da confermare.
+
+Da fare con l'account: dominio, D1, applicazione Access e AUD, token API, prima pubblicazione, segreti con le due email, collaudo dell'accesso.
 
 ## Prossimo passo
 

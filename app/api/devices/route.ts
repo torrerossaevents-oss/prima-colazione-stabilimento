@@ -1,16 +1,21 @@
 import { env } from 'cloudflare:workers';
 import { createDevice, listDevices, revokeDevice } from '../../../lib/server/devices.ts';
 import { json, readLimited, sameOrigin, serverError, requireDb } from '../../../lib/server/http.ts';
-import { ownerOf } from '../../../lib/server/auth.ts';
+import { identify } from '../../../lib/server/auth.ts';
+import { canUse } from '../../../lib/permissions.ts';
 export const dynamic = 'force-dynamic';
 /** Owner-only management of bridge credentials. */
 export async function GET(request: Request) {
- if (!(await ownerOf(request, env, import.meta.env.DEV))) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
+ const who = await identify(request, env, import.meta.env.DEV);
+ if (!who) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
+ if (!canUse(who.role, 'devices')) return json({ error: 'Riservato all’amministrazione.', code: 'forbidden' }, 403);
  try { return json({ devices: await listDevices(requireDb(env.DB)), serverTime: new Date().toISOString() }); } catch (error) { return serverError(error, 'Impossibile leggere i dispositivi.'); }
 }
 export async function POST(request: Request) {
- const actor = await ownerOf(request, env, import.meta.env.DEV);
- if (!actor) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
+ const who = await identify(request, env, import.meta.env.DEV);
+ if (!who) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
+ if (!canUse(who.role, 'devices')) return json({ error: 'Riservato all’amministrazione.', code: 'forbidden' }, 403);
+ const actor = who.id;
  if (!sameOrigin(request)) return json({ error: 'Origine della richiesta non autorizzata.' }, 403);
  const raw = await readLimited(request, 4_000); if (raw === null) return json({ error: 'Richiesta troppo grande.' }, 413);
  let input: { op?: string; name?: unknown; id?: unknown }; try { input = JSON.parse(raw); } catch { return json({ error: 'Richiesta non valida.' }, 400); }

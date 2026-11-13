@@ -2,13 +2,16 @@ import { env } from 'cloudflare:workers';
 import { exportBackup, restoreBackup, RestoreError } from '../../../../lib/server/backup.ts';
 import { DomainError } from '../../../../lib/domain.ts';
 import { json, readLimited, requireDb, sameOrigin, serverError } from '../../../../lib/server/http.ts';
-import { ownerOf } from '../../../../lib/server/auth.ts';
+import { identify } from '../../../../lib/server/auth.ts';
+import { canUse } from '../../../../lib/permissions.ts';
 export const dynamic = 'force-dynamic';
 /** Measured budget for the Worker memory (text + parse + digest + verification ≈ 5× the file). */
 const MAX_RESTORE_BYTES = 20_000_000;
 /** Owner-only full backup download. Contains operational data: keep it private, never in Git. */
 export async function GET(request: Request) {
- if (!(await ownerOf(request, env, import.meta.env.DEV))) return json({ error: 'Accedi per scaricare il backup.' }, 401);
+ const who = await identify(request, env, import.meta.env.DEV);
+ if (!who) return json({ error: 'Accedi per scaricare il backup.' }, 401);
+ if (!canUse(who.role, 'backup')) return json({ error: 'Riservato all’amministrazione.', code: 'forbidden' }, 403);
  try {
   const backup = await exportBackup(requireDb(env.DB));
   const name = `prima-colazione-backup-${backup.createdAt.slice(0, 19).replaceAll(':', '-')}.json`;
@@ -17,7 +20,9 @@ export async function GET(request: Request) {
 }
 /** Restore into an EMPTY archive only; verified by reading back and comparing the digest. */
 export async function POST(request: Request) {
- if (!(await ownerOf(request, env, import.meta.env.DEV))) return json({ error: 'Accedi per ripristinare.' }, 401);
+ const who = await identify(request, env, import.meta.env.DEV);
+ if (!who) return json({ error: 'Accedi per ripristinare.' }, 401);
+ if (!canUse(who.role, 'backup')) return json({ error: 'Riservato all’amministrazione.', code: 'forbidden' }, 403);
  if (!sameOrigin(request)) return json({ error: 'Origine della richiesta non autorizzata.' }, 403);
  const raw = await readLimited(request, MAX_RESTORE_BYTES); if (raw === null) return json({ error: 'Backup troppo grande per il ripristino via web.' }, 413);
  let backup: unknown; try { backup = JSON.parse(raw); } catch { return json({ error: 'File di backup non leggibile.' }, 400); }

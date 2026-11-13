@@ -19,12 +19,13 @@ PC di linea ──► Access (token di servizio) ──► /api/devices/producti
 2. Attiva la verifica in due passaggi: profilo → Authentication.
 3. Facoltativo ma consigliato: Workers → Plans → **Workers Paid** (5 $/mese), che dà più tempo di calcolo per richiesta.
 
-## 2. Dominio
+## 2. Dominio (scelta del 13/11/2026: dominio nuovo dedicato)
 
-Il gestionale va su un sottodominio, ad esempio `gestionale.tuodominio.it`.
+Consigliato un **dominio nuovo dedicato allo stabilimento**, acquistato direttamente in Cloudflare: Domain Registration → Register, a prezzo di costo, attivo in pochi minuti. Il gestionale va su un sottodominio, ad esempio `gestionale.nuovodominio.com`.
 
-- **Se hai già un dominio**: aggiungilo («Add a domain») e, nel pannello del registrar attuale, sostituisci i nameserver con i due indicati da Cloudflare. La posta e i siti esistenti continuano a funzionare se Cloudflare importa correttamente i record DNS: controllali prima di cambiare i nameserver.
-- **Se non lo hai**: Domain Registration → Register, a prezzo di costo.
+Motivo: usare i domini aziendali esistenti richiede di spostare in Cloudflare i loro nameserver, quindi anche la gestione della posta. Si può fare, ma rischia di interrompere l'email aziendale.
+
+Per gli accessi crea anche **un'email dedicata allo stabilimento** (va bene un Gmail gratuito), separata da quella dell'amministrazione.
 
 ## 3. Database D1
 
@@ -35,13 +36,29 @@ Workers & Pages → D1 → Create:
 
 Annota il **Database ID**.
 
-## 4. Cloudflare Access (Zero Trust, gratuito fino a 50 utenti)
+## 4. Cloudflare Access e profili (Zero Trust, gratuito fino a 50 utenti)
+
+Le credenziali sono uniche e condivise per profilo; al massimo due profili:
+
+| Profilo | Chi | Cosa può fare |
+| --- | --- | --- |
+| Amministrazione | email dell'amministrazione | tutto |
+| Laboratorio | email dello stabilimento, usata su tutti i dispositivi del laboratorio | entrate e resi, spostamenti, produzione (avvio, conteggio, chiusura), preparazione e partenza degli ordini |
+
+Solo l'amministrazione può gestire catalogo, nuovi ordini e annullamenti, documenti, blocchi, rettifiche, scarti, consumi, dispositivi del ponte e backup. Il server rifiuta comunque le operazioni non permesse (`lib/permissions.ts`): non basta nascondere un pulsante. Con un solo accesso per tutti basta non impostare gli elenchi qui sotto: chi supera Access è amministrazione. Chi ha registrato un'operazione resta indicato dal nome dell'operatore digitato, come oggi.
+
+Dopo la prima pubblicazione: Workers → il Worker → Settings → Variables and Secrets → aggiungi due **Secret**:
+- `ADMIN_EMAILS`: email dell'amministrazione;
+- `LAB_EMAILS`: email dello stabilimento.
+
+Le email non vanno mai nel codice.
+
 
 1. Zero Trust: scegli il nome del team. Diventa `nome-team.cloudflareaccess.com`.
-2. Settings → Authentication: lascia **One-time PIN**. Chi accede riceve un codice via email; non servono password.
+2. Settings → Authentication: lascia **One-time PIN**. Chi accede riceve un codice via email; non servono password. Nell'applicazione imposta la durata della sessione a 1 mese, così ogni dispositivo del laboratorio fa il login circa una volta al mese.
 3. Access → Applications → Add → **Self-hosted**:
    - dominio `gestionale.tuodominio.it`;
-   - policy **Allow** con le email autorizzate (Include → Emails).
+   - policy **Allow** con le due email, amministrazione e stabilimento (Include → Emails).
 4. Nella stessa applicazione copia l'**Application Audience (AUD) Tag**.
 5. Solo quando colleghi il ponte, segui questi passaggi:
    1. Access → Service Auth: crea un **Service Token** «ponte linea 1».

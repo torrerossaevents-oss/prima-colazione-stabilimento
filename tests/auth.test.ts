@@ -105,3 +105,32 @@ test('API route in Access mode: 401 without a valid Access token, 200 with it', 
     assert.equal(res.status, 200);
   } finally { keys.restore(); await t.close(); }
 });
+
+test('profiles: laboratorio records floor operations only; amministrazione everything; unknown email refused', async () => {
+  resetAccessKeyCache();
+  const { pair, jwk } = await keyPair('k1');
+  const keys = serveKeys([jwk]);
+  const t = await sqliteDb();
+  setEnv(t.db);
+  Object.assign((globalThis as { __testEnv?: Record<string, unknown> }).__testEnv!, { AUTH_MODE: 'cloudflare-access', ACCESS_TEAM_DOMAIN: team, ACCESS_AUD: aud, ADMIN_EMAILS: 'ufficio@esempio.it', LAB_EMAILS: 'laboratorio@esempio.it' });
+  const origin = 'https://gestionale.esempio.it';
+  const workspace = await loadRoute<{ GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> }>('app/api/workspace/route.ts');
+  const devices = await loadRoute<{ GET: (r: Request) => Promise<Response> }>('app/api/devices/route.ts');
+  const backup = await loadRoute<{ GET: (r: Request) => Promise<Response> }>('app/api/workspace/backup/route.ts');
+  const as = async (email: string) => ({ 'cf-access-jwt-assertion': await sign(pair.privateKey, 'k1', claims({ email })), origin, 'content-type': 'application/json' });
+  let version = 0;
+  const post = async (email: string, action: unknown) => { const res = await workspace.POST(new Request(origin + '/api/workspace', { method: 'POST', headers: await as(email), body: JSON.stringify({ action, expectedVersion: version, requestId: 'req-' + crypto.randomUUID() }) })); const body = await res.json() as { version?: number; role?: string }; if (res.ok && body.version !== undefined) version = body.version; return res.status; };
+  try {
+    const product = { type: 'product.add', product: { code: 'A1', name: 'Articolo fittizio', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } };
+    assert.equal(await post('laboratorio@esempio.it', product), 403, 'catalog is amministrazione only');
+    assert.equal(await post('ufficio@esempio.it', product), 200);
+    assert.equal(await post('laboratorio@esempio.it', { type: 'production.start', code: 'A1', operator: 'Operatore prova', lotCode: 'L1', expiry: '2099-12-31' }), 200, 'production is allowed to laboratorio');
+    assert.equal(await post('sconosciuto@esempio.it', { type: 'production.count', sessionId: 'x', cartons: 1 }), 401);
+    const roleOf = async (email: string) => ((await (await workspace.GET(new Request(origin + '/api/workspace', { headers: await as(email) }))).json()) as { role: string }).role;
+    assert.equal(await roleOf('laboratorio@esempio.it'), 'laboratorio');
+    assert.equal(await roleOf('UFFICIO@esempio.it'), 'amministrazione');
+    assert.equal((await devices.GET(new Request(origin + '/api/devices', { headers: await as('laboratorio@esempio.it') }))).status, 403);
+    assert.equal((await backup.GET(new Request(origin + '/api/workspace/backup', { headers: await as('laboratorio@esempio.it') }))).status, 403);
+    assert.equal((await backup.GET(new Request(origin + '/api/workspace/backup', { headers: await as('ufficio@esempio.it') }))).status, 200);
+  } finally { keys.restore(); await t.close(); }
+});

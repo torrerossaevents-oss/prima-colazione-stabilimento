@@ -15,6 +15,8 @@ type Props = {
   onClose: () => void;
   state: State;
   canAct: boolean;
+  /** Operations allowed to the current access profile. */
+  allowed?: (action: PaletteAction) => boolean;
   onNavigate: (view: PaletteView) => void;
   onAction: (action: PaletteAction) => void;
   onProduct: (code: string) => void;
@@ -31,7 +33,7 @@ const actions: [PaletteAction, string, typeof Box][] = [
   ['return', 'Registra un reso da controllare', Undo2], ['product', 'Nuovo prodotto', Plus],
 ];
 
-export default function CommandPalette({ open, onClose, state, canAct, onNavigate, onAction, onProduct, onLot, onOrder }: Props) {
+export default function CommandPalette({ open, onClose, state, canAct, allowed = () => true, onNavigate, onAction, onProduct, onLot, onOrder }: Props) {
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -52,7 +54,7 @@ export default function CommandPalette({ open, onClose, state, canAct, onNavigat
         <Command.List>
           <Command.Empty>Nessun risultato. Prova con il codice, il lotto o il nome del cliente.</Command.Empty>
           {canAct && <Command.Group heading="Operazioni">
-            {actions.map(([id, label, Icon]) => <Command.Item key={id} value={'azione ' + label} onSelect={() => run(() => onAction(id))}><Icon aria-hidden="true"/><span>{label}</span></Command.Item>)}
+            {actions.filter(([id]) => allowed(id)).map(([id, label, Icon]) => <Command.Item key={id} value={'azione ' + label} onSelect={() => run(() => onAction(id))}><Icon aria-hidden="true"/><span>{label}</span></Command.Item>)}
           </Command.Group>}
           <Command.Group heading="Vai a">
             {views.map(([id, label, Icon]) => <Command.Item key={id} value={'vai ' + label} onSelect={() => run(() => onNavigate(id))}><Icon aria-hidden="true"/><span>{label}</span></Command.Item>)}
