@@ -273,3 +273,59 @@ test('[sqlite] request bodies are counted while streaming, also without Content-
     assert.equal(res.status, 413);
   } finally { await t.close(); }
 });
+
+for (const engine of ['sqlite', 'd1'] as const) {
+  test(`[${engine}] review fixes: abandoned id refuses a late arrival; rejected first save keeps the archive restorable`, async () => {
+    const t = await (engine === 'sqlite' ? sqliteDb : miniflareDb)(); setEnv(t.db); const { post } = client(await routes());
+    const receipt = await loadRoute<Route>('app/api/workspace/receipt/route.ts');
+    try {
+      // A rejected first operation must not create the workspace row.
+      assert.equal((await post({ type: 'order.prepare', orderId: 'missing' }, 0, 'request-rejected')).status, 422);
+      assert.equal(await count(t, 'workspaces'), 0);
+      await post(product('BASE'), 0, 'request-base');
+      // «Scarta» burns the id: the original request arriving late is refused, nothing is saved.
+      const abandon = await receipt.POST(new Request(origin + '/api/workspace/receipt', { method: 'POST', headers: owner, body: JSON.stringify({ id: 'request-late' }) }));
+      assert.deepEqual(await abandon.json(), { committed: false });
+      const late = await post(product('LATE'), 1, 'request-late');
+      assert.equal(late.status, 409); assert.equal(late.body.code, 'request-abandoned');
+      assert.equal((await client(await routes()).get()).state.products.length, 1);
+      // Abandoning an id that WAS committed reports it, and changes nothing.
+      const done = await receipt.POST(new Request(origin + '/api/workspace/receipt', { method: 'POST', headers: owner, body: JSON.stringify({ id: 'request-base' }) }));
+      assert.deepEqual(await done.json(), { committed: true });
+      assert.equal(((await (await receipt.GET(new Request(origin + '/api/workspace/receipt?id=request-late', { headers: owner }))).json()) as { committed: boolean }).committed, false);
+    } finally { await t.close(); }
+  });
+
+  test(`[${engine}] transfer into an archived empty lot of the same code reuses that row`, async () => {
+    const t = await (engine === 'sqlite' ? sqliteDb : miniflareDb)(); setEnv(t.db); const { post } = client(await routes());
+    try {
+      const state = initialState();
+      state.products.push({ id: 'p1', code: 'P1', name: 'Articolo fittizio', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0, inUse: true });
+      state.areas = ['Area A', 'Area B'];
+      state.lots.push({ id: 'la', productId: 'p1', code: 'X', expiry: '2099-12-31', area: 'Area A', quantity: 10, blocked: 0 }, { id: 'lb', productId: 'p1', code: 'X', expiry: '2099-12-31', area: 'Area B', quantity: 0, blocked: 0 });
+      await seed(t, state, 1);
+      await post({ type: 'lot.block', lotId: 'la', blocked: 0 }, 1, 'request-archive-lb');
+      assert.equal(Number((await t.raw("SELECT count(*) AS n FROM workspace_archive WHERE id = 'lb'"))[0].n), 1);
+      const moved = await post({ type: 'lot.transfer', lotId: 'la', quantity: 4, area: 'Area B' }, 2, 'request-transfer');
+      assert.equal(moved.status, 200, moved.body.error);
+      assert.deepEqual(moved.body.state.lots.map(l => [l.id, l.quantity]).sort(), [['la', 6], ['lb', 4]]);
+      assert.equal(Number((await t.raw("SELECT count(*) AS n FROM workspace_archive WHERE id = 'lb'"))[0].n), 0);
+    } finally { await t.close(); }
+  });
+}
+
+test('[sqlite] backup tables are read in one transaction (no mixed backup under a concurrent commit)', async () => {
+  const t = await sqliteDb(); setEnv(t.db);
+  try {
+    const { exportBackup } = await import('../lib/server/backup.ts');
+    type Stmt = { query: string; all: (...a: unknown[]) => unknown; first: (...a: unknown[]) => unknown; bind: (...a: unknown[]) => Stmt };
+    const db = t.db as unknown as { batch: (s: Stmt[]) => Promise<unknown>; prepare: (q: string) => Stmt };
+    const original = db.batch.bind(db); const originalPrepare = db.prepare.bind(db);
+    const outside: string[] = []; const inBatch: string[] = [];
+    db.batch = async s => { inBatch.push(...s.map(x => x.query)); return original(s); };
+    db.prepare = q => { const stmt = originalPrepare(q); const track = (fn: (...a: unknown[]) => unknown) => (...a: unknown[]) => { if (/FROM workspace/.test(q)) outside.push(q); return fn(...a); }; stmt.all = track(stmt.all.bind(stmt)); stmt.first = track(stmt.first.bind(stmt)); return stmt; };
+    await exportBackup(t.db);
+    assert.deepEqual(outside, [], 'no table read outside the batch');
+    assert.equal(inBatch.filter(q => /^SELECT/.test(q)).length, 5);
+  } finally { await t.close(); }
+});

@@ -84,6 +84,28 @@ Vedi `docs/COLLAUDO.md` → «Verifica del 13 novembre 2026».
 7. **Utenti e ruoli** (accessi): quante persone per amministrazione/produzione/magazzino e se la piattaforma di pubblicazione può fornire identità distinte.
 8. **Pubblicazione**: chi pubblica sul flusso Sites e quando; prima della pubblicazione scaricare un backup.
 
+## Revisioni indipendenti (13/11/2026) e correzioni
+
+Eseguite con due agenti separati sul diff `31ecaf5..HEAD`, senza conoscere le conclusioni dell'autore. Revisione Codex: non disponibile in questa sessione; la PR è pronta per riceverla.
+
+| Rilievo | Gravità | Esito |
+| --- | --- | --- |
+| Risposta 200 non JSON (pagina di accesso) presa per salvataggio riuscito | Alta | Corretto: solo JSON con stato e versione vale come esito; altrimenti «da verificare». Test nel browser |
+| Backup letto con 5 SELECT separate: un salvataggio contemporaneo poteva produrre un backup incoerente | Alta | Corretto: lettura in un unico batch (transazione). Test |
+| Chiunque con l'header della piattaforma è «proprietario» (rischio se l'accesso della piattaforma cambia) | Alta condizionata | Mitigato: `OWNER_USER_IDS` se configurato. **Da impostare prima di cambiare l'accesso del sito o di attivare il ponte** |
+| `--dati` della simulazione poteva cancellare una cartella qualsiasi | Media | Corretto con test |
+| Ripristino: righe non validate, dati lasciati scritti se la verifica falliva | Media | Corretto: validazione completa prima di scrivere, annullamento automatico, limite 20 MB. Test con backup falsificato |
+| «Scarta» non impediva l'arrivo tardivo della richiesta originale | Media-bassa | Corretto: l'identificativo viene annullato sul server. Test API e browser |
+| Un solo record di richiesta incerta per tutte le schede | Bassa-media | Corretto: un record per richiesta, con stato «in invio»/«incerta» |
+| Trasferimento verso un lotto archiviato creava un doppione di riga | Bassa | Corretto con test |
+| Un primo salvataggio rifiutato impediva poi il ripristino | Bassa | Corretto: la riga dello stato nasce solo con un salvataggio valido. Test |
+| Lavorazione da ponte chiusa a mano con 0 cartoni | Bassa | Segnalata come «da verificare» nel riepilogo e nel CSV |
+| Ordini archiviati senza articolo/unità; doppia comparsa dopo un documento | Bassa | Corretto |
+| GET del ponte con lettura completa di storico e conteggi | Bassa | Corretto: solo stato operativo |
+| Limiti letti senza streaming; heartbeat senza frequenza minima; linea non verificata alla chiusura | Bassa | Corretti |
+| Token del ponte in chiaro accanto al pacchetto | Bassa | Documentato: tenere `token.local.json` fuori da copie e zip; spostamento in `%ProgramData%` con permessi ristretti da fare all'installazione sul PC confermato |
+| Anteprima di sviluppo aperta senza login | Bassa | Documentato: usare `npm run dev` solo su macchine e reti fidate, mai con un backup reale |
+
 ## Prossimo passo
 
 1. Revisione della PR (anche Codex, se disponibile) e risposta ai rilievi.

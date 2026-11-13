@@ -64,7 +64,14 @@ export function archiveNeeds(action: Action, state: State): ArchiveNeeds {
   const addLot = (id: unknown) => { if (typeof id === 'string' && !hasLot.has(id)) needs.lot.push(id); };
   const a = action as Record<string, unknown>;
   switch (action.type) {
-    case 'lot.block': case 'lot.transfer': case 'lot.adjust': case 'lot.scrap': case 'lot.consume': addLot(a.lotId); break;
+    case 'lot.block': case 'lot.adjust': case 'lot.scrap': case 'lot.consume': addLot(a.lotId); break;
+    case 'lot.transfer': {
+      addLot(a.lotId);
+      // The destination may be an archived empty row of the same lot: bring it back instead of creating a twin.
+      const source = state.lots.find(l => l.id === a.lotId);
+      if (source) needs.lotRef.push(lotRef(source.productId, source.code));
+      break;
+    }
     case 'lot.receive': case 'lot.return': {
       const lot = a.lot as { productId?: unknown; code?: unknown } | undefined;
       if (lot && typeof lot.productId === 'string' && typeof lot.code === 'string') needs.lotRef.push(lotRef(lot.productId, lot.code.trim()));

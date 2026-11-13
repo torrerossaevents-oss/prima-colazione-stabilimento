@@ -34,6 +34,7 @@ export async function sqliteDb(): Promise<TestDb> {
       async all<T>() { return { results: sql.prepare(query).all(...values) as T[], success: true, meta: {} }; },
       async run() {
         if (holder.failOn?.(query)) throw new Error('Injected failure: ' + query.slice(0, 40));
+        if (/^\s*SELECT/i.test(query)) return { success: true, meta: { changes: 0 }, results: sql.prepare(query).all(...values) };
         const result = sql.prepare(query).run(...values); return { success: true, meta: { changes: Number(result.changes) }, results: [] };
       },
     };

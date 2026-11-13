@@ -16,14 +16,20 @@ type Data = {
 };
 export type Backup = { format: typeof BACKUP_FORMAT; formatVersion: 1; createdAt: string; digest: string; counts: Record<string, number>; devices: { id: string; name: string; revokedAt: string | null }[]; data: Data };
 
+/** All tables read inside ONE batch (a D1 transaction): a concurrent commit cannot produce a mixed backup. */
 async function readData(db: D1Database): Promise<Data> {
-  const all = async <T>(q: string) => (await db.prepare(q).bind(WORKSPACE_ID).all<T>()).results;
+  const q = (sql: string) => db.prepare(sql).bind(WORKSPACE_ID);
+  const [w, receipts, audit, archive, snapshots] = await db.batch([
+    q('SELECT version, payload, updated_at, last_request_id FROM workspaces WHERE id = ?'),
+    q('SELECT id, digest, version, created_at FROM workspace_requests WHERE workspace_id = ? ORDER BY id'),
+    q('SELECT id, at, action, detail, actor, moves, version FROM workspace_audit WHERE workspace_id = ? ORDER BY id'),
+    q('SELECT kind, id, day, ref, search, payload, archived_version FROM workspace_archive WHERE workspace_id = ? ORDER BY kind, id'),
+    q('SELECT id, version, reason, payload, created_at FROM workspace_snapshots WHERE workspace_id = ? ORDER BY id'),
+  ]);
   return {
-    workspace: await db.prepare('SELECT version, payload, updated_at, last_request_id FROM workspaces WHERE id = ?').bind(WORKSPACE_ID).first<Data['workspace']>(),
-    receipts: await all('SELECT id, digest, version, created_at FROM workspace_requests WHERE workspace_id = ? ORDER BY id'),
-    audit: await all('SELECT id, at, action, detail, actor, moves, version FROM workspace_audit WHERE workspace_id = ? ORDER BY id'),
-    archive: await all('SELECT kind, id, day, ref, search, payload, archived_version FROM workspace_archive WHERE workspace_id = ? ORDER BY kind, id'),
-    snapshots: await all('SELECT id, version, reason, payload, created_at FROM workspace_snapshots WHERE workspace_id = ? ORDER BY id'),
+    workspace: (w.results[0] as Data['workspace']) ?? null,
+    receipts: receipts.results as Data['receipts'], audit: audit.results as Data['audit'],
+    archive: archive.results as Data['archive'], snapshots: snapshots.results as Data['snapshots'],
   };
 }
 const countsOf = (d: Data) => ({ version: d.workspace?.version ?? 0, receipts: d.receipts.length, audit: d.audit.length, archive: d.archive.length, snapshots: d.snapshots.length });
@@ -91,9 +97,12 @@ export async function restoreBackup(db: D1Database, input: unknown): Promise<{ d
   validateData(backup.data);
   parseState(backup.data.workspace.payload);
   const current = await readData(db);
-  if (current.workspace || current.receipts.length || current.audit.length || current.archive.length) throw new RestoreError('Il ripristino è consentito solo in un archivio vuoto: non sovrascrive dati esistenti.');
+  const untouched = current.workspace && current.workspace.version === 0 && !current.receipts.length;
+  if ((current.workspace && !untouched) || current.receipts.length || current.audit.length || current.archive.length) throw new RestoreError('Il ripristino è consentito solo in un archivio vuoto: non sovrascrive dati esistenti.');
   const d = backup.data; const w = WORKSPACE_ID;
   const statements: D1PreparedStatement[] = [
+    // An untouched version-0 row (created by older code before any valid save) is replaced.
+    db.prepare('DELETE FROM workspaces WHERE id = ? AND version = 0').bind(w),
     db.prepare('INSERT INTO workspaces (id, payload, version, request_ids, updated_at, last_request_id) VALUES (?, ?, ?, ?, ?, ?)').bind(w, d.workspace!.payload, d.workspace!.version, '[]', d.workspace!.updated_at, d.workspace!.last_request_id),
   ];
   for (const part of chunk(d.receipts)) statements.push(db.prepare("INSERT INTO workspace_requests (id, workspace_id, digest, version, created_at) SELECT json_extract(value,'$.id'), ?, json_extract(value,'$.digest'), json_extract(value,'$.version'), json_extract(value,'$.created_at') FROM json_each(?)").bind(w, JSON.stringify(part)));

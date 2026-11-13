@@ -149,3 +149,10 @@ test('import update without kind/minStock columns keeps stored values; new rows 
  assert.equal(state.products[0].kind,'raw');assert.equal(state.products[0].minStock,40);assert.equal(state.products[0].name,'Materia prima rinominata');
  assert.equal(state.products[1].kind,'finished');assert.equal(state.products[1].minStock,0);
 });
+
+test('production summary flags manual closes of bridge sessions and bridge anomalies as to verify',()=>{
+ let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
+ state=act(state,{type:'production.start',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device'},{devicesEnabled:true});
+ state=act(state,{type:'production.close',sessionId:state.sessions[0].id,override:'Ponte guasto'});
+ assert.equal(productionSummary(state.sessions)[0].toVerify,1);
+});

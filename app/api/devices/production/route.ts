@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { activeSession, type Action } from '../../../../lib/domain.ts';
 import { authenticateDevice, recordHeartbeat } from '../../../../lib/server/devices.ts';
-import { commit, domainStatus, readWorkspace, REQUEST_ID, sha256 } from '../../../../lib/server/workspace.ts';
+import { commit, domainStatus, readState, REQUEST_ID, sha256 } from '../../../../lib/server/workspace.ts';
 import { json, readLimited, serverError, requireDb } from '../../../../lib/server/http.ts';
 export const dynamic = 'force-dynamic';
 /**
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
  const device = await authenticateDevice(requireDb(env.DB), request).catch(() => null);
  if (!device) return json({ error: 'Credenziale dispositivo non valida o revocata.' }, 401);
  try {
-  const { state } = await readWorkspace(requireDb(env.DB)); const session = activeSession(state);
+  const state = await readState(requireDb(env.DB)); const session = activeSession(state);
   const active = session && session.source === 'device' && (session.line ?? 'linea-1') === device.line ? session : null;
   return json({ serverTime: new Date().toISOString(), line: device.line, deviceId: device.id, activeSession: active && { id: active.id, productCode: active.productCode, productName: active.productName, lotCode: active.lotCode, expiry: active.expiry, unitsPerBox: active.unitsPerBox, startedAt: active.startedAt, operator: active.operator, source: active.source } });
  } catch (error) { return serverError(error, 'Archivio non disponibile.'); }

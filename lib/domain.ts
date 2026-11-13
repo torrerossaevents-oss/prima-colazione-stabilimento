@@ -165,7 +165,7 @@ export function validateState(state:State):void{
  for(const order of state.orders)for(const line of order.lines){if(!lotIds.has(line.lotId))fail('Lotto ordine inesistente.');number(line.quantity,'Quantità richiesta',1);number(line.shipped,'Quantità spedita');if(line.shipped>line.quantity)fail('La quantità spedita supera quella richiesta.');}
  for(const session of state.sessions){number(session.cartons,'Cartoni');if(session.scrapCartons!==undefined&&(number(session.scrapCartons,'Scarti')>session.cartons))fail('Gli scarti superano i cartoni letti.');}
 }
-export type ProductionRow={day:string;productId:string;productCode:string;productName:string;lotCode:string;unit:string;unitsPerBox:number;sessions:number;confirmedCartons:number;activeCartons:number;scrapCartons:number;deviceSessions:number};
+export type ProductionRow={day:string;productId:string;productCode:string;productName:string;lotCode:string;unit:string;unitsPerBox:number;sessions:number;confirmedCartons:number;activeCartons:number;scrapCartons:number;deviceSessions:number;toVerify:number};
 /**
  * Daily production by day/article/lot. The day is the Europe/Rome start day of each
  * session. Confirmed = closed sessions; active = session still open (not final).
@@ -176,8 +176,10 @@ export function productionSummary(sessions:Session[],from?:string,to?:string):Pr
  for(const s of sessions){
   if((from&&s.day<from)||(to&&s.day>to))continue;
   const key=[s.day,s.productId,s.lotCode].join('\u0000');
-  const row=rows.get(key)??{day:s.day,productId:s.productId,productCode:s.productCode,productName:s.productName,lotCode:s.lotCode,unit:s.unit??'',unitsPerBox:s.unitsPerBox,sessions:0,confirmedCartons:0,activeCartons:0,scrapCartons:0,deviceSessions:0};
+  const row=rows.get(key)??{day:s.day,productId:s.productId,productCode:s.productCode,productName:s.productName,lotCode:s.lotCode,unit:s.unit??'',unitsPerBox:s.unitsPerBox,sessions:0,confirmedCartons:0,activeCartons:0,scrapCartons:0,deviceSessions:0,toVerify:0};
   row.sessions++;if(s.status==='closed')row.confirmedCartons+=s.cartons;else row.activeCartons+=s.cartons;row.scrapCartons+=s.scrapCartons??0;if(s.source==='device')row.deviceSessions++;
+  // Manual close of a bridge-counted session, or bridge anomalies: the figure needs a check.
+  if(s.closedBy==='manual-override'||(s.device?.anomalies.length??0)>0)row.toVerify++;
   rows.set(key,row);
  }
  return [...rows.values()].sort((a,b)=>b.day.localeCompare(a.day)||a.productCode.localeCompare(b.productCode)||a.lotCode.localeCompare(b.lotCode));

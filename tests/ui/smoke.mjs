@@ -88,6 +88,21 @@ await page.unroute('**/api/workspace');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 s = await api(); assert.equal(s.state.lots[0].quantity, 129);
 log('connessione persa: stato «Da verificare», modulo conservato, ripetizione con lo stesso id salvata una volta');
+// Expired platform session: a 200 HTML login page must never count as «saved».
+await page.getByRole('button', { name: 'Rettifica' }).first().click();
+await dialog().getByLabel('Variazione di quantità').fill('-1'); await dialog().getByLabel('Responsabile della verifica').fill('Responsabile prova');
+await dialog().getByLabel('Motivo della rettifica').fill('Pagina di accesso'); await dialog().getByRole('checkbox').check();
+await page.route('**/api/workspace', r => r.request().method() === 'POST' ? r.fulfill({ status: 200, contentType: 'text/html', body: '<html>Accedi</html>' }) : r.continue());
+await dialog().getByRole('button', { name: 'Conferma e salva' }).click();
+await page.getByText('Da verificare').first().waitFor();
+assert.equal(await page.getByText(/^Salvato alle/).count(), 0, 'no false «saved»');
+await page.unroute('**/api/workspace');
+await dialog().getByRole('button', { name: 'Indietro' }).click();
+page.once('dialog', d => d.accept());
+await page.getByRole('button', { name: 'Scarta' }).click();
+await page.getByText('Operazione scartata').waitFor();
+s = await api(); assert.equal(s.state.lots[0].quantity, 129, 'nothing saved by the HTML answer nor after «Scarta»');
+log('risposta 200 in HTML (accesso scaduto): nessun falso «Salvato»; «Scarta» annulla l’identificativo sul server');
 // Lost response after commit: the server saves, the browser never sees the answer.
 await page.getByRole('button', { name: 'Rettifica' }).first().click();
 await dialog().getByLabel('Variazione di quantità').fill('-1'); await dialog().getByLabel('Responsabile della verifica').fill('Responsabile prova');

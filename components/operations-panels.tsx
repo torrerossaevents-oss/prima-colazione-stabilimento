@@ -2,7 +2,7 @@
 /** Panels backed by the paginated archive and device APIs. Plain Italian, explicit units. */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Activity, Download, KeyRound, RefreshCw, Search, ShieldCheck, Upload } from 'lucide-react';
-import { addDays, productionSummary, type Audit, type Order, type Session } from '../lib/domain';
+import { addDays, productionSummary, type Audit, type Lot, type Order, type Session } from '../lib/domain';
 import { describeError, request } from '../lib/client-api';
 
 export type DeviceInfo = { id: string; name: string; line: string; createdAt: string; revokedAt: string | null; lastSeenAt: string | null; status: { at?: string | null; bridgeVersion?: string | null; queueLength?: number | null; plc?: { reachable?: boolean; lastReadAt?: string | null }; session?: { id?: string | null; cartons?: number | null } | null } | null };
@@ -38,8 +38,8 @@ export function ProductionSummaryPanel({ sessions, today, archivedCount, onExpor
   const rows = useMemo(() => { const all = new Map([...(needsArchive ? archived : []), ...sessions].map(s => [s.id, s])); return productionSummary([...all.values()], from, to); }, [archived, needsArchive, sessions, from, to]);
   const preset = (a: string, b: string) => { setFrom(a); setTo(b); };
   function exportCsv() {
-    const head = ['Giorno (avvio, Europe/Rome)', 'Codice', 'Articolo', 'Lotto', 'Lavorazioni', 'Cartoni confermati', 'Cartoni in corso (non definitivi)', 'Cartoni scartati', 'Unità per cartone', 'Unità confermate', 'Unità di misura', 'Lavorazioni da ponte'];
-    const body = rows.map(r => [r.day, r.productCode, r.productName, r.lotCode, r.sessions, r.confirmedCartons, r.activeCartons, r.scrapCartons, r.unitsPerBox, r.confirmedCartons * r.unitsPerBox, r.unit, r.deviceSessions]);
+    const head = ['Giorno (avvio, Europe/Rome)', 'Codice', 'Articolo', 'Lotto', 'Lavorazioni', 'Cartoni confermati', 'Cartoni in corso (non definitivi)', 'Cartoni scartati', 'Unità per cartone', 'Unità confermate', 'Unità di misura', 'Lavorazioni da ponte', 'Da verificare'];
+    const body = rows.map(r => [r.day, r.productCode, r.productName, r.lotCode, r.sessions, r.confirmedCartons, r.activeCartons, r.scrapCartons, r.unitsPerBox, r.confirmedCartons * r.unitsPerBox, r.unit, r.deviceSessions, r.toVerify]);
     onExport(`prima-colazione-produzione-${from}_${to}.csv`, '﻿' + [head, ...body].map(r => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
   }
   return <section className="panel" style={{ marginTop: 24 }}>
@@ -53,7 +53,7 @@ export function ProductionSummaryPanel({ sessions, today, archivedCount, onExpor
       {loading && <Loading>Lettura dell’archivio…</Loading>}
       {error && <div role="alert" className="alert-error">{error}</div>}
       {rows.length ? <div className="table-wrap"><table className="data-table"><thead><tr><th>Giorno</th><th>Articolo / lotto</th><th>Lavorazioni</th><th>Cartoni confermati</th><th>In corso</th><th>Scarti</th><th>Unità confermate</th></tr></thead><tbody>
-        {rows.map(r => <tr key={r.day + r.productId + r.lotCode}><td>{day(r.day)}</td><td>{r.productName}<span className="cell-sub">{r.productCode} · Lotto {r.lotCode}</span></td><td>{n(r.sessions)}{r.deviceSessions > 0 && <small className="cell-sub">{r.deviceSessions} da ponte</small>}</td><td>{n(r.confirmedCartons)} cartoni</td><td>{r.activeCartons ? `${n(r.activeCartons)} cartoni` : '—'}</td><td>{r.scrapCartons ? `${n(r.scrapCartons)} cartoni` : '—'}</td><td>{n(r.confirmedCartons * r.unitsPerBox)} {r.unit}<small className="cell-sub">{r.unitsPerBox} per cartone</small></td></tr>)}
+        {rows.map(r => <tr key={r.day + r.productId + r.lotCode}><td>{day(r.day)}</td><td>{r.productName}<span className="cell-sub">{r.productCode} · Lotto {r.lotCode}</span></td><td>{n(r.sessions)}{r.deviceSessions > 0 && <small className="cell-sub">{r.deviceSessions} da ponte</small>}{r.toVerify > 0 && <span className="chip amber">{r.toVerify} da verificare</span>}</td><td>{n(r.confirmedCartons)} cartoni</td><td>{r.activeCartons ? `${n(r.activeCartons)} cartoni` : '—'}</td><td>{r.scrapCartons ? `${n(r.scrapCartons)} cartoni` : '—'}</td><td>{n(r.confirmedCartons * r.unitsPerBox)} {r.unit}<small className="cell-sub">{r.unitsPerBox} per cartone</small></td></tr>)}
       </tbody></table></div> : !loading && <p className="muted">Nessuna lavorazione nel periodo scelto.</p>}
       <p className="form-help">Le lavorazioni restano distinte anche nello stesso giorno; i totali sono per articolo e lotto, senza sommare unità diverse. «In corso» comprende la lavorazione ancora aperta.</p>
     </div>
@@ -88,20 +88,22 @@ export function HistoryPanel({ recent, total, onExport, loaded }: { recent: Audi
 }
 
 /** Orders closed more than 30 days ago, loaded on request. */
-export function ArchivedOrders({ search, count, renderOrder }: { search: string; count: number; renderOrder: (o: Order) => ReactNode }) {
-  const [items, setItems] = useState<Order[] | null>(null); const [next, setNext] = useState<{ day: string; id: string } | null>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
+export function ArchivedOrders({ search, count, renderOrder, hotOrderIds, refreshKey }: { search: string; count: number; renderOrder: (o: Order, lots: Map<string, Lot>) => ReactNode; hotOrderIds: Set<string>; refreshKey: number }) {
+  const [items, setItems] = useState<Order[] | null>(null); const [lots, setLots] = useState<Map<string, Lot>>(new Map()); const [next, setNext] = useState<{ day: string; id: string } | null>(null); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
   async function load(cursor: typeof next) {
     setLoading(true); setError('');
     try {
       const res = await request(`/api/workspace/archive?kind=order&limit=30&q=${encodeURIComponent(search)}${cursor ? '&before=' + encodeURIComponent(cursor.day + '|' + cursor.id) : ''}`);
-      const data = await res.json() as { items?: Order[]; next?: typeof next; error?: string };
+      const data = await res.json() as { items?: Order[]; lots?: Lot[]; next?: typeof next; error?: string };
       if (!res.ok) throw new Error(data.error || 'Archivio non disponibile.');
       setItems(prev => cursor && prev ? [...prev, ...(data.items ?? [])] : data.items ?? []); setNext(data.next ?? null);
+      setLots(prev => { const map = new Map(cursor ? prev : []); for (const l of data.lots ?? []) map.set(l.id, l); return map; });
     } catch (e) { setError(describeError(e, 'Archivio non disponibile.')); } finally { setLoading(false); }
   }
-  useEffect(() => { if (items) { const t = setTimeout(() => { void load(null); }, 300); return () => clearTimeout(t); } }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reload after a search change or after any saved operation (an order may have returned to the hot state).
+  useEffect(() => { if (items) { const t = setTimeout(() => { void load(null); }, 300); return () => clearTimeout(t); } }, [search, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!items) return <section className="panel"><div className="panel-body split"><p className="muted">{n(count)} ordini chiusi da oltre 30 giorni sono in archivio.</p><button className="button secondary small" disabled={loading} onClick={() => load(null)}>{loading ? 'Caricamento…' : 'Mostra ordini archiviati'}</button></div>{error && <div role="alert" className="alert-error">{error}</div>}</section>;
-  return <>{items.map(renderOrder)}{!items.length && <p className="muted">Nessun ordine archiviato corrisponde alla ricerca.</p>}{error && <div role="alert" className="alert-error">{error}</div>}{next && <button className="button secondary" disabled={loading} onClick={() => load(next)}>{loading ? 'Caricamento…' : 'Altri ordini archiviati'}</button>}</>;
+  return <>{items.filter(o => !hotOrderIds.has(o.id)).map(o => renderOrder(o, lots))}{!items.length && <p className="muted">Nessun ordine archiviato corrisponde alla ricerca.</p>}{error && <div role="alert" className="alert-error">{error}</div>}{next && <button className="button secondary" disabled={loading} onClick={() => load(next)}>{loading ? 'Caricamento…' : 'Altri ordini archiviati'}</button>}</>;
 }
 
 function age(at: string | null, now: number) { if (!at) return 'mai'; const s = Math.max(0, Math.round((now - Date.parse(at)) / 1000)); return s < 90 ? `${s} s fa` : s < 5400 ? `${Math.round(s / 60)} min fa` : when(at); }
