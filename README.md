@@ -31,6 +31,10 @@ Provato solo in simulazione e con test automatici (anche ponte reale ↔ API rea
 
 Dopo una modifica ai file del ponte, rigenerare il download con `python scripts/package-logo.py` (Python 3.9+; sola libreria standard). Il pacchetto usa un elenco esplicito di sorgenti e test: configurazioni locali, database e chiavi non vengono inclusi.
 
+## Pubblicazione su Cloudflare
+
+In preparazione, in alternativa a Sites: guida in [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md) (account, dominio, Cloudflare Access, database D1, pubblicazione da GitHub, trasferimento dei dati da Sites). Prova senza account: `node scripts/cloudflare-deploy.mjs --check`.
+
 ## Aprire il progetto in un'altra app
 
 Aprire l'intera cartella del repository, non soltanto `app/`. Sono necessari Node.js 22.13 o superiore, npm e Git. Un clone nuovo usa automaticamente il profilo portabile su Windows, macOS e Linux.

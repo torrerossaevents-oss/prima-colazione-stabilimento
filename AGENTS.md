@@ -38,6 +38,8 @@ Il nome digitato dell'operatore è un'attribuzione della registrazione, non un'i
 
 Il sito pubblicato si appoggia all'accesso riservato della piattaforma. Non renderlo pubblico per facilitare una prova. Una migrazione ad altro hosting richiede un confine di autenticazione equivalente e una procedura distinta per i dati.
 
+Dal 13/11/2026 Teo ha scelto di spostare la pubblicazione sul proprio account Cloudflare (`docs/CLOUDFLARE.md`): stesso Worker e D1, autenticazione con Cloudflare Access verificata nel codice (`AUTH_MODE=cloudflare-access`, `lib/server/auth.ts`, fallisce chiusa), `workers.dev` disattivato, pubblicazione con `scripts/cloudflare-deploy.mjs`. La configurazione Sites resta intatta finché il passaggio non è collaudato.
+
 ## Configurazione e portabilità
 
 Preservare `.openai/hosting.json`, il relativo `project_id`, i nomi dei binding e l'integrazione `sites()` di Vite. Non creare un nuovo sito per una normale modifica. Non modificare migrazioni già applicate: aggiungerne nuove.

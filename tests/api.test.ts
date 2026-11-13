@@ -329,3 +329,21 @@ test('[sqlite] backup tables are read in one transaction (no mixed backup under 
     assert.equal(inBatch.filter(q => /^SELECT/.test(q)).length, 5);
   } finally { await t.close(); }
 });
+
+test('[sqlite] Sites «Esporta archivio» → backup → restore into an empty database; the first save moves the log', async () => {
+  const { sitesExportToBackup } = await import('../lib/server/sites-export.ts');
+  const { restoreBackup } = await import('../lib/server/backup.ts');
+  const legacy = initialState();
+  legacy.products.push({ id: 'p1', code: '00123', name: 'Articolo fittizio', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 });
+  legacy.lots.push({ id: 'l1', productId: 'p1', code: 'L1', expiry: '2099-12-31', area: 'Area A', quantity: 150, blocked: 0 });
+  legacy.audit = [{ id: 'a1', at: '2026-11-10T08:00:00.000Z', action: 'lot.receive', detail: 'Carico manuale fittizio' }];
+  const backup = await sitesExportToBackup({ exportedAt: '2026-11-13T12:00:00.000Z', version: 9, state: legacy });
+  await assert.rejects(sitesExportToBackup({ version: 1 }), /non riconosciuto/);
+  const t = await sqliteDb(); setEnv(t.db); const { post, get } = client(await routes());
+  try {
+    await restoreBackup(t.db, JSON.parse(JSON.stringify(backup)));
+    const read = await get(); assert.equal(read.version, 9); assert.equal(read.state.lots[0].quantity, 150); assert.equal(read.recentAudit[0].detail, 'Carico manuale fittizio');
+    assert.equal((await post({ type: 'lot.block', lotId: 'l1', blocked: 1 }, 9, 'request-after-migration')).status, 200);
+    assert.equal(await count(t, 'workspace_audit'), 2); assert.equal(await count(t, 'workspace_snapshots'), 1);
+  } finally { await t.close(); }
+});

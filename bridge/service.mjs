@@ -87,10 +87,10 @@ async function startSimulation(options) {
 }
 
 function startPlant(options) {
-  const { config, token } = loadPlantConfig(options.config);
+  const { config, token, access } = loadPlantConfig(options.config);
   console.log('IMPIANTO — lettura del LOGO! configurato e invio al gestionale.');
   console.log(`Archivio: ${options.dataDir}. Scritture sul LOGO!: ${config.plc.writesEnabled ? 'ABILITATE' : 'disabilitate'}.`);
-  const service = new BridgeService({ config, token, dataDir: options.dataDir, plc: new ModbusPlc(config.plc), echo: options.echo });
+  const service = new BridgeService({ config, token, access, dataDir: options.dataDir, plc: new ModbusPlc(config.plc), echo: options.echo });
   return { service, cleanup: async () => {} };
 }
 

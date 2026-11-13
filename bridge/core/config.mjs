@@ -122,6 +122,19 @@ export function validateToken(value) {
   return value;
 }
 
+/**
+ * Credenziali di servizio di Cloudflare Access (facoltative): servono solo se il gestionale è
+ * pubblicato dietro Cloudflare Access. Vanno indicate entrambe oppure nessuna.
+ */
+export function validateAccess(tokenJson) {
+  const id = tokenJson?.accessClientId ?? null; const secret = tokenJson?.accessClientSecret ?? null;
+  if (id == null && secret == null) return null;
+  if (typeof id !== 'string' || !/^[A-Za-z0-9._-]{8,200}$/.test(id) || typeof secret !== 'string' || !/^[A-Za-z0-9._-]{16,400}$/.test(secret)) {
+    throw new Error('Credenziali Cloudflare Access non valide in token.local.json: indicare sia accessClientId sia accessClientSecret, oppure nessuno dei due.');
+  }
+  return { clientId: id, clientSecret: secret };
+}
+
 function readJson(file, missingMessage) {
   let raw;
   try { raw = readFileSync(file, 'utf8'); }
@@ -153,5 +166,5 @@ export function loadPlantConfig(configFile) {
   const config = validateServiceConfig(input);
   const tokenFile = resolve(dirname(configFile), 'token.local.json');
   const tokenJson = readJson(tokenFile, `Token del dispositivo assente: creare ${tokenFile} con {"token": "pcd_…"}.`);
-  return { config, token: validateToken(tokenJson?.token) };
+  return { config, token: validateToken(tokenJson?.token), access: validateAccess(tokenJson) };
 }

@@ -23,7 +23,8 @@ FILES = [
     "bridge/tests/backup.test.mjs", "bridge/tests/counter.test.mjs", "bridge/tests/ledger.test.mjs",
     "bridge/tests/modbus-client.test.mjs", "bridge/tests/modbus.test.mjs", "bridge/tests/sensors.test.mjs",
     "bridge/tests/service.test.mjs",
-    "bridge/tests/simulation-folder.test.mjs", "bridge/tests/store.test.mjs", "bridge/tests/transmitter.test.mjs",
+    "bridge/tests/simulation-folder.test.mjs",
+    "bridge/tests/access-headers.test.mjs", "bridge/tests/store.test.mjs", "bridge/tests/transmitter.test.mjs",
     "docs/COLLEGAMENTO-LOGO.md",
     "docs/CONTRATTO-PONTE.md",
 ]

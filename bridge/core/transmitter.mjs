@@ -29,13 +29,15 @@ export function backoffMs(attempts, { baseMs, maxMs }) {
 }
 
 /** Una richiesta JSON con timeout. Lancia un errore per rete/timeout (esito incerto). */
-export async function requestJson({ fetchImpl = globalThis.fetch, url, method, token, body, timeoutMs }) {
+export async function requestJson({ fetchImpl = globalThis.fetch, url, method, token, access = null, body, timeoutMs }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetchImpl(url, {
       method,
-      headers: { authorization: `Bearer ${token}`, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
+      headers: { authorization: `Bearer ${token}`, accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}),
+        // Gestionale dietro Cloudflare Access: credenziali di servizio dedicate al ponte.
+        ...(access ? { 'cf-access-client-id': access.clientId, 'cf-access-client-secret': access.clientSecret } : {}) },
       body: body ? JSON.stringify(body) : undefined,
       redirect: 'manual',
       signal: controller.signal,
@@ -55,8 +57,8 @@ export async function requestJson({ fetchImpl = globalThis.fetch, url, method, t
 }
 
 export class Transmitter {
-  constructor({ store, baseUrl, token, timeoutMs, retry, now = Date.now, fetchImpl = globalThis.fetch, log = () => {} }) {
-    Object.assign(this, { store, token, timeoutMs, retry, now, fetchImpl, log });
+  constructor({ store, baseUrl, token, access = null, timeoutMs, retry, now = Date.now, fetchImpl = globalThis.fetch, log = () => {} }) {
+    Object.assign(this, { store, token, access, timeoutMs, retry, now, fetchImpl, log });
     this.url = baseUrl.replace(/\/$/, '') + PATH;
     this.authPaused = false;
     this.lastContactAt = null;
@@ -64,7 +66,7 @@ export class Transmitter {
   }
 
   #request(method, body) {
-    return requestJson({ fetchImpl: this.fetchImpl, url: this.url, method, token: this.token, body, timeoutMs: this.timeoutMs });
+    return requestJson({ fetchImpl: this.fetchImpl, url: this.url, method, token: this.token, access: this.access, body, timeoutMs: this.timeoutMs });
   }
 
   #pauseForAuth() {

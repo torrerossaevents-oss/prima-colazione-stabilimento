@@ -110,6 +110,19 @@ Eseguite con due agenti separati sul diff `31ecaf5..HEAD`, senza conoscere le co
 
 Richiesta di Teo: gestionale «ultra-professionale e intuitivo», usando tutte le skill pertinenti. Skill usate: `using-agent-skills`, `frontend-ui-engineering`, `21st-ui` (catalogo 21st.dev solo come riferimento: livello gratuito, nessuna generazione), `find-skills`, e due skill installate nel progetto dopo verifica di fonte e licenza: `frontend-design` (Anthropic, Apache-2.0) e `web-design-guidelines` (Vercel, MIT). Contratto di design in `docs/INTERFACCIA.md`. Dati fittizi per l'anteprima: `node tests/ui/seed-preview.mjs http://localhost:5173` (solo locale, solo archivio vuoto).
 
+## Passaggio a Cloudflare (13/11/2026)
+
+Decisione di Teo: pubblicare sul proprio account Cloudflare invece di Sites. L'account non esiste ancora e lo crea Teo (`docs/CLOUDFLARE.md`, punti 1–6).
+
+Pronto nel codice e provato senza account:
+- verifica di Cloudflare Access (firma RS256, emittente, audience, scadenza; nega se manca la configurazione), con 4 test;
+- script di pubblicazione con prova a vuoto (`--check`, eseguita anche in CI);
+- flusso GitHub manuale «Pubblica su Cloudflare»;
+- credenziali di servizio Access nel ponte;
+- conversione dell'esportazione Sites in backup ripristinabile, con test.
+
+Da fare con l'account: dominio, D1, applicazione Access e AUD, token API, prima pubblicazione, collaudo dell'accesso, trasferimento dei dati.
+
 ## Prossimo passo
 
 1. Revisione della PR (anche Codex, se disponibile) e risposta ai rilievi.

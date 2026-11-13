@@ -1,11 +1,12 @@
 import { env } from 'cloudflare:workers';
 import { archivePage } from '../../../../lib/server/workspace.ts';
-import { json, ownerId, serverError, requireDb } from '../../../../lib/server/http.ts';
+import { json, serverError, requireDb } from '../../../../lib/server/http.ts';
+import { ownerOf } from '../../../../lib/server/auth.ts';
 export const dynamic = 'force-dynamic';
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** GET ?kind=order|session|lot&from=&to=&q=&before=<day>|<id>&limit= — archived rows, newest first. */
 export async function GET(request: Request) {
- if (!ownerId(request, import.meta.env.DEV, env.OWNER_USER_IDS)) return json({ error: 'Accedi per consultare l’archivio.' }, 401);
+ if (!(await ownerOf(request, env, import.meta.env.DEV))) return json({ error: 'Accedi per consultare l’archivio.' }, 401);
  const url = new URL(request.url); const kind = url.searchParams.get('kind');
  if (kind !== 'order' && kind !== 'session' && kind !== 'lot') return json({ error: 'Tipo di archivio non valido.' }, 400);
  const from = url.searchParams.get('from') || undefined; const to = url.searchParams.get('to') || undefined;

@@ -46,7 +46,7 @@ export function acquireLock(dataDir) {
 }
 
 export class BridgeService {
-  constructor({ config, token, dataDir, plc, now = Date.now, fetchImpl = globalThis.fetch, echo = false }) {
+  constructor({ config, token, access = null, dataDir, plc, now = Date.now, fetchImpl = globalThis.fetch, echo = false }) {
     this.config = config;
     this.plc = plc;
     this.now = now;
@@ -61,7 +61,7 @@ export class BridgeService {
       throw error;
     }
     this.transmitter = new Transmitter({
-      store: this.store, baseUrl: config.server.baseUrl, token, timeoutMs: config.server.timeoutMs,
+      store: this.store, baseUrl: config.server.baseUrl, token, access, timeoutMs: config.server.timeoutMs,
       retry: config.retry, now, fetchImpl, log: (level, message) => this.log(level, message),
     });
     this.counter = this.store.getState('counter');
