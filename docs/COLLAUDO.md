@@ -72,3 +72,28 @@ Il superamento dei test software non abilita il carico automatico di magazzino. 
 - Fotocamera su dispositivo reale, smartphone/tablet fisici, hardware e collegamenti esterni non collaudati. La fotocamera dipende dal supporto `BarcodeDetector`; è disponibile l'inserimento con lettore o tastiera.
 - Browser desktop: partenza parziale di 20 su 30 prenotati, con riferimento DDT. Risultato verificato: 130 presenti, 10 prenotati, 120 disponibili.
 - Il browser conserva la richiesta in attesa in sessionStorage, con versione originale e ID, fino all'esito; un'altra operazione non può sostituirla. Dopo ricarica propone il recupero della stessa richiesta. sessionStorage è soltanto un registro temporaneo di recupero; i dati autorevoli sono nel database.
+
+## Verifica del 13 novembre 2026 — branch `claude/ottimizzazione-stabilimento-20261113`
+
+Ambiente: container Linux 6.18, Node 22.23.4 e Node 22.13.0 (minimo dichiarato), npm 10.9.9, Chromium headless di Playwright. Solo dati fittizi in database di prova. Commit esatti nella PR.
+
+| Controllo | Esito |
+| --- | --- |
+| `npm test` (dominio, catalogo, API su SQLite **e** runtime D1 locale Miniflare, ponte ↔ API) | 82/82 superati (anche con Node 22.13.0); prima 42/42 |
+| `npm run check` | nessun errore |
+| `npm run build` | riuscita |
+| `npm run test:bridge` | 61/61 superati (anche con Node 22.13.0); prima 18/18 |
+| `npm run bridge:simulate` | «SIMULAZIONE SUPERATA: 12 verifiche», A 200 + B 150 = 350 |
+| Pacchetto ponte estratto in una cartella con spazi nel percorso | 61/61 test e simulazione superati |
+| `npm run setup` (migrazioni 0000–0002 su D1 locale) | riuscito |
+| `npm run lint` | 3 errori residui (prima 10), tutti in effetti React preesistenti; non bloccante, escluso dalla CI |
+| `tests/ui/smoke.mjs` nel browser, archivio locale vuoto | superato (12 passaggi, dettaglio sotto) |
+| Backup scaricato dall'anteprima → `scripts/verify-backup.ts` | «RIPRISTINO VERIFICATO»; file alterato rifiutato |
+| `.cmd` su Windows | **non eseguiti** (nessun Windows disponibile) |
+| Impianto, LOGO!, fotocamera su dispositivi reali, stampanti | **non eseguiti** |
+
+Scenari dell'incarico coperti da test automatici: 1 (00123 export/reimport, prezzi vuoti ≠ 0, nessuna giacenza), 2 (ricerca per lotto; codice sconosciuto e non finito con messaggi distinti), 3 (import atomico, duplicati nel file e nel catalogo), 4 (150/2/30 → 118; partenza 20 → 130 e residuo 10; annullamento → 128; fattura senza scarico; anche nel browser), 5 (scaduti/bloccati, sopra disponibile, trasferimenti, rettifiche, anche via API), 6 (due client dalla stessa versione, doppio clic, risposta persa dopo commit, vecchia richiesta dopo 205 operazioni), 7 (A 200 + B 150, riepilogo 350, codice sconosciuto, seconda sessione), 8 (mezzanotte e cambio ora Europe/Rome), 9 (ponte: in simulazione e con test), 13 (telefono 390 px, tablet 820 px, desktop 1.440 px; fotocamera non supportata; dati del modulo conservati dopo errore di validazione e di rete), 14 (stato oltre 2 MB rifiutato senza modifiche; migrazione di 3.000 voci storiche; backup → ripristino → stessa impronta; misure in `ARCHITETTURA-ARCHIVIO.md`), 15 (clone nuovo: `npm ci`, `setup`, test, build). Non eseguibili qui: 10 (hardware), 11 (carico automatico non abilitato), 12 (etichette non implementate).
+
+Percorso nel browser (`tests/ui/smoke.mjs`): creazione 00123 e ricerca progressiva per codice e descrizione; entrata 150 e blocco 2; ordine 30, pronto, partenza parziale rifiutata senza motivo con dati del modulo conservati, poi accettata con motivo; annullamento del residuo e fattura successiva → presenti 130, disponibili 128; rete interrotta durante una rettifica → «Da verificare», modulo conservato, ripetizione con lo stesso identificativo salvata una volta; risposta persa dopo il salvataggio → dopo ricarica la ricevuta del server conferma «già salvata», nessun doppione; scarto dalla merce bloccata; fotocamera non supportata con messaggio e inserimento da tastiera disponibile; lavorazione 200 cartoni chiusa con riepilogo giornaliero e nessun carico di magazzino; ricerca nello storico; Configurazione con backup e dispositivi; su tre larghezze nessuno scorrimento orizzontale della pagina, tutti i testi su superfici chiare in `#000` peso 400 (bianco 400 sulle superfici scure), nessun pulsante sotto 34 px.
+
+Limiti di questa verifica: il ponte è provato contro simulatori e contro le API in un processo locale, non attraverso l'accesso della piattaforma pubblicata; i tempi sono misurati in Node, non nel Worker ospitato; la pubblicazione Sites non è stata eseguita.

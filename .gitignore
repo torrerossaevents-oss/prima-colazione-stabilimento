@@ -50,3 +50,10 @@ yarn-error.log*
 /bridge/output/
 /bridge/**/*.sqlite*
 /bridge/**/*.db*
+
+# Backups, test screenshots and local analysis output (operational data stays private)
+/backups/
+*.backup.json
+prima-colazione-backup-*.json
+/ui-smoke-output/
+/graphify-out/
