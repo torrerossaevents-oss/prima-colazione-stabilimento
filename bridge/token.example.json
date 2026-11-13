@@ -1,0 +1,4 @@
+{
+  "_nota": "MODELLO. Copiare in token.local.json (escluso da Git) e incollare il token pcd_… mostrato una sola volta in Configurazione → dispositivo. Non inviarlo via chat o e-mail, non metterlo in ponte.local.json.",
+  "token": null
+}

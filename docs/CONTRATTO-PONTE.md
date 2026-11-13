@@ -1,6 +1,6 @@
 # Contratto ponte LOGO! ↔ gestionale (versione 1, 13 novembre 2026)
 
-Stato: **implementato e provato solo con simulatore e test automatici**. Nessun impianto reale è stato collegato. L'attivazione richiede un dispositivo registrato in Configurazione e il collaudo descritto in `COLLAUDO.md`.
+Stato: **implementato e provato solo con simulatore e test automatici** (`npm run test:bridge`, `tests/bridge-e2e.test.ts`: trasmettitore reale ↔ route reali su HTTP locale). Nessun impianto reale è stato collegato. L'attivazione richiede un dispositivo registrato in Configurazione e il collaudo descritto in `COLLAUDO.md`.
 
 ## Architettura
 
@@ -44,7 +44,9 @@ Corpo JSON, massimo 16 kB. Ogni evento ha un `eventId` stabile (`[A-Za-z0-9_-]{8
   "closedAt": "2026-11-13T09:15:00.000Z", "anomalies": [] }
 ```
 
-- `cartons` = differenza dalla baseline calcolata dal ponte; il server verifica `cartons === counterEnd − counterStart` (oppure con rollover dichiarato `counterModulo`).
+- `cartons` = differenza dalla baseline calcolata dal ponte; il server verifica `cartons === counterEnd − counterStart`, oppure `(counterEnd − counterStart + counterModulo) mod counterModulo` quando c'è stato superamento del limite. Il ponte invia `counterModulo` solo in quel caso.
+- Con contatore diminuito (PLC riavviato senza ritenzione, reset esterno) `counterEnd` è l'**ultimo valore valido** letto prima della diminuzione, non il valore attuale; l'anomalia `contatore-diminuito` accompagna l'evento.
+- `closeRequestId` è informativo (diagnosi). L'unicità è data dall'`eventId`; dopo riavvii del PLC senza ritenzione lo stesso `closeRequestId` può ripetersi.
 - Il server registra la chiusura una sola volta, con ricevuta permanente sull'`eventId`.
 - `anomalies` (facoltativo, max 20 stringhe brevi): es. `"arretramento"`, `"sequenza-incompleta"`, `"contatore-diminuito"`. Vengono salvate nella lavorazione per il controllo.
 
@@ -56,7 +58,7 @@ Corpo JSON, massimo 16 kB. Ogni evento ha un `eventId` stabile (`[A-Za-z0-9_-]{8
   "session": { "id": "…", "cartons": 57 } }
 ```
 
-Il heartbeat non modifica lo stato operativo: aggiorna soltanto la riga di stato del dispositivo (ultimo contatto, PLC raggiungibile, coda, parziale in corso). Il sito mostra «dato non aggiornato» se l'ultimo contatto supera 90 secondi.
+Il heartbeat **non** crea ricevute permanenti né versioni dello stato: il server aggiorna una sola riga per dispositivo (`device_status`). Il heartbeat non modifica lo stato operativo: aggiorna soltanto la riga di stato del dispositivo (ultimo contatto, PLC raggiungibile, coda, parziale in corso). Il sito mostra «dato non aggiornato» se l'ultimo contatto supera 90 secondi.
 
 ### Risposte
 
@@ -70,6 +72,7 @@ Il heartbeat non modifica lo stato operativo: aggiorna soltanto la riga di stato
 | 422 | Dati non validi | «da verificare» |
 | 413, 400 | Richiesta malformata | «da verificare» |
 | 5xx, timeout, rete | Esito incerto | Ritenta lo **stesso** evento con attesa crescente |
+| 3xx, 403, 404, 429, 200 senza `{ok:true}` (es. pagina di accesso HTML) | Non previsto | Esito incerto: ritenta e segnala, non scartare |
 
 Un evento confermato non viene mai rinviato con un nuovo identificativo.
 
@@ -78,13 +81,19 @@ Un evento confermato non viene mai rinviato con un nuovo identificativo.
 1. Il pulsante fisico incrementa sul LOGO! un contatore di richieste di chiusura (registro da definire con il tecnico).
 2. Il ponte vede un nuovo valore di richiesta (`closeRequestId` = linea + valore + baseline) e attende le condizioni concordate: sensori liberi (`00`) e stabili per il tempo configurato.
 3. Salva localmente, in un'unica transazione SQLite, la lavorazione chiusa e l'evento in coda.
-4. Solo dopo il salvataggio locale, se le scritture sono abilitate in configurazione, scrive il riscontro della **stessa** richiesta sul LOGO! (registro da definire). Di default le scritture sono disabilitate.
-5. Il parziale riparte dalla nuova baseline (= contatore cumulativo al momento della chiusura). Il cumulativo del PLC non viene azzerato.
+4. Nella stessa transazione salva la nuova baseline (= contatore cumulativo al momento della chiusura): il parziale riparte da zero senza una finestra di doppio conteggio se il PC si spegne a metà. Il cumulativo del PLC non viene azzerato.
+5. Solo dopo il salvataggio locale, se le scritture sono abilitate in configurazione, scrive il riscontro della **stessa** richiesta sul LOGO! (registro da definire). Di default le scritture sono disabilitate.
 6. Invia l'evento al gestionale con ritentativi.
 
 Una pressione ripetuta della stessa richiesta non produce una seconda chiusura.
 
+## Aggancio della lavorazione
+
+Il ponte prende la baseline quando vede la lavorazione attiva (entro l'intervallo di interrogazione, circa 10 s). I cartoni passati prima dell'aggancio sono registrati nel log del ponte come «non attribuiti». Il sito mostra «ponte agganciato» quando il heartbeat riporta la stessa lavorazione: **avviare la linea solo dopo questa indicazione** (regola operativa da confermare).
+
 ## Limiti noti
+
+- Le anomalie dei sensori (`arretramento`, `sequenza-incompleta`) nascono nel programma LOGO!: senza un registro dedicato nella mappa il ponte inoltra solo le proprie (`contatore-diminuito`, `salto-eccessivo`, `lettura-non-valida`).
 
 - IP, unitId, indirizzi, formato e ordine delle parole del LOGO! **non sono noti**: la configurazione d'esempio non contiene valori reali.
 - L'attraversamento dell'accesso riservato della piattaforma da parte di un client senza login non è verificato.
