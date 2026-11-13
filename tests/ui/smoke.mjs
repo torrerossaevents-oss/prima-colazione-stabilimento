@@ -141,10 +141,12 @@ await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await 
 await page.getByRole('button', { name: 'Chiudi / salva lavorazione' }).click(); await dialog().getByRole('checkbox').check();
 await dialog().getByRole('button', { name: 'Salva lavorazione' }).click(); await dialog().waitFor({ state: 'detached' });
 await page.locator('tr', { hasText: 'PROD-A' }).first().waitFor();
-const summary = await page.locator('section', { hasText: 'Riepilogo giornaliero' }).innerText();
-assert.match(summary, /200 cartoni/);
+const daySheet = page.locator('#produzione-del-giorno');
+await daySheet.getByText('Confermata alle').first().waitFor();
+const sheetText = await daySheet.innerText();
+assert.match(sheetText, /Cartoni confermati\s+200/); assert.match(sheetText, /Totale giorno\s+1\s+200/);
 s = await api(); assert.equal(s.state.sessions[0].cartons, 200); assert.equal(s.state.lots.length, 1, 'no stock created by production');
-log('lavorazione 200 cartoni chiusa, riepilogo giornaliero aggiornato, nessun carico di magazzino');
+log('lavorazione 200 cartoni chiusa: scheda «Produzione del giorno» con orario di conferma e totale del giorno, nessun carico di magazzino');
 await page.screenshot({ path: `${out}/produzione-desktop.png`, fullPage: true });
 
 // Global search: Ctrl K, find the lot, open it in the stock list.

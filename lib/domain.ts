@@ -165,6 +165,28 @@ export function validateState(state:State):void{
  for(const order of state.orders)for(const line of order.lines){if(!lotIds.has(line.lotId))fail('Lotto ordine inesistente.');number(line.quantity,'Quantità richiesta',1);number(line.shipped,'Quantità spedita');if(line.shipped>line.quantity)fail('La quantità spedita supera quella richiesta.');}
  for(const session of state.sessions){number(session.cartons,'Cartoni');if(session.scrapCartons!==undefined&&(number(session.scrapCartons,'Scarti')>session.cartons))fail('Gli scarti superano i cartoni letti.');}
 }
+export type ProductionRun={id:string;productId:string;productCode:string;productName:string;lotCode:string;unit:string;unitsPerBox:number;operator:string;startedAt:string;closedAt?:string;status:'active'|'closed';cartons:number;scrapCartons:number;source:Session['source'];closedBy?:Session['closedBy'];runOfProduct:number;runsOfProduct:number;toVerify:boolean};
+export type ProductionDayProduct={productId:string;productCode:string;productName:string;unit:string;unitsPerBox:number;runs:number;confirmedCartons:number;activeCartons:number;scrapCartons:number;firstStart:string;lastEnd?:string;lots:string[]};
+/**
+ * Production sheet of one Europe/Rome day: every session in chronological order of start
+ * (the flow of the day), the repetitions of the same article (run 1 of 2…), and totals per
+ * article and for the day. Confirmed = closed sessions; the open one is shown apart.
+ */
+export function productionDay(sessions:Session[],day:string){
+ const runs=sessions.filter(s=>s.day===day).sort((a,b)=>a.startedAt.localeCompare(b.startedAt)||a.id.localeCompare(b.id));
+ const count=new Map<string,number>();for(const s of runs)count.set(s.productId,(count.get(s.productId)??0)+1);
+ const seen=new Map<string,number>();
+ const flow:ProductionRun[]=runs.map(s=>{const n=(seen.get(s.productId)??0)+1;seen.set(s.productId,n);return {id:s.id,productId:s.productId,productCode:s.productCode,productName:s.productName,lotCode:s.lotCode,unit:s.unit??'',unitsPerBox:s.unitsPerBox,operator:s.operator,startedAt:s.startedAt,...(s.closedAt?{closedAt:s.closedAt}:{}),status:s.status,cartons:s.cartons,scrapCartons:s.scrapCartons??0,source:s.source,...(s.closedBy?{closedBy:s.closedBy}:{}),runOfProduct:n,runsOfProduct:count.get(s.productId)!,toVerify:s.closedBy==='manual-override'||(s.device?.anomalies.length??0)>0};});
+ const products=new Map<string,ProductionDayProduct>();
+ for(const r of flow){
+  const p=products.get(r.productId)??{productId:r.productId,productCode:r.productCode,productName:r.productName,unit:r.unit,unitsPerBox:r.unitsPerBox,runs:0,confirmedCartons:0,activeCartons:0,scrapCartons:0,firstStart:r.startedAt,lots:[]};
+  p.runs++;if(r.status==='closed')p.confirmedCartons+=r.cartons;else p.activeCartons+=r.cartons;p.scrapCartons+=r.scrapCartons;
+  if(r.closedAt&&(!p.lastEnd||r.closedAt>p.lastEnd))p.lastEnd=r.closedAt;if(!p.lots.includes(r.lotCode))p.lots.push(r.lotCode);
+  products.set(r.productId,p);
+ }
+ const byProduct=[...products.values()].sort((a,b)=>b.confirmedCartons-a.confirmedCartons||a.productCode.localeCompare(b.productCode));
+ return {day,flow,byProduct,totals:{runs:flow.length,products:byProduct.length,repeated:byProduct.filter(p=>p.runs>1).length,confirmedCartons:byProduct.reduce((n,p)=>n+p.confirmedCartons,0),activeCartons:byProduct.reduce((n,p)=>n+p.activeCartons,0),scrapCartons:byProduct.reduce((n,p)=>n+p.scrapCartons,0)}};
+}
 export type ProductionRow={day:string;productId:string;productCode:string;productName:string;lotCode:string;unit:string;unitsPerBox:number;sessions:number;confirmedCartons:number;activeCartons:number;scrapCartons:number;deviceSessions:number;toVerify:number};
 /**
  * Daily production by day/article/lot. The day is the Europe/Rome start day of each

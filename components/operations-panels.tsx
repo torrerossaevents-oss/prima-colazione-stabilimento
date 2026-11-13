@@ -43,7 +43,7 @@ export function ProductionSummaryPanel({ sessions, today, archivedCount, onExpor
     onExport(`prima-colazione-produzione-${from}_${to}.csv`, '﻿' + [head, ...body].map(r => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
   }
   return <section className="panel" style={{ marginTop: 24 }}>
-    <div className="panel-head"><div><h2>Riepilogo giornaliero</h2><p>Per articolo e lotto. Il giorno è quello di avvio della lavorazione. Nessun carico automatico a magazzino.</p></div><button className="button secondary small" disabled={!rows.length} onClick={exportCsv}><Download size={15}/>Esporta CSV</button></div>
+    <div className="panel-head"><div><h2>Riepilogo per periodo</h2><p>Più giorni insieme, per giorno, articolo e lotto. Il giorno è quello di avvio della lavorazione.</p></div><button className="button secondary small" disabled={!rows.length} onClick={exportCsv}><Download size={15}/>Esporta CSV</button></div>
     <div className="panel-body stack">
       <div className="summary-filters">
         <div className="tabs">{[['Oggi', today, today], ['Ieri', addDays(today, -1), addDays(today, -1)], ['Ultimi 7 giorni', addDays(today, -6), today]].map(([label, a, b]) => <button key={label} className={'tab ' + (from === a && to === b ? 'active' : '')} onClick={() => preset(a, b)}>{label}</button>)}</div>

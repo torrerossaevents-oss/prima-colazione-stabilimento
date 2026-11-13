@@ -49,3 +49,11 @@ Verifiche: controllo TypeScript superato; ispezione nel browser della panoramica
 **Raggi e ombre.** 6 px controlli, 10 px pannelli, 14 px pannello laterale; ombre solo su pannelli sovrapposti (pannello laterale, ricerca, avvisi).
 
 **Movimento.** Solo in risposta a un'azione (apertura del pannello, conferma); ridotto a zero con «riduci movimento».
+
+## Magazzino, scheda prodotto e produzione del giorno (13/11/2026, sera)
+
+- **Produzione del giorno** (Produzione, e dalla Panoramica toccando «Cartoni letti oggi»): giorno scelto con frecce o calendario; flusso cronologico delle lavorazioni con ora di avvio e di conferma, articolo, lotto, operatore e cartoni; lo stesso articolo prodotto più volte è numerato («2ª lavorazione di 2») e segnalato; totali per articolo (quante volte, cartoni, unità) e totale cartoni del giorno; in corso e scarti separati dai confermati. Stampa della scheda ed esportazione CSV. Il giorno è quello di avvio in Europe/Rome; oltre 30 giorni la scheda legge l’archivio.
+- **Scheda di modifica del prodotto**: riepilogo dell’articolo con disponibilità e lotti; sezioni «Identificazione», «Unità e confezionamento», «Listini» con spiegazione a lato; tipologia a scelta rapida; campi bloccati indicati nell’etichetta e nell’avviso; scorta minima e listini con unità esplicita («€ … / CRT»); avviso «Modifiche non salvate».
+- **Catalogo**: filtri per tipologia e «Solo sotto scorta»; esportazione dei soli risultati filtrati; nessuna colonna fissa sovrapposta: sotto 1.280 px le righe diventano schede con le etichette dei listini.
+- **Lotti**: filtri Tutti / Disponibili / In scadenza / Scaduti / Bloccati con conteggi, filtro per area, ordinamento per scadenza (il primo da usare in alto).
+- **Allineamento**: `tests/ui/overlap.mjs` controlla tutte le viste e il pannello di modifica a 390, 820, 1.024, 1.280 e 1.440 px e segnala testi sovrapposti o tagliati (tenendo conto delle aree che scorrono). Esito finale: nessuna scritta sovrapposta o tagliata.

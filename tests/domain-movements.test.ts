@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initialState, applyAction, availableForLot, productTotals, reservedForLot, stockIndex, expiringLots, addDays, productionSummary, upgradeState, validateState, DomainError, type State, type Action } from '../lib/domain.ts';
+import { initialState, applyAction, availableForLot, productTotals, reservedForLot, stockIndex, expiringLots, addDays, productionSummary, productionDay, upgradeState, validateState, DomainError, type State, type Action } from '../lib/domain.ts';
 
 let sequence=0;
 const context={now:'2026-11-07T10:00:00.000Z',id:()=>`id-${++sequence}`};
@@ -155,4 +155,25 @@ test('production summary flags manual closes of bridge sessions and bridge anoma
  state=act(state,{type:'production.start',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device'},{devicesEnabled:true});
  state=act(state,{type:'production.close',sessionId:state.sessions[0].id,override:'Ponte guasto'});
  assert.equal(productionSummary(state.sessions)[0].toVerify,1);
+});
+
+test('daily production sheet: chronological flow, repeated article counted per run, totals of the day',()=>{
+ let state=act(initialState(),{type:'product.import',mode:'skip',products:[{code:'A1',name:'Articolo A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0},{code:'B1',name:'Articolo B',kind:'finished',unit:'confezioni',unitsPerBox:12,minStock:0}]});
+ const run=(code:string,lot:string,cartons:number,start:string,end?:string)=>{
+  state=applyAction(state,{type:'production.start',code,operator:'Operatore prova',lotCode:lot,expiry:'2026-12-31'},{...context,now:start});
+  const id=state.sessions.at(-1)!.id;
+  if(cartons)state=applyAction(state,{type:'production.count',sessionId:id,cartons},{...context,now:start});
+  if(end)state=applyAction(state,{type:'production.close',sessionId:id},{...context,now:end});
+ };
+ // Rome time = UTC+1 in November: 10:00 → 09:00Z. The previous day must not be counted.
+ run('A1','LX',99,'2026-11-12T09:00:00.000Z','2026-11-12T10:00:00.000Z');
+ run('A1','L1',54,'2026-11-13T09:00:00.000Z','2026-11-13T09:40:00.000Z');
+ run('B1','L2',30,'2026-11-13T10:00:00.000Z','2026-11-13T10:50:00.000Z');
+ run('A1','L3',40,'2026-11-13T12:00:00.000Z','2026-11-13T13:00:00.000Z');
+ run('B1','L4',12,'2026-11-13T14:00:00.000Z');
+ const sheet=productionDay(state.sessions,'2026-11-13');
+ assert.deepEqual(sheet.flow.map(r=>[r.productCode,r.cartons,r.runOfProduct,r.runsOfProduct,r.status]),[['A1',54,1,2,'closed'],['B1',30,1,2,'closed'],['A1',40,2,2,'closed'],['B1',12,2,2,'active']]);
+ assert.deepEqual(sheet.byProduct.map(p=>[p.productCode,p.runs,p.confirmedCartons,p.activeCartons,p.lots]),[['A1',2,94,0,['L1','L3']],['B1',2,30,12,['L2','L4']]]);
+ assert.deepEqual(sheet.totals,{runs:4,products:2,repeated:2,confirmedCartons:124,activeCartons:12,scrapCartons:0});
+ assert.equal(productionDay(state.sessions,'2026-11-12').totals.confirmedCartons,99);
 });

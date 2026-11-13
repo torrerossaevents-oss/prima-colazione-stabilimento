@@ -111,3 +111,13 @@ Limiti di questa verifica: il ponte è provato contro simulatori e contro le API
 | `web-design-guidelines` (regole Vercel) | corretti: focus tolto ai campi senza alternativa, avviso all'uscita con modulo aperto, `theme-color`, `autocomplete="off"` sui moduli operativi |
 | Analisi axe-core | **non eseguita**: il download dello script da CDN non è stato autorizzato in questa sessione |
 | `npm run lint` | 3 errori preesistenti invariati |
+
+### Magazzino, scheda prodotto e produzione del giorno (13/11/2026, sera)
+
+| Controllo | Esito |
+| --- | --- |
+| `npm test` | 92/92 (nuovo test: flusso del giorno, articolo ripetuto, totali, esclusione del giorno precedente) |
+| `npm run check`, `npm run build`, `npm run test:bridge` | nessun errore, riuscita, 63/63 |
+| `tests/ui/overlap.mjs` (390/820/1.024/1.280/1.440 px, tutte le viste e il pannello di modifica) | prima 41 casi (colonna fissa del catalogo sopra prezzi e disponibilità, ricerca in testata); dopo nessuna scritta sovrapposta o tagliata |
+| `tests/ui/smoke.mjs` | superato, verifica anche la scheda «Produzione del giorno» |
+| `npm run lint` | 3 errori preesistenti invariati |
