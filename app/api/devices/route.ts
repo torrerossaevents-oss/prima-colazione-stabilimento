@@ -4,11 +4,11 @@ import { json, ownerId, readLimited, sameOrigin, serverError, requireDb } from '
 export const dynamic = 'force-dynamic';
 /** Owner-only management of bridge credentials. */
 export async function GET(request: Request) {
- if (!ownerId(request, import.meta.env.DEV)) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
+ if (!ownerId(request, import.meta.env.DEV, env.OWNER_USER_IDS)) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
  try { return json({ devices: await listDevices(requireDb(env.DB)), serverTime: new Date().toISOString() }); } catch (error) { return serverError(error, 'Impossibile leggere i dispositivi.'); }
 }
 export async function POST(request: Request) {
- const actor = ownerId(request, import.meta.env.DEV);
+ const actor = ownerId(request, import.meta.env.DEV, env.OWNER_USER_IDS);
  if (!actor) return json({ error: 'Accedi per gestire i dispositivi.' }, 401);
  if (!sameOrigin(request)) return json({ error: 'Origine della richiesta non autorizzata.' }, 403);
  const raw = await readLimited(request, 4_000); if (raw === null) return json({ error: 'Richiesta troppo grande.' }, 413);

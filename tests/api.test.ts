@@ -228,3 +228,48 @@ test('[sqlite] receipt check tells whether an uncertain request was committed', 
     assert.equal((await receipt.GET(new Request(origin + '/api/workspace/receipt?id=request-x1'))).status, 401);
   } finally { await t.close(); }
 });
+
+test('[sqlite] forged backup with a recomputed digest is validated row by row and nothing is written', async () => {
+  const source = await sqliteDb(); setEnv(source.db); const { post } = client(await routes());
+  const backupRoute = await loadRoute<Route>('app/api/workspace/backup/route.ts');
+  const target = await sqliteDb();
+  try {
+    await post(product('00123'), 0, 'request-f1');
+    const backup = JSON.parse(await (await backupRoute.GET(new Request(origin + '/api/workspace/backup', { headers: owner }))).text());
+    const { digestOf } = await import('../lib/server/backup.ts');
+    const forge = async (mutate: (b: typeof backup) => void) => { const b = structuredClone(backup); mutate(b); b.digest = await digestOf(b.data); return JSON.stringify(b); };
+    setEnv(target.db);
+    for (const body of [
+      await forge(b => { b.data.archive.push({ kind: 'order', id: 'x1', day: '2026-01-01', ref: '', search: '', payload: 'non-json', archived_version: 1 }); }),
+      await forge(b => { b.data.workspace.version = 'abc'; }),
+      await forge(b => { b.data.audit[0].moves = '[{"lotId":1}]'; }),
+    ]) {
+      const res = await backupRoute.POST(new Request(origin + '/api/workspace/backup', { method: 'POST', headers: owner, body }));
+      assert.equal(res.status, 422); assert.match(((await res.json()) as Body).error!, /Nessun dato è stato scritto/);
+      assert.equal(await count(target, 'workspaces'), 0); assert.equal(await count(target, 'workspace_audit'), 0);
+    }
+    assert.equal((await backupRoute.POST(new Request(origin + '/api/workspace/backup', { method: 'POST', headers: owner, body: JSON.stringify(backup) }))).status, 200, 'the genuine backup still restores');
+  } finally { await source.close(); await target.close(); }
+});
+
+test('[sqlite] OWNER_USER_IDS restricts owner routes; unset keeps the previous behaviour', async () => {
+  const t = await sqliteDb(); setEnv(t.db); const r = await routes();
+  try {
+    (globalThis as { __testEnv?: Record<string, unknown> }).__testEnv!.OWNER_USER_IDS = 'owner-a, owner-b';
+    const as = (id: string) => r.workspace.GET(new Request(origin + '/api/workspace', { headers: { ...owner, 'oai-authenticated-user-id': id } }));
+    assert.equal((await as('owner-b')).status, 200);
+    assert.equal((await as('someone-else')).status, 401);
+    assert.equal((await r.devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { ...owner, 'oai-authenticated-user-id': 'someone-else' }, body: '{"op":"create","name":"x"}' }))).status, 401);
+    delete (globalThis as { __testEnv?: Record<string, unknown> }).__testEnv!.OWNER_USER_IDS;
+    assert.equal((await as('someone-else')).status, 200);
+  } finally { await t.close(); }
+});
+
+test('[sqlite] request bodies are counted while streaming, also without Content-Length', async () => {
+  const t = await sqliteDb(); setEnv(t.db); const r = await routes();
+  try {
+    const big = new ReadableStream({ start(c) { for (let i = 0; i < 6; i++) c.enqueue(new TextEncoder().encode('x'.repeat(100_000))); c.close(); } });
+    const res = await r.workspace.POST(new Request(origin + '/api/workspace', { method: 'POST', headers: owner, body: big, duplex: 'half' } as RequestInit));
+    assert.equal(res.status, 413);
+  } finally { await t.close(); }
+});

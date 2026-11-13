@@ -33,7 +33,7 @@ export type Action =
  | {type:'production.close';sessionId:string;scrapCartons?:number;note?:string;override?:string}
  | {type:'production.deviceClose';sessionId:string;eventId:string;cartons:number;counterStart:number;counterEnd:number;counterModulo?:number;closedAt:string;anomalies?:string[]};
 /** device: richiesta autenticata da credenziale di dispositivo; devicesEnabled: esiste almeno un dispositivo attivo per la linea. */
-export type Context = {now?:string;id?:()=>string;actor?:string;device?:{id:string};devicesEnabled?:boolean};
+export type Context = {now?:string;id?:()=>string;actor?:string;device?:{id:string;line?:string};devicesEnabled?:boolean};
 export class DomainError extends Error { code?:string; constructor(message:string,code?:string){super(message);this.name='DomainError';this.code=code;} }
 const fail=(message:string,code?:string):never=>{throw new DomainError(message,code);};
 export function initialState():State{return {products:[],lots:[],orders:[],sessions:[],audit:[]};}
@@ -315,6 +315,7 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.','session-unknown');
   if(session.status!=='active')fail('La lavorazione è già chiusa: verifica il conteggio del ponte.','session-closed');
   if(session.source!=='device')fail('La lavorazione attiva è manuale: il ponte non può chiuderla.','session-manual');
+  if((session.line??PRODUCTION_LINE)!==(context.device!.line??PRODUCTION_LINE))fail('La lavorazione appartiene a un’altra linea.','session-other-line');
   const eventId=text(action.eventId,'Identificativo evento',128);
   const counter=(value:unknown,name:string)=>{if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0)fail(`${name}: valore del contatore non valido.`);return value as number;};
   const start=counter(action.counterStart,'Contatore iniziale');const end=counter(action.counterEnd,'Contatore finale');const cartons=number(action.cartons,'Cartoni');

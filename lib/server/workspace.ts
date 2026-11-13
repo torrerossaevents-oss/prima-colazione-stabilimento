@@ -16,7 +16,7 @@ const RECENT_AUDIT = 20;
 type Row = { payload: string; version: number; last_request_id: string | null };
 type Receipt = { id: string; digest: string; version: number };
 export type AuditRow = Audit;
-export type CommitInput = { action: Action; expectedVersion: number | null; requestId: string; actor: string; device?: { id: string }; devicesEnabled?: boolean };
+export type CommitInput = { action: Action; expectedVersion: number | null; requestId: string; actor: string; device?: { id: string; line?: string }; devicesEnabled?: boolean };
 export type CommitResult =
   | { ok: true; state: State; version: number; duplicate?: boolean; recentAudit: Audit[] }
   | { ok: false; status: number; error: string; code?: string; state?: State; version?: number; recentAudit?: Audit[] };

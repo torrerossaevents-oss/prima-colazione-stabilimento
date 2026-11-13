@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const action: Action = { type: 'production.deviceClose', sessionId: String(body.sessionId ?? ''), eventId: body.eventId, cartons: body.cartons as number, counterStart: body.counterStart as number, counterEnd: body.counterEnd as number, ...(body.counterModulo !== undefined ? { counterModulo: body.counterModulo as number } : {}), closedAt: String(body.closedAt ?? ''), anomalies: body.anomalies as string[] | undefined };
   // Device event ids live in their own namespace inside the durable receipts.
   const requestId = 'd' + (await sha256(device.id + ':' + body.eventId)).slice(0, 40);
-  const result = await commit(requireDb(env.DB), { action, expectedVersion: null, requestId, actor: 'dispositivo:' + device.id, device: { id: device.id }, devicesEnabled: true });
+  const result = await commit(requireDb(env.DB), { action, expectedVersion: null, requestId, actor: 'dispositivo:' + device.id, device: { id: device.id, line: device.line }, devicesEnabled: true });
   if (!result.ok) return json({ error: result.error, ...(result.code ? { code: result.code } : {}) }, result.status);
   return json({ ok: true, duplicate: Boolean(result.duplicate), sessionId: action.sessionId });
  } catch (error) { const known = domainStatus(error); return known ? json(known, known.status) : serverError(error, 'Registrazione non confermata: ritenta con lo stesso identificativo.'); }

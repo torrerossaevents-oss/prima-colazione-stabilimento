@@ -66,7 +66,7 @@ export async function miniflareDb(): Promise<TestDb> {
 export async function loadRoute<T>(path: string, dev = false): Promise<T> {
   const file = new URL(path, root);
   let source = await readFile(file, 'utf8');
-  source = source.replace("import { env } from 'cloudflare:workers';", 'const env = { get DB() { return globalThis.__testEnv?.DB; } };')
+  source = source.replace("import { env } from 'cloudflare:workers';", 'const env = { get DB() { return globalThis.__testEnv?.DB; }, get OWNER_USER_IDS() { return globalThis.__testEnv?.OWNER_USER_IDS; } };')
     .replace(/from '(\.[^']+)'/g, (_m, rel: string) => `from ${JSON.stringify(new URL(rel, file).href)}`)
     .replaceAll('import.meta.env.DEV', String(dev));
   const js = stripTypeScriptTypes(source, { mode: 'strip' });

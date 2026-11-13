@@ -7,7 +7,9 @@
  *          --silenzioso (nessuna riga a schermo: usato dall'avvio automatico, il log su file resta)
  * Arresto pulito con Ctrl+C.
  */
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import { STORE_MARKER } from './core/store.mjs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { loadPlantConfig } from './core/config.mjs';
@@ -42,10 +44,30 @@ function lockedByLiveProcess(dataDir) {
   } catch (error) { return error.code === 'EPERM'; }
 }
 
+/**
+ * La simulazione svuota la propria cartella a ogni avvio. Per non cancellare mai un archivio
+ * d'impianto o una cartella qualsiasi (es. --dati sbagliato), accetta solo una cartella vuota
+ * oppure che contiene un archivio del ponte marcato come simulazione.
+ */
+function assertSimulationFolder(dataDir) {
+  const entries = readdirSync(dataDir);
+  if (!entries.length) return;
+  const file = resolve(dataDir, 'ponte.sqlite');
+  let mode = null;
+  if (existsSync(file)) {
+    let db;
+    try { db = new DatabaseSync(file, { readOnly: true }); mode = db.prepare('SELECT marker, mode FROM ponte_meta WHERE id = 1').get(); }
+    catch { mode = null; } finally { db?.close(); }
+  }
+  if (!mode || mode.marker !== STORE_MARKER || mode.mode !== 'simulazione') {
+    throw new Error(`La cartella ${dataDir} non è un archivio di simulazione: non viene cancellata. Usa una cartella vuota o quella predefinita (bridge/data/simulazione).`);
+  }
+}
+
 async function startSimulation(options) {
   // Ogni avvio della simulazione riparte da un archivio vuoto: il gestionale finto non ricorda nulla.
   if (lockedByLiveProcess(options.dataDir)) throw new Error('Una simulazione è già in esecuzione su questa cartella.');
-  if (existsSync(options.dataDir)) rmSync(options.dataDir, { recursive: true, force: true });
+  if (existsSync(options.dataDir)) { assertSimulationFolder(options.dataDir); rmSync(options.dataDir, { recursive: true, force: true }); }
   const sim = await createSimulation({ dataDir: options.dataDir, realTime: true, echo: options.echo });
   console.log('SIMULAZIONE — PLC e gestionale finti su questo PC. Nessun dato reale, nessun collegamento al LOGO!.');
   console.log(`Archivio di simulazione: ${options.dataDir}`);

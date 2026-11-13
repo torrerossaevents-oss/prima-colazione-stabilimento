@@ -54,7 +54,9 @@ export async function recordHeartbeat(db: D1Database, deviceId: string, body: Re
     plc: { reachable: plc.reachable === true, lastReadAt: str(plc.lastReadAt, 40) },
     session: session ? { id: str(session.id, 80), cartons: int(session.cartons) } : null,
   };
-  const now = new Date().toISOString();
-  await db.prepare('INSERT INTO device_status (device_id, last_seen_at, payload) VALUES (?, ?, ?) ON CONFLICT (device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, payload = excluded.payload').bind(deviceId, now, JSON.stringify(status)).run();
-  return status;
+  const now = new Date();
+  // At most one stored heartbeat every 5 s per device: a flood costs one cheap conditional write.
+  const minPrevious = new Date(now.getTime() - 5_000).toISOString();
+  const result = await db.prepare('INSERT INTO device_status (device_id, last_seen_at, payload) VALUES (?, ?, ?) ON CONFLICT (device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, payload = excluded.payload WHERE device_status.last_seen_at <= ?').bind(deviceId, now.toISOString(), JSON.stringify(status), minPrevious).run();
+  return { ...status, stored: result.meta.changes === 1 };
 }

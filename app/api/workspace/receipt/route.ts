@@ -4,7 +4,7 @@ import { json, ownerId, requireDb, serverError } from '../../../../lib/server/ht
 export const dynamic = 'force-dynamic';
 /** GET ?id= — read-only check: was this request id committed? Used to resolve an uncertain save. */
 export async function GET(request: Request) {
- if (!ownerId(request, import.meta.env.DEV)) return json({ error: 'Accedi per verificare.' }, 401);
+ if (!ownerId(request, import.meta.env.DEV, env.OWNER_USER_IDS)) return json({ error: 'Accedi per verificare.' }, 401);
  const id = new URL(request.url).searchParams.get('id') ?? '';
  if (!REQUEST_ID.test(id)) return json({ error: 'Identificativo non valido.' }, 400);
  try {
