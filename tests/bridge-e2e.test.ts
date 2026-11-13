@@ -11,9 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Action, State } from '../lib/domain.ts';
 import { loadRoute, setEnv, sqliteDb } from './helpers/d1.ts';
-// @ts-expect-error The bridge is plain ESM JavaScript without type declarations.
 import { BridgeStore } from '../bridge/core/store.mjs';
-// @ts-expect-error The bridge is plain ESM JavaScript without type declarations.
 import { Transmitter, requestJson } from '../bridge/core/transmitter.mjs';
 
 type Route = { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> };

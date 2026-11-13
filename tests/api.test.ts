@@ -216,3 +216,15 @@ for (const engine of ['sqlite', 'd1'] as const) {
     } finally { await source.close(); await target.close(); }
   });
 }
+
+test('[sqlite] receipt check tells whether an uncertain request was committed', async () => {
+  const t = await sqliteDb(); setEnv(t.db); const { post } = client(await routes());
+  const receipt = await loadRoute<Route>('app/api/workspace/receipt/route.ts');
+  try {
+    const check = async (id: string) => (await receipt.GET(new Request(origin + '/api/workspace/receipt?id=' + id, { headers: owner }))).json() as Promise<{ committed: boolean }>;
+    assert.equal((await check('request-x1')).committed, false);
+    await post(product('X1'), 0, 'request-x1');
+    assert.equal((await check('request-x1')).committed, true);
+    assert.equal((await receipt.GET(new Request(origin + '/api/workspace/receipt?id=request-x1'))).status, 401);
+  } finally { await t.close(); }
+});

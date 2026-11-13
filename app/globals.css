@@ -709,3 +709,15 @@ input::placeholder, textarea::placeholder { color: var(--foreground); opacity: 1
 .logo-preparation p { color: #000; font-weight: 400; }
 .logo-preparation-steps p { font-size: 14px; line-height: 1.6; }
 .logo-preparation .form-help { margin: 0; }
+
+/* 13/11/2026 — operazioni di lotto in righe compatte, intestazione leggibile su telefono */
+.lot-actions { flex-wrap: wrap; gap: 4px; min-width: 240px; max-width: 330px; }
+.breadcrumb { min-width: 0; }
+.breadcrumb b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) {
+  .topbar-right .connection-chip.green { display: none; }
+  .topbar-right { gap: 6px; }
+}
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
