@@ -24,3 +24,28 @@ Verifiche: controllo TypeScript superato; ispezione nel browser della panoramica
 - Storico con ricerca e caricamento a pagine; ordini archiviati su richiesta; Configurazione con dispositivi del ponte e backup completo.
 - Su telefono si nasconde l'indicatore «Archivio connesso» quando tutto è regolare, per non tagliare il titolo; resta visibile se offline.
 - Regola tipografica verificata automaticamente in `tests/ui/smoke.mjs` su tutte le viste a 390, 820 e 1.440 px.
+
+## Sistema visivo del 13 novembre 2026 (contratto di design)
+
+**Soggetto e lavoro principale.** Stabilimento di prima colazione industriale: una sede, tre aree, una linea. Ufficio da computer, operatori in linea da tablet o telefono. La schermata deve dire che cosa richiede attenzione adesso e permettere di agire in due passaggi.
+
+**Riferimenti studiati** (catalogo 21st.dev, usati come evidenza e non come modello): un guscio applicativo con menu laterale compatto, contatori e ricerca globale in testata; una tabella di magazzino con numeri allineati a destra, indicatori di scorta, stato con punto ed etichetta e riga dei totali. Scartati: grigi per gerarchia, schede tutte uguali, grafici decorativi.
+
+**Colori** (solo per superfici, bordi, icone e stati; il testo resta `#000` su chiaro e bianco su scuro, sempre peso 400):
+
+| Nome | Valore | Uso |
+| --- | --- | --- |
+| Inchiostro forno | `#10283C` | menu laterale, riquadro della linea di produzione |
+| Grano | `#F5B82E` | marchio, indicatore della voce attiva, segnale «oggi» |
+| Lievito (operativo) | `#00806F` | azione principale, focus dei campi |
+| Tela / Carta | `#F3F5F4` / `#FFFFFF` | fondo / superfici |
+| Filo | `#DCE3E0` | bordi e divisori |
+| Stati | `#15935A` regolare, `#E2A000` attenzione, `#D63B3B` bloccato o scaduto, `#2F6FDB` in corso | punti, barre, bordi; mai unico veicolo dell'informazione |
+
+**Testo.** Caratteri di sistema (Segoe UI Variable su Windows), nessun font esterno. Scala 13 / 14 / 15 / 17 / 20 / 26 px, contatore di linea 56–72 px. Numeri con cifre tabellari, codici con lo stesso carattere (niente monospazio). Niente maiuscolo spaziato sopra i titoli.
+
+**Struttura.** Menu laterale scuro con gruppi «Lavoro» e «Registro» e contatori. Testata fissa con titolo della vista, ricerca globale (Ctrl K oppure /), stato del salvataggio e aggiornamento. Panoramica come coda di lavoro («Da fare adesso», con un'azione diretta per riga) accanto al riquadro della linea: è l'unico elemento forte della pagina. Tabelle dense (righe di 44–52 px), intestazioni chiare in minuscolo, quantità a destra. Moduli in un pannello laterale a destra su computer e a tutta pagina sul telefono, così il contesto resta visibile.
+
+**Raggi e ombre.** 6 px controlli, 10 px pannelli, 14 px pannello laterale; ombre solo su pannelli sovrapposti (pannello laterale, ricerca, avvisi).
+
+**Movimento.** Solo in risposta a un'azione (apertura del pannello, conferma); ridotto a zero con «riduci movimento».

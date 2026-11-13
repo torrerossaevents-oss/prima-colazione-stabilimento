@@ -106,6 +106,10 @@ Eseguite con due agenti separati sul diff `31ecaf5..HEAD`, senza conoscere le co
 | Token del ponte in chiaro accanto al pacchetto | Bassa | Documentato: tenere `token.local.json` fuori da copie e zip; spostamento in `%ProgramData%` con permessi ristretti da fare all'installazione sul PC confermato |
 | Anteprima di sviluppo aperta senza login | Bassa | Documentato: usare `npm run dev` solo su macchine e reti fidate, mai con un backup reale |
 
+## Rinnovo grafico (13/11/2026)
+
+Richiesta di Teo: gestionale «ultra-professionale e intuitivo», usando tutte le skill pertinenti. Skill usate: `using-agent-skills`, `frontend-ui-engineering`, `21st-ui` (catalogo 21st.dev solo come riferimento: livello gratuito, nessuna generazione), `find-skills`, e due skill installate nel progetto dopo verifica di fonte e licenza: `frontend-design` (Anthropic, Apache-2.0) e `web-design-guidelines` (Vercel, MIT). Contratto di design in `docs/INTERFACCIA.md`. Dati fittizi per l'anteprima: `node tests/ui/seed-preview.mjs http://localhost:5173` (solo locale, solo archivio vuoto).
+
 ## Prossimo passo
 
 1. Revisione della PR (anche Codex, se disponibile) e risposta ai rilievi.

@@ -99,3 +99,15 @@ Scenari dell'incarico coperti da test automatici: 1 (00123 export/reimport, prez
 Percorso nel browser (`tests/ui/smoke.mjs`): creazione 00123 e ricerca progressiva per codice e descrizione; entrata 150 e blocco 2; ordine 30, pronto, partenza parziale rifiutata senza motivo con dati del modulo conservati, poi accettata con motivo; annullamento del residuo e fattura successiva → presenti 130, disponibili 128; rete interrotta durante una rettifica → «Da verificare», modulo conservato, ripetizione con lo stesso identificativo salvata una volta; risposta 200 in HTML (accesso scaduto) → mai «Salvato», poi «Scarta» annulla l’identificativo sul server; risposta persa dopo il salvataggio → dopo ricarica la ricevuta del server conferma «già salvata», nessun doppione; scarto dalla merce bloccata; fotocamera non supportata con messaggio e inserimento da tastiera disponibile; lavorazione 200 cartoni chiusa con riepilogo giornaliero e nessun carico di magazzino; ricerca nello storico; Configurazione con backup e dispositivi; su tre larghezze nessuno scorrimento orizzontale della pagina, tutti i testi su superfici chiare in `#000` peso 400 (bianco 400 sulle superfici scure), nessun pulsante sotto 34 px.
 
 Limiti di questa verifica: il ponte è provato contro simulatori e contro le API in un processo locale, non attraverso l'accesso della piattaforma pubblicata; i tempi sono misurati in Node, non nel Worker ospitato; la pubblicazione Sites non è stata eseguita.
+
+### Rinnovo grafico (13/11/2026, pomeriggio)
+
+| Controllo | Esito |
+| --- | --- |
+| `npm test` / `npm run check` / `npm run build` / `npm run test:bridge` | 91/91, nessun errore, riuscita, 63/63 |
+| `tests/ui/smoke.mjs` (archivio locale vuoto) | superato, 14 passaggi, compresa la ricerca globale Ctrl K |
+| Regola tipografica, scorrimento orizzontale, altezza minima dei pulsanti (34 px) su 390 / 820 / 1.440 px, tutte le viste | nessuna violazione (prima del ritocco: punto del marchio colorato su fondo scuro e alcune linguette da 30–32 px, corretti) |
+| Tastiera | ordine di tabulazione logico, focus visibile su tutti i primi 30 elementi, «/» e Ctrl K aprono la ricerca, Esc chiude ricerca e pannello, focus all'interno del pannello aperto |
+| `web-design-guidelines` (regole Vercel) | corretti: focus tolto ai campi senza alternativa, avviso all'uscita con modulo aperto, `theme-color`, `autocomplete="off"` sui moduli operativi |
+| Analisi axe-core | **non eseguita**: il download dello script da CDN non è stato autorizzato in questa sessione |
+| `npm run lint` | 3 errori preesistenti invariati |

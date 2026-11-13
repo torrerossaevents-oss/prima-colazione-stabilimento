@@ -18,7 +18,7 @@ const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('c
 const api = async () => (await (await fetch(base + '/api/workspace')).json());
 const dialog = () => page.getByRole('dialog');
 
-await page.goto(base + '/#overview'); await page.getByText('Archivio connesso').waitFor();
+await page.goto(base + '/#overview'); await page.getByText('Archivio connesso').first().waitFor();
 assert.equal((await api()).version, 0, 'test database must start empty');
 log('panoramica vuota caricata');
 
@@ -77,7 +77,7 @@ assert.match(cells[3], /130/); assert.match(cells[6], /^128/);
 log('scenario 4 nell’interfaccia: presenti 130, disponibili 128 dopo annullamento e fattura senza nuovo scarico');
 
 // Network loss during a save: no false confirmation, uncertain state, same-id recovery.
-await page.getByRole('button', { name: 'Rettifica' }).first().click();
+await page.locator('summary[aria-label^="Altre operazioni sul lotto"]').first().click(); await page.getByRole('button', { name: 'Rettifica' }).first().click();
 await dialog().getByLabel('Variazione di quantità').fill('-1'); await dialog().getByLabel('Responsabile della verifica').fill('Responsabile prova');
 await dialog().getByLabel('Motivo della rettifica').fill('Riconto di prova'); await dialog().getByRole('checkbox').check();
 await page.route('**/api/workspace', r => r.request().method() === 'POST' ? r.abort('connectionreset') : r.continue());
@@ -89,7 +89,7 @@ await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await 
 s = await api(); assert.equal(s.state.lots[0].quantity, 129);
 log('connessione persa: stato «Da verificare», modulo conservato, ripetizione con lo stesso id salvata una volta');
 // Expired platform session: a 200 HTML login page must never count as «saved».
-await page.getByRole('button', { name: 'Rettifica' }).first().click();
+await page.locator('summary[aria-label^="Altre operazioni sul lotto"]').first().click(); await page.getByRole('button', { name: 'Rettifica' }).first().click();
 await dialog().getByLabel('Variazione di quantità').fill('-1'); await dialog().getByLabel('Responsabile della verifica').fill('Responsabile prova');
 await dialog().getByLabel('Motivo della rettifica').fill('Pagina di accesso'); await dialog().getByRole('checkbox').check();
 await page.route('**/api/workspace', r => r.request().method() === 'POST' ? r.fulfill({ status: 200, contentType: 'text/html', body: '<html>Accedi</html>' }) : r.continue());
@@ -104,7 +104,7 @@ await page.getByText('Operazione scartata').waitFor();
 s = await api(); assert.equal(s.state.lots[0].quantity, 129, 'nothing saved by the HTML answer nor after «Scarta»');
 log('risposta 200 in HTML (accesso scaduto): nessun falso «Salvato»; «Scarta» annulla l’identificativo sul server');
 // Lost response after commit: the server saves, the browser never sees the answer.
-await page.getByRole('button', { name: 'Rettifica' }).first().click();
+await page.locator('summary[aria-label^="Altre operazioni sul lotto"]').first().click(); await page.getByRole('button', { name: 'Rettifica' }).first().click();
 await dialog().getByLabel('Variazione di quantità').fill('-1'); await dialog().getByLabel('Responsabile della verifica').fill('Responsabile prova');
 await dialog().getByLabel('Motivo della rettifica').fill('Risposta persa'); await dialog().getByRole('checkbox').check();
 await page.route('**/api/workspace', async r => { if (r.request().method() !== 'POST') return r.continue(); await r.fetch(); await r.abort('timedout'); });
@@ -117,7 +117,7 @@ log('risposta persa dopo il salvataggio: dopo ricarica la ricevuta del server co
 
 // Scrap from blocked stock.
 await page.goto(base + '/#inventory'); await page.getByRole('tab', { name: /Giacenze e lotti/ }).click();
-await page.getByRole('button', { name: 'Scarto' }).first().click();
+await page.locator('summary[aria-label^="Altre operazioni sul lotto"]').first().click(); await page.getByRole('button', { name: 'Scarto' }).first().click();
 await dialog().getByLabel('Quantità scartata').fill('2'); await dialog().getByLabel('Responsabile').fill('Responsabile prova'); await dialog().getByLabel('Motivo').fill('Cartoni danneggiati');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 s = await api(); assert.equal(s.state.lots[0].quantity, 126); assert.equal(s.state.lots[0].blocked, 0);
@@ -146,6 +146,11 @@ assert.match(summary, /200 cartoni/);
 s = await api(); assert.equal(s.state.sessions[0].cartons, 200); assert.equal(s.state.lots.length, 1, 'no stock created by production');
 log('lavorazione 200 cartoni chiusa, riepilogo giornaliero aggiornato, nessun carico di magazzino');
 await page.screenshot({ path: `${out}/produzione-desktop.png`, fullPage: true });
+
+// Global search: Ctrl K, find the lot, open it in the stock list.
+await page.keyboard.press('Control+k'); await page.locator('[cmdk-input]').fill('LOT-PROVA');
+await page.keyboard.press('Enter'); await page.locator('tr', { hasText: 'LOT-PROVA-1' }).first().waitFor();
+log('ricerca globale (Ctrl K): trova il lotto e apre la giacenza filtrata');
 
 // History search and settings.
 await page.goto(base + '/#history'); await page.getByLabel('Cerca nello storico').fill('Riconto di prova'); await page.getByText('Riconto di prova').first().waitFor();

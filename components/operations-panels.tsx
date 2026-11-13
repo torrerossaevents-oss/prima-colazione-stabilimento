@@ -45,7 +45,7 @@ export function ProductionSummaryPanel({ sessions, today, archivedCount, onExpor
   return <section className="panel" style={{ marginTop: 24 }}>
     <div className="panel-head"><div><h2>Riepilogo giornaliero</h2><p>Per articolo e lotto. Il giorno è quello di avvio della lavorazione. Nessun carico automatico a magazzino.</p></div><button className="button secondary small" disabled={!rows.length} onClick={exportCsv}><Download size={15}/>Esporta CSV</button></div>
     <div className="panel-body stack">
-      <div className="toolbar" style={{ flexWrap: 'wrap', gap: 10 }}>
+      <div className="summary-filters">
         <div className="tabs">{[['Oggi', today, today], ['Ieri', addDays(today, -1), addDays(today, -1)], ['Ultimi 7 giorni', addDays(today, -6), today]].map(([label, a, b]) => <button key={label} className={'tab ' + (from === a && to === b ? 'active' : '')} onClick={() => preset(a, b)}>{label}</button>)}</div>
         <label className="field" style={{ minWidth: 150 }}><span>Dal</span><input type="date" value={from} max={to} onChange={e => e.target.value && setFrom(e.target.value)}/></label>
         <label className="field" style={{ minWidth: 150 }}><span>Al</span><input type="date" value={to} min={from} max={today} onChange={e => e.target.value && setTo(e.target.value)}/></label>

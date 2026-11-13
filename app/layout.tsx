@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
     title: "Prima Colazione · Stabilimento",
@@ -6,6 +6,7 @@ export const metadata: Metadata = {
     icons: { icon: "/favicon.svg" },
     robots: { index: false, follow: false },
 };
+export const viewport: Viewport = { themeColor: "#10283c" };
 export default function RootLayout({ children }: Readonly<{
     children: React.ReactNode;
 }>) {
