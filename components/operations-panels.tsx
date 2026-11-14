@@ -1,8 +1,8 @@
 "use client";
 /** Panels backed by the paginated archive and device APIs. Plain Italian, explicit units. */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Activity, CalendarDays, ChevronLeft, ChevronRight, Download, KeyRound, RefreshCw, Search, ShieldCheck, Upload } from 'lucide-react';
-import { addDays, auditGroupOf, auditMatches, productionSummary, todayRome, type Audit, type AuditGroup, type Lot, type Order, type Session } from '../lib/domain';
+import { addDays, auditFilter, auditGroupOf, productionSummary, todayRome, type Audit, type AuditGroup, type Lot, type Order, type Session } from '../lib/domain';
 import { describeError, request } from '../lib/client-api';
 
 export type DeviceInfo = { id: string; name: string; line: string; createdAt: string; revokedAt: string | null; lastSeenAt: string | null; status: { at?: string | null; bridgeVersion?: string | null; queueLength?: number | null; plc?: { reachable?: boolean; lastReadAt?: string | null }; session?: { id?: string | null; cartons?: number | null } | null } | null };
@@ -77,24 +77,31 @@ export function HistoryPanel({ recent, total, onExport, loaded, today, local }: 
   const [loading, setLoading] = useState(false); const [error, setError] = useState(''); const [shown, setShown] = useState(50);
   const filtered = Boolean(q.trim() || selectedDay || group);
   const key = [q, selectedDay, group].join('|');
+  // Only the response to the latest request is shown; a late answer to older filters is dropped.
+  const latest = useRef({ key, seq: 0 });
+  useEffect(() => { latest.current.key = key; }, [key]);
   const query = () => `&q=${encodeURIComponent(q)}${selectedDay ? `&from=${selectedDay}&to=${selectedDay}` : ''}${group ? '&group=' + group : ''}`;
   async function load(cursor: { at: string; id: string } | null) {
-    const forKey = key; setLoading(true); setError('');
+    const forKey = key; const seq = ++latest.current.seq; setLoading(true); setError('');
+    const stale = () => latest.current.key !== forKey || latest.current.seq !== seq;
     try {
       const res = await request(`/api/workspace/history?limit=50${query()}${cursor ? '&before=' + encodeURIComponent(cursor.at + '|' + cursor.id) : ''}`);
       const data = await res.json() as { items?: Audit[]; next?: { at: string; id: string } | null; error?: string };
+      if (stale()) return;
       if (!res.ok) throw new Error(data.error || 'Storico non disponibile.');
-      setResult(prev => ({ key: forKey, items: cursor && prev?.key === forKey ? [...prev.items, ...(data.items ?? [])] : data.items ?? [], next: data.next ?? null }));
-    } catch (e) { setError(describeError(e, 'Storico non disponibile.')); } finally { setLoading(false); }
+      setResult(prev => cursor ? (prev?.key === forKey ? { key: forKey, items: [...prev.items, ...(data.items ?? [])], next: data.next ?? null } : prev) : { key: forKey, items: data.items ?? [], next: data.next ?? null });
+    } catch (e) { if (!stale()) setError(describeError(e, 'Storico non disponibile.')); } finally { if (!stale()) setLoading(false); }
   }
   const isLocal = local !== undefined;
   useEffect(() => { if (isLocal) return; const t = setTimeout(() => { void load(null); }, q ? 300 : 0); return () => clearTimeout(t); }, [q, selectedDay, group, total, isLocal]); // eslint-disable-line react-hooks/exhaustive-deps
-  const localMatches = useMemo(() => local ? local.filter(a => auditMatches(a, { q, from: selectedDay || undefined, to: selectedDay || undefined, group: group || undefined })).reverse() : null, [local, q, selectedDay, group]);
+  const localMatches = useMemo(() => local ? local.filter(auditFilter({ q, from: selectedDay || undefined, to: selectedDay || undefined, group: group || undefined })).reverse() : null, [local, q, selectedDay, group]);
   const current = result?.key === key ? result : null;
   const list = useMemo(() => localMatches ? localMatches.slice(0, shown) : current?.items ?? (filtered ? [] : recent), [localMatches, shown, current, filtered, recent]);
   const more = localMatches ? localMatches.length > shown : Boolean(current?.next);
   const days = useMemo(() => { const out: [string, Audit[]][] = []; for (const a of list) { const d = todayRome(a.at); const last = out.at(-1); if (last && last[0] === d) last[1].push(a); else out.push([d, [a]]); } return out; }, [list]);
-  const pick = (d: string) => { setSelectedDay(d); setShown(50); };
+  // A typed date can be anything (e.g. year 20261): only a real day up to today is accepted.
+  const pick = (d: string) => { if (d && (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > today || addDays(d, 0) !== d)) return; setSelectedDay(d); setShown(50); };
+  const waiting = !isLocal && filtered && !current;
   return <section className="panel history-panel">
     <div className="panel-head"><div><h2>Registro delle operazioni</h2><p>{isLocal ? `${n(local!.length)} operazioni di prova in questo browser.` : `${n(total)} operazioni registrate, dalla più recente.`}</p></div><button className="button secondary small" disabled={!loaded} onClick={onExport}><Download size={15}/>Esporta stato operativo</button></div>
     <div className="panel-body stack">
@@ -113,8 +120,8 @@ export function HistoryPanel({ recent, total, onExport, loaded, today, local }: 
       {days.length ? <div className="history-days">{days.map(([d, rows], i) => <section className="history-day" key={d} aria-label={dayTitle(d, today)}>
         <h3 className="history-day-head"><button className="link-button" onClick={() => pick(d)} title="Mostra solo questo giorno">{dayTitle(d, today)}</button>{!(more && i === days.length - 1) && <span>{rows.length === 1 ? '1 operazione' : `${n(rows.length)} operazioni`}</span>}</h3>
         <ol className="timeline">{rows.map(a => { const g = auditGroupOf(a.action); return <li className="timeline-item" key={a.id}><span className={'timeline-dot ' + (g ?? '')}/><div><b>{a.detail}</b><small>{hour(a.at)}{g ? ' · ' + groupName[g] : ''}{a.id.startsWith('prova-') ? '' : ' · ' + a.id.slice(0, 8)}{a.actor?.startsWith('dispositivo:') ? ' · ponte' : ''}</small></div></li>; })}</ol>
-      </section>)}</div> : !loading && <p className="muted">{filtered ? `Nessuna operazione${selectedDay ? ' il ' + day(selectedDay) : ''}${group ? ' di tipo ' + groupName[group].toLowerCase() : ''}${q.trim() ? ' con «' + q.trim() + '»' : ''}.` : 'Lo storico parte dalla prima operazione salvata.'}</p>}
-      {loading && <Loading>Caricamento…</Loading>}
+      </section>)}</div> : !loading && !waiting && !error && <p className="muted">{filtered ? `Nessuna operazione${selectedDay ? ' il ' + day(selectedDay) : ''}${group ? ' di tipo ' + groupName[group].toLowerCase() : ''}${q.trim() ? ' con «' + q.trim() + '»' : ''}.` : 'Lo storico parte dalla prima operazione salvata.'}</p>}
+      {(loading || (waiting && !error)) && <Loading>Caricamento…</Loading>}
       {more && !loading && <button className="button secondary" onClick={() => localMatches ? setShown(s => s + 50) : load(current?.next ?? null)}>Carica altre 50</button>}
     </div>
   </section>;

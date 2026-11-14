@@ -65,10 +65,12 @@ export function auditBounds(filter:Pick<AuditFilter,'from'|'to'>):{fromAt?:strin
  if(filter.from&&filter.to&&filter.from>filter.to)fail('Il primo giorno deve essere precedente o uguale all’ultimo.');
  return {...(filter.from?{fromAt:romeDayStart(filter.from)}:{}),...(filter.to?{toAt:romeDayStart(addDays(filter.to,1))}:{})};
 }
-export function auditMatches(entry:Audit,filter:AuditFilter):boolean{
- const {fromAt,toAt}=auditBounds(filter);const q=filter.q?.trim().toLocaleLowerCase('it');
- return (!fromAt||entry.at>=fromAt)&&(!toAt||entry.at<toAt)&&(!filter.group||entry.action.startsWith(AUDIT_GROUP_PREFIX[filter.group]))&&(!q||entry.detail.toLocaleLowerCase('it').includes(q));
+/** Predicate for a filter: bounds computed once, then applied to many entries. */
+export function auditFilter(filter:AuditFilter):(entry:Audit)=>boolean{
+ const {fromAt,toAt}=auditBounds(filter);const q=filter.q?.trim().toLocaleLowerCase('it');const prefix=filter.group?AUDIT_GROUP_PREFIX[filter.group]:'';
+ return entry=>(!fromAt||entry.at>=fromAt)&&(!toAt||entry.at<toAt)&&(!prefix||entry.action.startsWith(prefix))&&(!q||entry.detail.toLocaleLowerCase('it').includes(q));
 }
+export function auditMatches(entry:Audit,filter:AuditFilter):boolean{return auditFilter(filter)(entry);}
 function text(value:unknown,name:string,max=160):string{
  if(typeof value!=='string'||!value.trim()||value.trim().length>max)fail(`${name}: inserisci un valore valido (massimo ${max} caratteri).`);
  return (value as string).trim();

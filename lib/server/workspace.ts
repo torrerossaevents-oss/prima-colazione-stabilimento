@@ -3,7 +3,7 @@
  * hot state + durable receipt + audit rows + archive moves, all conditioned on the
  * same compare-and-swap result, so either everything is stored or nothing is.
  */
-import { applyAction, auditBounds, auditMatches, AUDIT_GROUP_PREFIX, DomainError, initialState, todayRome, upgradeState, validateState, type Action, type Audit, type AuditGroup, type State } from '../domain.ts';
+import { applyAction, auditBounds, auditFilter, AUDIT_GROUP_PREFIX, DomainError, initialState, todayRome, upgradeState, validateState, type Action, type Audit, type AuditGroup, type State } from '../domain.ts';
 import { archiveNeeds, partition, rehydrate, type ArchiveKind, type ArchiveRow } from '../archive.ts';
 
 export const WORKSPACE_ID = 'prima-colazione';
@@ -61,8 +61,8 @@ export async function auditPage(db: D1Database, options: { before?: { at: string
   const { results } = await db.prepare(`SELECT id, at, action, detail, actor, moves FROM workspace_audit WHERE ${where.join(' AND ')} ORDER BY at DESC, id DESC LIMIT ?`).bind(...binds, limit + 1).all<Parameters<typeof auditFromRow>[0]>();
   let items = results.map(auditFromRow);
   if (options.legacy?.length) {
-    const before = options.before;
-    const extra = options.legacy.filter(a => (!before || a.at < before.at || (a.at === before.at && a.id < before.id)) && auditMatches(a, { q, from: options.from, to: options.to, group: options.group }));
+    const before = options.before; const matches = auditFilter({ q, from: options.from, to: options.to, group: options.group });
+    const extra = options.legacy.filter(a => (!before || a.at < before.at || (a.at === before.at && a.id < before.id)) && matches(a));
     items = [...items, ...extra].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
   }
   const page = items.slice(0, limit);

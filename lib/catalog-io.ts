@@ -1,3 +1,4 @@
+import { trialFileName } from './trial.ts';
 import { normalizeProduct, todayRome, type Product, type ProductInput } from './domain.ts';
 import type { Workbook, Worksheet, CellValue } from 'exceljs';
 
@@ -284,7 +285,8 @@ export async function readCatalogFile(file: File): Promise<CatalogImport> {
   return result;
 }
 
-function downloadBytes(name: string, bytes: Uint8Array, type: string): void {
+function downloadBytes(fileName: string, bytes: Uint8Array, type: string): void {
+  const name = trialFileName(fileName);
   const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type }));
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = name; document.body.appendChild(anchor); anchor.click(); anchor.remove();
   // Keep the object URL alive long enough for browsers to begin their download.

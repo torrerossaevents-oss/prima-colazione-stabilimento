@@ -74,9 +74,14 @@ export function buildTrialState(now: Date = new Date()): State {
 
   // Today: one closed run if the morning has passed, then an open one to advance with the simulated counter.
   if (nowMinutes >= 480) produce(today, ['00123', 360, [20, 18], 420], 0, true);
-  const start = nowMinutes >= 480 ? Math.max(450, nowMinutes - 45) : Math.max(1, nowMinutes - 30);
+  const start = nowMinutes >= 480 ? Math.max(450, nowMinutes - 45) : Math.max(0, nowMinutes - 30);
   produce(today, ['00210', start, [12], nowMinutes + 60], nowMinutes >= 480 ? 1 : 0, false);
   return state;
+}
+
+/** Files exported while the trial is open say so in their name (the page sets data-prova on <html>). */
+export function trialFileName(name: string): string {
+  return typeof document !== 'undefined' && document.documentElement?.dataset?.prova === '1' ? name.replace(/^prima-colazione-(?!PROVA-)/, 'prima-colazione-PROVA-') : name;
 }
 
 /** Reads the saved trial archive; unreadable, invalid or from a previous day → a fresh one (dates stay current). */

@@ -923,13 +923,14 @@ fieldset.field > span { margin-bottom: 2px; }
 /* ── Menu laterale a tendina (desktop): nascosto a scelta, il contenuto usa tutta la larghezza ── */
 .icon-button.nav-toggle { flex: none; }
 @media (min-width: 901px) {
-  .sidebar { transition: transform 200ms ease, visibility 200ms ease; }
-  .main-shell { transition: margin-left 200ms ease; }
+  /* Animated only after a click: restoring the preference at load does not slide the menu. */
+  .app-shell.nav-animated .sidebar { transition: transform 200ms ease, visibility 200ms ease; }
+  .app-shell.nav-animated .main-shell { transition: margin-left 200ms ease; }
   .app-shell.nav-hidden .sidebar { visibility: hidden; transform: translateX(-100%); }
   .app-shell.nav-hidden .main-shell { margin-left: 0; }
 }
 @media (max-width: 900px) { .icon-button.nav-toggle { display: none; } }
-@media (prefers-reduced-motion: reduce) { .sidebar, .main-shell { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .app-shell .sidebar, .app-shell .main-shell { transition: none; } }
 
 /* ── Pulsante scuro (testo bianco 400) ── */
 .button.dark { border-color: var(--ink-oven); background: var(--ink-oven); color: #fff; }
@@ -977,6 +978,7 @@ fieldset.field > span { margin-bottom: 2px; }
 .day-input svg { color: var(--primary); }
 .day-input input { min-width: 0; height: 100%; border: 0; background: transparent; color: #000; font: inherit; font-size: 14px; }
 .history-days { display: flex; flex-direction: column; gap: 18px; }
+.history-day .timeline { margin: 0; padding-left: 0; list-style: none; }
 .history-day-head {
   position: sticky; top: calc(var(--topbar-h) + 2px); z-index: 2;
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;

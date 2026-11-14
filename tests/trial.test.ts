@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { activeSession, addDays, applyAction, productionDay, todayRome, validateState } from '../lib/domain.ts';
 import { buildTrialState, readTrialState, TRIAL_ACTOR } from '../lib/trial.ts';
 
-const moments = ['2026-11-14T02:10:00Z', '2026-11-14T09:30:00Z', '2026-11-14T22:50:00Z', '2026-03-29T05:00:00Z', '2026-10-25T13:00:00Z'];
+const moments = ['2026-11-13T23:00:20Z', '2026-11-14T02:10:00Z', '2026-11-14T09:30:00Z', '2026-11-14T22:50:00Z', '2026-03-29T05:00:00Z', '2026-10-25T13:00:00Z'];
 
 test('archivio di prova valido a qualsiasi ora, anche nei giorni del cambio d’ora', () => {
   for (const moment of moments) {
