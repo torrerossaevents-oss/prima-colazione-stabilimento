@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { Command } from 'cmdk';
-import { ArrowDownToLine, Box, ClipboardList, Download, Factory, History, LayoutDashboard, Package, Plus, ScanLine, Settings2, Truck, Undo2 } from 'lucide-react';
+import { ArrowDownToLine, Box, ClipboardList, Download, Factory, FlaskConical, History, LayoutDashboard, Package, PanelLeft, Plus, ScanLine, Settings2, Truck, Undo2 } from 'lucide-react';
 import type { State } from '../lib/domain';
 
 export type PaletteView = 'overview' | 'inventory' | 'production' | 'orders' | 'history' | 'settings';
@@ -22,6 +22,11 @@ type Props = {
   onProduct: (code: string) => void;
   onLot: (code: string) => void;
   onOrder: (customer: string) => void;
+  /** Modalità prova (sample archive in this browser) and side menu visibility. */
+  trial?: boolean;
+  onTrial?: () => void;
+  navHidden?: boolean;
+  onToggleNav?: () => void;
 };
 
 const views: [PaletteView, string, typeof Box][] = [
@@ -33,7 +38,7 @@ const actions: [PaletteAction, string, typeof Box][] = [
   ['return', 'Registra un reso da controllare', Undo2], ['product', 'Nuovo prodotto', Plus],
 ];
 
-export default function CommandPalette({ open, onClose, state, canAct, allowed = () => true, onNavigate, onAction, onProduct, onLot, onOrder }: Props) {
+export default function CommandPalette({ open, onClose, state, canAct, allowed = () => true, onNavigate, onAction, onProduct, onLot, onOrder, trial = false, onTrial, navHidden = false, onToggleNav }: Props) {
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -58,7 +63,9 @@ export default function CommandPalette({ open, onClose, state, canAct, allowed =
           </Command.Group>}
           <Command.Group heading="Vai a">
             {views.map(([id, label, Icon]) => <Command.Item key={id} value={'vai ' + label} onSelect={() => run(() => onNavigate(id))}><Icon aria-hidden="true"/><span>{label}</span></Command.Item>)}
-            <Command.Item value="backup completo scarica" onSelect={() => run(() => { const link = document.createElement('a'); link.href = '/api/workspace/backup'; link.download = ''; link.click(); })}><Download aria-hidden="true"/><span>Scarica backup completo</span></Command.Item>
+            {onTrial && <Command.Item value={trial ? 'esci modalità prova' : 'modalità prova simulazione'} onSelect={() => run(onTrial)}><FlaskConical aria-hidden="true"/><span>{trial ? 'Esci dalla modalità prova' : 'Attiva la modalità prova'}</span></Command.Item>}
+            {onToggleNav && <Command.Item value="menu laterale mostra nascondi" onSelect={() => run(onToggleNav)}><PanelLeft aria-hidden="true"/><span>{navHidden ? 'Mostra il menu laterale' : 'Nascondi il menu laterale'}</span></Command.Item>}
+            {!trial && <Command.Item value="backup completo scarica" onSelect={() => run(() => { const link = document.createElement('a'); link.href = '/api/workspace/backup'; link.download = ''; link.click(); })}><Download aria-hidden="true"/><span>Scarica backup completo</span></Command.Item>}
           </Command.Group>
           {state.products.length > 0 && <Command.Group heading="Prodotti">
             {state.products.map(p => <Command.Item key={p.id} value={`prodotto ${p.code} ${p.name} ${p.category ?? ''}`} onSelect={() => run(() => onProduct(p.code))}><Box aria-hidden="true"/><span>{p.code} · {p.name}</span><small>{p.unit}</small></Command.Item>)}

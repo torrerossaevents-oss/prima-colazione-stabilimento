@@ -89,6 +89,15 @@ for (const engine of ['sqlite', 'd1'] as const) {
       assert.equal(new Set([...page1.items, ...page2.items].map(i => i.id)).size, 100);
       const found = await (await r.history.GET(new Request(origin + '/api/workspace/history?q=' + encodeURIComponent('fittizio 2999'), { headers: owner }))).json() as { items: unknown[] };
       assert.equal(found.items.length, 1);
+      // Filters by Rome day (both ends included) and by operation type.
+      const history = async (query: string) => { const res = await r.history.GET(new Request(origin + '/api/workspace/history?' + query, { headers: owner })); return { status: res.status, ...(await res.json() as { items: { action: string }[]; next: unknown }) }; };
+      const day = await history('from=2026-03-01&to=2026-03-01&limit=50'); assert.equal(day.items.length, 50); assert.ok(day.next);
+      assert.equal((await history('from=2026-03-02&to=2026-03-02')).items.length, 0);
+      const catalog = await history('group=catalog'); assert.deepEqual(catalog.items.map(i => i.action), ['product.add']);
+      assert.equal((await history('group=catalog&from=2026-03-01&to=2026-03-01')).items.length, 0);
+      assert.equal((await history('group=constructor')).status, 400);
+      assert.equal((await history('from=2026-02-30')).status, 400);
+      assert.equal((await history('from=2026-03-02&to=2026-03-01')).status, 400);
       await post(product('AGAIN'), 13, 'request-again'); assert.equal(await count(t, 'workspace_snapshots'), 1, 'snapshot taken only once');
     } finally { await t.close(); }
   });

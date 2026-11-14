@@ -32,7 +32,7 @@ Leggere `docs/REQUISITI.md` prima di cambiare le regole di dominio. I documenti 
 
 ## Dati e accesso
 
-Il codice può essere pubblico; le registrazioni operative restano private. Non inserire in Git credenziali, token, database, esportazioni reali, indirizzi di clienti, log sensibili o documenti aziendali riservati. Usare dati di prova riconoscibili soltanto nei test e nell'anteprima locale.
+Il codice può essere pubblico; le registrazioni operative restano private. Non inserire in Git credenziali, token, database, esportazioni reali, indirizzi di clienti, log sensibili o documenti aziendali riservati. Usare dati di prova riconoscibili soltanto nei test, nell'anteprima locale e nella **modalità prova** (`lib/trial.ts`): questa costruisce i dati nel browser con le regole di `lib/domain.ts`, non scrive mai sul server, resta segnalata in ogni schermata e usa «PROVA» nei nomi. Ogni nuova chiamata al server deve restare esclusa in prova.
 
 Il nome digitato dell'operatore è un'attribuzione della registrazione, non un'identità verificata e non un permesso. Non dichiarare implementati ruoli, inviti o accesso di reparto finché non esiste una gestione effettiva lato server.
 

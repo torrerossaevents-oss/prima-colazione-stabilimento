@@ -139,6 +139,15 @@ Limite noto: da una sessione Claude Code nel cloud la pubblicazione non riesce, 
 
 Da fare: verifica del backup completo dal sito (`scripts/verify-backup.ts`); revoca del primo token API usato per D1 e verifiche; conferma dell'elenco operazioni del laboratorio quando servirà il secondo profilo.
 
+## Modalità prova, storico per data, menu a tendina (14/11/2026)
+
+Richiesta di Teo: attivare una modalità prova per vedere produzione e storico, storico consultabile per data, menu laterale apribile e chiudibile, ulteriori miglioramenti grafici.
+
+- Modalità prova nel browser (`lib/trial.ts`): settimana di esempio costruita con le regole vere, contatore simulato sulla linea, nessuna scrittura sul server (verificato nello smoke: zero richieste di scrittura, versione dell'archivio invariata). Disponibile anche sul sito pubblicato; i dati restano nel browser che la usa.
+- Storico filtrabile per giorno (giorni di Roma, anche nei cambi d'ora) e per tipo, lato server e sull'archivio; raggruppato per giorno.
+- Menu laterale nascondibile su desktop, preferenza ricordata.
+- Test: `tests/history-filter.test.ts`, `tests/trial.test.ts`, filtri nello storico in `tests/api.test.ts` (sqlite e D1), nuovi passaggi in `tests/ui/smoke.mjs`.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.

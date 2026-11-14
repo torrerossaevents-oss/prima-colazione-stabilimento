@@ -159,8 +159,49 @@ await page.goto(base + '/#history'); await page.getByLabel('Cerca nello storico'
 await page.goto(base + '/#settings'); await page.getByRole('heading', { name: 'Backup completo' }).waitFor(); await page.getByRole('heading', { name: 'Dispositivi del conta-cartoni' }).waitFor();
 log('storico con ricerca e pagina Configurazione con backup e dispositivi');
 
+// History by day and type: today has the operations above, yesterday none; the filters combine.
+await page.goto(base + '/#history'); await page.getByLabel('Cerca nello storico').fill('');
+await page.getByRole('button', { name: 'Oggi', exact: true }).click(); await page.locator('.history-day-head').first().waitFor();
+assert.match(await page.locator('.history-day-head').first().innerText(), /^Oggi/);
+await page.getByRole('button', { name: 'Giorno precedente' }).click(); await page.getByText(/Nessuna operazione il /).waitFor();
+await page.getByRole('button', { name: 'Tutti i giorni' }).click();
+await page.getByRole('group', { name: 'Tipo di operazione' }).getByRole('button', { name: 'Catalogo' }).click();
+await page.locator('.timeline-item').first().waitFor(); assert.ok((await page.locator('.timeline-item small').allInnerTexts()).every(t => t.includes('Catalogo')));
+log('storico per giorno (oggi, giorno precedente, tutti) e per tipo di operazione');
+
+// Side menu: hidden on request, remembered after a reload, shown again.
+await page.getByRole('button', { name: 'Nascondi il menu laterale' }).click(); await page.waitForTimeout(300);
+assert.equal(await page.locator('#menu-laterale').isVisible(), false);
+await page.reload(); await page.getByRole('button', { name: 'Mostra il menu laterale' }).click(); await page.waitForTimeout(300);
+assert.equal(await page.locator('#menu-laterale').isVisible(), true);
+log('menu laterale a tendina: nascosto, ricordato dopo la ricarica, riaperto');
+
+// Trial mode: sample week, simulated counter, close without stock change, nothing sent to the server.
+const versionBefore = (await api()).version; let trialPosts = 0;
+const countPosts = r => { if (r.method() === 'POST' && r.url().includes('/api/')) trialPosts++; }; page.on('request', countPosts);
+await page.getByRole('button', { name: 'Modalità prova' }).click(); await page.getByText('Prova della linea').waitFor();
+const cartons = async () => Number((await page.locator('.counter-number').innerText()).match(/\d+/)[0]);
+const startCount = await cartons();
+await page.getByRole('button', { name: 'Avvia contatore simulato' }).click(); await page.waitForTimeout(11_500);
+await page.getByRole('button', { name: 'Ferma contatore' }).click(); await page.waitForTimeout(200);
+assert.ok(await cartons() >= startCount + 10, 'il contatore simulato registra i cartoni');
+await page.getByRole('button', { name: 'Chiudi / salva lavorazione' }).click();
+await dialog().getByRole('checkbox').check(); await dialog().getByRole('button', { name: 'Salva lavorazione' }).click();
+await page.getByText('solo in prova, nulla salvato').waitFor();
+await page.goto(base + '/#history'); await page.getByText('operazioni di prova', { exact: false }).first().waitFor();
+await page.getByRole('button', { name: 'Giorno precedente' }).click();
+await page.getByRole('group', { name: 'Tipo di operazione' }).getByRole('button', { name: 'Produzione' }).click();
+assert.match(await page.locator('.history-day-head').first().innerText(), /^Ieri/);
+await page.screenshot({ path: `${out}/storico-prova.png` });
+await page.getByRole('button', { name: 'Esci dalla prova' }).first().click(); await page.getByText('Archivio connesso').first().waitFor();
+page.off('request', countPosts);
+assert.equal(trialPosts, 0, 'nessuna scrittura verso il server durante la prova'); assert.equal((await api()).version, versionBefore);
+log('modalità prova: settimana di esempio, contatore simulato, chiusura, storico di ieri, nessun dato inviato');
+
 // Typography rule and layout at three widths.
 const sizes = { telefono: { width: 390, height: 844 }, tablet: { width: 820, height: 1180 }, desktop: { width: 1440, height: 900 } };
+for (const mode of ['archivio', 'prova']) {
+if (mode === 'prova') { await page.setViewportSize(sizes.desktop); await page.goto(base + '/#settings'); await page.getByRole('button', { name: 'Attiva la modalità prova' }).click(); await page.locator('.trial-banner').waitFor(); }
 for (const [label, viewport] of Object.entries(sizes)) {
   await page.setViewportSize(viewport);
   for (const view of ['overview', 'inventory', 'production', 'orders', 'history', 'settings']) {
@@ -181,11 +222,12 @@ for (const [label, viewport] of Object.entries(sizes)) {
       const small = [...document.querySelectorAll('button, a.button')].filter(b => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 34; }).map(b => (b.getAttribute('aria-label') || b.textContent || '').trim().slice(0, 30));
       return { overflow, bad: bad.slice(0, 8), badCount: bad.length, small: small.slice(0, 6) };
     });
-    if (report.overflow || report.badCount || report.small.length) console.log('!', label, view, JSON.stringify(report));
+    if (report.overflow || report.badCount || report.small.length) console.log('!', mode, label, view, JSON.stringify(report));
   }
-  await page.goto(base + '/#inventory'); await page.screenshot({ path: `${out}/magazzino-${label}.png`, fullPage: false });
+  await page.goto(base + '/#inventory'); await page.screenshot({ path: `${out}/magazzino-${mode}-${label}.png`, fullPage: false });
 }
-log('controllo tipografia, larghezza e altezza pulsanti eseguito su telefono, tablet e desktop');
+}
+log('controllo tipografia, larghezza e altezza pulsanti eseguito su telefono, tablet e desktop, anche in modalità prova');
 assert.deepEqual(errors.filter(e => !/Failed to load resource|ERR_CONNECTION_RESET|ERR_TIMED_OUT|net::/.test(e)), [], 'no runtime errors');
 await browser.close();
 console.log('UI SMOKE SUPERATO');

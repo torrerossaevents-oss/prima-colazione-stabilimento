@@ -919,3 +919,80 @@ fieldset.field > span { margin-bottom: 2px; }
 .segmented-field:disabled .segmented { opacity: 1; background: var(--paper-2); }
 .segmented-field:disabled label { background: var(--paper-2); }
 .segmented-field:disabled label.active { background: var(--primary-soft); color: #000; box-shadow: inset 0 0 0 2px var(--primary); }
+
+/* ── Menu laterale a tendina (desktop): nascosto a scelta, il contenuto usa tutta la larghezza ── */
+.icon-button.nav-toggle { flex: none; }
+@media (min-width: 901px) {
+  .sidebar { transition: transform 200ms ease, visibility 200ms ease; }
+  .main-shell { transition: margin-left 200ms ease; }
+  .app-shell.nav-hidden .sidebar { visibility: hidden; transform: translateX(-100%); }
+  .app-shell.nav-hidden .main-shell { margin-left: 0; }
+}
+@media (max-width: 900px) { .icon-button.nav-toggle { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sidebar, .main-shell { transition: none; } }
+
+/* ── Pulsante scuro (testo bianco 400) ── */
+.button.dark { border-color: var(--ink-oven); background: var(--ink-oven); color: #fff; }
+.button.dark svg { color: #fff; }
+.button.dark:hover:not(:disabled) { border-color: var(--ink-oven-2); background: var(--ink-oven-2); }
+
+/* ── Modalità prova: sempre riconoscibile (fascia, chip, bordo della barra) ── */
+.trial-on .topbar { border-bottom: 3px solid var(--wheat); }
+.chip.trial-chip { border-color: var(--wheat); background: #fff4d6; }
+.chip.trial-chip::before { display: none; }
+.chip.trial-chip svg { color: #8a5a00; }
+.trial-banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 0; padding: 10px 28px;
+  border-bottom: 1px solid #f0d79f;
+  background: repeating-linear-gradient(135deg, #fff4d6 0 14px, #fdecc0 14px 28px);
+  color: #000; font-size: 14px; line-height: 1.5;
+}
+.trial-banner > svg { flex: none; color: #8a5a00; }
+.trial-banner p { flex: 1 1 320px; min-width: 0; margin: 0; }
+.trial-banner-title { margin-right: 6px; font-size: 15px; }
+.trial-banner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.notice.trial-notice { border-color: #f0d79f; border-left-color: var(--wheat); background: #fff8e6; }
+.notice.trial-notice > svg { color: #8a5a00; }
+.nav-item.trial-nav { background: var(--wheat); color: #000; }
+.nav-item.trial-nav svg { color: #000; }
+.trial-card { margin-bottom: 20px; border-left: 4px solid var(--wheat); }
+.trial-card.on { background: #fff8e6; }
+.trial-card .panel-body { flex-wrap: wrap; gap: 16px; }
+.trial-card-text { display: flex; align-items: flex-start; gap: 14px; flex: 1 1 420px; min-width: 0; }
+.trial-card-text h2 { margin-bottom: 4px; }
+.live-pill { display: inline-flex; letter-spacing: 0; line-height: 1.4; align-items: center; gap: 6px; margin-left: 12px; padding: 2px 10px; border: 1px solid #f0d79f; border-radius: 999px; background: #fff4d6; color: #000; font-size: 13px; vertical-align: middle; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #d93f2b; animation: live-pulse 1s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.form-help svg { display: inline-block; vertical-align: -2px; color: var(--primary); }
+.history-panel > .panel-head { flex-wrap: wrap; }
+.history-panel > .panel-head > div:first-child { flex: 1 1 240px; min-width: 0; }
+@media (max-width: 900px) { .trial-banner { padding: 10px 16px; } }
+
+/* ── Storico: filtri per giorno e tipo, voci raggruppate per data ── */
+.history-filters { display: flex; flex-direction: column; gap: 12px; }
+.history-day-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.day-input { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; }
+.day-input svg { color: var(--primary); }
+.day-input input { min-width: 0; height: 100%; border: 0; background: transparent; color: #000; font: inherit; font-size: 14px; }
+.history-days { display: flex; flex-direction: column; gap: 18px; }
+.history-day-head {
+  position: sticky; top: calc(var(--topbar-h) + 2px); z-index: 2;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--paper-2); font-size: 15px;
+}
+.history-day-head span { flex: none; font-size: 13px; }
+.link-button { padding: 0; border: 0; background: none; color: #000; font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; cursor: pointer; }
+.link-button:hover { text-decoration-color: var(--primary); }
+.timeline-dot.production { background: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.timeline-dot.inventory { background: var(--info); box-shadow: 0 0 0 3px var(--info-soft); }
+.timeline-dot.orders { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+.timeline-dot.catalog { background: var(--ink-oven); box-shadow: 0 0 0 3px var(--paper-2); }
+@media (pointer: coarse) { .day-input { height: 44px; } }
+
+/* Pulsanti-collegamento nel testo: area di tocco minima 34 px (44 px su touch) senza cambiare l'aspetto. */
+.link-button, .catalog-code { display: inline-flex; align-items: center; min-height: 34px; }
+.catalog-product-name { display: flex; align-items: center; min-height: 34px; }
+@media (pointer: coarse) { .link-button, .catalog-code, .catalog-product-name { min-height: 44px; } }
