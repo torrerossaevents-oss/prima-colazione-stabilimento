@@ -1,6 +1,8 @@
 # Pubblicare il gestionale su Cloudflare
 
-Alternativa a Sites, decisa da Teo il 13/11/2026. Il codice è pronto e provato senza account (prova di pubblicazione, test di Cloudflare Access). **Nulla è ancora pubblicato.** Sites resta attivo finché il passaggio non è collaudato.
+Alternativa a Sites, decisa da Teo il 13/11/2026. **Pubblicato e collaudato il 14/11/2026**: dominio dedicato, accesso con l'email dello stabilimento, si parte da un archivio vuoto. La configurazione Sites resta nel repository, non usata.
+
+Per una nuova pubblicazione: scarica un backup, poi GitHub → Actions → **Pubblica su Cloudflare** → Run workflow (ramo `main`).
 
 ## Come è protetto
 
@@ -55,7 +57,7 @@ Le email non vanno mai nel codice.
 
 
 1. Zero Trust: scegli il nome del team. Diventa `nome-team.cloudflareaccess.com`.
-2. Settings → Authentication: lascia **One-time PIN**. Chi accede riceve un codice via email; non servono password. Nell'applicazione imposta la durata della sessione a 1 mese, così ogni dispositivo del laboratorio fa il login circa una volta al mese.
+2. Zero Trust → Integrations → **Identity providers** (oppure Settings → Authentication) → Add new → **One-time PIN**. Un'organizzazione appena creata ha solo il login con account Cloudflare: senza questo passaggio chi non ha un account Cloudflare non può entrare. Chi accede riceve un codice via email; non servono password. Nell'applicazione imposta la durata della sessione a 1 mese, così ogni dispositivo del laboratorio fa il login circa una volta al mese.
 3. Access → Applications → Add → **Self-hosted**:
    - dominio `gestionale.tuodominio.it`;
    - policy **Allow** con le due email, amministrazione e stabilimento (Include → Emails).
@@ -96,6 +98,8 @@ Poi: Actions → **Pubblica su Cloudflare** → Run workflow. Il flusso:
 3. pubblica il Worker.
 
 Senza account si può provare la configurazione con `node scripts/cloudflare-deploy.mjs --check`, eseguito anche a ogni modifica dalla CI.
+
+Da una sessione Claude Code nel cloud si possono creare il database e applicare le migrazioni, ma non pubblicare il Worker: il proxy della sessione sostituisce l'intestazione `Authorization` anche nel caricamento dei file statici, che usa un JWT temporaneo, e Cloudflare risponde 401. Si pubblica dal flusso GitHub.
 
 ## 7. Collaudo prima di usarlo
 

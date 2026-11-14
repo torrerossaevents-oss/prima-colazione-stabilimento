@@ -43,7 +43,7 @@ Riprendere da «Prossimo passo». Documento operativo: decisioni, comandi, risul
 | Implementato da verificare | migrazione 0002 sul database pubblicato; endpoint dispositivi attraverso l'accesso della piattaforma; tempi CPU nel Worker ospitato; `.cmd` su Windows; fotocamera su dispositivi reali |
 | Simulato | ponte LOGO! (sensori, contatore, chiusura, coda, trasmissione), scenario A 200 + B 150 |
 | Non implementato | programma LOGO!; carico automatico a magazzino; utenti e ruoli distinti; TeamSystem; stampa etichette |
-| Bloccato da hardware/accessi | collaudo linea (dati LOGO!, PC, rete); pubblicazione Sites (nessun accesso da questa sessione); etichettatrici (modelli/driver) |
+| Bloccato da hardware/accessi | collaudo linea (dati LOGO!, PC, rete); etichettatrici (modelli/driver) |
 
 ## Decisioni
 
@@ -123,10 +123,24 @@ Pronto nel codice e provato senza account:
 
 Risposte di Teo: si parte da zero (nessun dato da trasferire da Sites); dominio nuovo dedicato consigliato; credenziali uniche, al massimo due profili, Amministrazione e Laboratorio. Profili implementati lato server (`lib/permissions.ts`, `ADMIN_EMAILS`/`LAB_EMAILS`) con test; l'elenco delle operazioni del laboratorio è una proposta da confermare.
 
-Da fare con l'account: dominio, D1, applicazione Access e AUD, token API, prima pubblicazione, segreti con le due email, collaudo dell'accesso.
+## Pubblicato su Cloudflare (14/11/2026)
+
+Scelte di Teo: account Cloudflare esistente dell'amministrazione; dominio nuovo dedicato acquistato in Cloudflare; accesso al gestionale con la nuova Gmail dello stabilimento.
+
+Fatto e verificato:
+- database D1 creato in Europa occidentale, migrazioni 0000–0002 applicate;
+- applicazione Cloudflare Access self-hosted sul sottodominio `gestionale.` del dominio dedicato, policy Allow con la sola email dello stabilimento, sessione di un mese, accesso con codice via email (One-time PIN, da aggiungere a mano in Zero Trust → Identity providers: un'organizzazione nuova ha solo il login Cloudflare);
+- Worker pubblicato dal flusso GitHub «Pubblica su Cloudflare» (variabili e segreti nel repository, nessun valore in Git); `workers.dev` e anteprime spenti;
+- collaudo: senza login compare la pagina di Access; con l'email dello stabilimento il gestionale si apre, vuoto.
+
+Profili: per ora un solo accesso, quindi `ADMIN_EMAILS`/`LAB_EMAILS` non sono impostati e chi supera Access è amministrazione. La divisione Amministrazione/Laboratorio si attiva aggiungendo una seconda email alla policy e i due segreti del Worker.
+
+Limite noto: da una sessione Claude Code nel cloud la pubblicazione non riesce, perché il proxy sostituisce l'intestazione `Authorization` anche nel caricamento dei file statici (che usa un JWT temporaneo). Si pubblica dal flusso GitHub.
+
+Da fare: verifica del backup completo dal sito (`scripts/verify-backup.ts`); revoca del primo token API usato per D1 e verifiche; conferma dell'elenco operazioni del laboratorio quando servirà il secondo profilo.
 
 ## Prossimo passo
 
-1. Revisione della PR (anche Codex, se disponibile) e risposta ai rilievi.
-2. Pubblicazione tramite il flusso Sites autorizzato, dopo backup; poi verifica della migrazione 0002 e del backup sul sito.
+1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.
+2. Nuove pubblicazioni: Actions → «Pubblica su Cloudflare» → Run workflow, dopo un backup.
 3. Con i dati LOGO!: configurazione `bridge/ponte.local.json`, prova a linea ferma, poi collaudo con almeno 100 cartoni contati anche a mano.

@@ -38,7 +38,7 @@ Il nome digitato dell'operatore è un'attribuzione della registrazione, non un'i
 
 Il sito pubblicato si appoggia all'accesso riservato della piattaforma. Non renderlo pubblico per facilitare una prova. Una migrazione ad altro hosting richiede un confine di autenticazione equivalente e una procedura distinta per i dati.
 
-Dal 13/11/2026 Teo ha scelto di spostare la pubblicazione sul proprio account Cloudflare (`docs/CLOUDFLARE.md`): stesso Worker e D1, autenticazione con Cloudflare Access verificata nel codice (`AUTH_MODE=cloudflare-access`, `lib/server/auth.ts`, fallisce chiusa), `workers.dev` disattivato, pubblicazione con `scripts/cloudflare-deploy.mjs`. La configurazione Sites resta intatta finché il passaggio non è collaudato.
+Dal 13/11/2026 Teo ha scelto di spostare la pubblicazione sul proprio account Cloudflare (`docs/CLOUDFLARE.md`): stesso Worker e D1, autenticazione con Cloudflare Access verificata nel codice (`AUTH_MODE=cloudflare-access`, `lib/server/auth.ts`, fallisce chiusa), `workers.dev` disattivato, pubblicazione con `scripts/cloudflare-deploy.mjs`. Pubblicato e collaudato il 14/11/2026: si pubblica solo dal flusso GitHub «Pubblica su Cloudflare» (stato in `STATO.md`). La configurazione Sites resta intatta.
 
 ## Configurazione e portabilità
 

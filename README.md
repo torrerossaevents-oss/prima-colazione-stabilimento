@@ -33,7 +33,7 @@ Dopo una modifica ai file del ponte, rigenerare il download con `python scripts/
 
 ## Pubblicazione su Cloudflare
 
-In preparazione, in alternativa a Sites: guida in [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md) (account, dominio, Cloudflare Access, database D1, pubblicazione da GitHub, trasferimento dei dati da Sites). Prova senza account: `node scripts/cloudflare-deploy.mjs --check`.
+Pubblicato il 14/11/2026 dietro Cloudflare Access; nuove pubblicazioni dal flusso GitHub «Pubblica su Cloudflare». Guida in [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md) (account, dominio, Cloudflare Access, database D1, pubblicazione da GitHub, trasferimento dei dati da Sites). Prova senza account: `node scripts/cloudflare-deploy.mjs --check`.
 
 ## Aprire il progetto in un'altra app
 
