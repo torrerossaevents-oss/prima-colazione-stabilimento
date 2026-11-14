@@ -13,7 +13,7 @@ export const MAX_REQUEST_BYTES = 500_000;
 const CHUNK_BYTES = 800_000;
 const RECENT_AUDIT = 20;
 
-type Row = { payload: string; version: number; last_request_id: string | null };
+type Row = { payload: string; version: number; last_request_id: string | null; updated_at?: string | null };
 type Receipt = { id: string; digest: string; version: number };
 export type AuditRow = Audit;
 export type CommitInput = { action: Action; expectedVersion: number | null; requestId: string; actor: string; device?: { id: string; line?: string }; devicesEnabled?: boolean };
@@ -31,7 +31,7 @@ export async function sha256(value: string): Promise<string> {
 }
 
 async function readRow(db: D1Database): Promise<Row | null> {
-  return db.prepare('SELECT payload, version, last_request_id FROM workspaces WHERE id = ?').bind(WORKSPACE_ID).first<Row>();
+  return db.prepare('SELECT payload, version, last_request_id, updated_at FROM workspaces WHERE id = ?').bind(WORKSPACE_ID).first<Row>();
 }
 async function readReceipt(db: D1Database, id: string) {
   return db.prepare('SELECT id, digest, version FROM workspace_requests WHERE id = ? AND workspace_id = ?').bind(id, WORKSPACE_ID).first<Receipt>();
@@ -157,7 +157,9 @@ export async function commit(db: D1Database, input: CommitInput): Promise<Commit
     if (input.expectedVersion !== null && row.version !== input.expectedVersion) {
       return { ok: false, status: 409, error: 'Un altro dispositivo ha aggiornato i dati. Sono stati ricaricati: controlla e ripeti l’operazione.', ...(await readWorkspace(db)) };
     }
-    const now = new Date().toISOString();
+    // Strictly after the previous commit: operations saved within the same millisecond keep their order in the log.
+    const previous = Date.parse(row.updated_at ?? '');
+    const now = new Date(Math.max(Date.now(), Number.isFinite(previous) ? previous + 1 : 0)).toISOString();
     const stored = parseState(row.payload);
     // Bring back archived rows the action refers to (e.g. a document for an old order).
     const needs = archiveNeeds(input.action, stored);

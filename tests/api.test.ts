@@ -49,6 +49,8 @@ for (const engine of ['sqlite', 'd1'] as const) {
       const old = await post({ type: 'production.start', code: 'TEST-API', operator: 'Test', lotCode: 'TEST', expiry: '2099-12-31' }, 1, 'request-start');
       assert.equal(old.status, 200); assert.equal(old.body.duplicate, true); assert.equal(old.body.state.sessions.length, 1); assert.equal(old.body.state.sessions[0].cartons, 205); assert.equal(old.body.version, 207);
       assert.equal(await count(t, 'workspace_requests'), 207); assert.equal(await count(t, 'workspace_audit'), 207);
+      // Even 207 saves in a burst get distinct, increasing times: the log order never depends on random ids.
+      assert.equal(new Set((await t.raw('SELECT at FROM workspace_audit')).map(r => r.at)).size, 207, 'one distinct time per operation');
       const snapshot = await get(); assert.equal(snapshot.state.audit.length, 0, 'audit lives in its table'); assert.equal(snapshot.recentAudit.length, 20); assert.match(snapshot.recentAudit[0].detail, /parziale 205/);
     } finally { await t.close(); }
   });
