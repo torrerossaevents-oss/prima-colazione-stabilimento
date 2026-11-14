@@ -47,6 +47,30 @@ export function todayRome(value:string|Date=new Date()):string{
  const parts=romeFormat.formatToParts(new Date(value));
  return ['year','month','day'].map(type=>parts.find(p=>p.type===type)!.value).join('-');
 }
+/** UTC instant of 00:00 in Rome on `day` (exact on DST change days). */
+export function romeDayStart(day:string):string{
+ const base=Date.parse(day+'T00:00:00Z');
+ for(const hours of [1,2]){const t=base-hours*3_600_000;if(todayRome(new Date(t))===day&&todayRome(new Date(t-1))!==day)return new Date(t).toISOString();}
+ return new Date(base).toISOString();
+}
+/** History filters: days are Rome calendar days, both ends included. */
+export type AuditGroup='production'|'inventory'|'orders'|'catalog';
+export const AUDIT_GROUP_PREFIX:Record<AuditGroup,string>={production:'production.',inventory:'lot.',orders:'order.',catalog:'product.'};
+export type AuditFilter={from?:string;to?:string;q?:string;group?:AuditGroup};
+export function auditGroupOf(action:string):AuditGroup|undefined{
+ return (Object.keys(AUDIT_GROUP_PREFIX) as AuditGroup[]).find(g=>action.startsWith(AUDIT_GROUP_PREFIX[g]));
+}
+export function auditBounds(filter:Pick<AuditFilter,'from'|'to'>):{fromAt?:string;toAt?:string}{
+ if(filter.from)date(filter.from,'Dal giorno');if(filter.to)date(filter.to,'Al giorno');
+ if(filter.from&&filter.to&&filter.from>filter.to)fail('Il primo giorno deve essere precedente o uguale all’ultimo.');
+ return {...(filter.from?{fromAt:romeDayStart(filter.from)}:{}),...(filter.to?{toAt:romeDayStart(addDays(filter.to,1))}:{})};
+}
+/** Predicate for a filter: bounds computed once, then applied to many entries. */
+export function auditFilter(filter:AuditFilter):(entry:Audit)=>boolean{
+ const {fromAt,toAt}=auditBounds(filter);const q=filter.q?.trim().toLocaleLowerCase('it');const prefix=filter.group?AUDIT_GROUP_PREFIX[filter.group]:'';
+ return entry=>(!fromAt||entry.at>=fromAt)&&(!toAt||entry.at<toAt)&&(!prefix||entry.action.startsWith(prefix))&&(!q||entry.detail.toLocaleLowerCase('it').includes(q));
+}
+export function auditMatches(entry:Audit,filter:AuditFilter):boolean{return auditFilter(filter)(entry);}
 function text(value:unknown,name:string,max=160):string{
  if(typeof value!=='string'||!value.trim()||value.trim().length>max)fail(`${name}: inserisci un valore valido (massimo ${max} caratteri).`);
  return (value as string).trim();

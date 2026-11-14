@@ -57,3 +57,14 @@ Verifiche: controllo TypeScript superato; ispezione nel browser della panoramica
 - **Catalogo**: filtri per tipologia e «Solo sotto scorta»; esportazione dei soli risultati filtrati; nessuna colonna fissa sovrapposta: sotto 1.280 px le righe diventano schede con le etichette dei listini.
 - **Lotti**: filtri Tutti / Disponibili / In scadenza / Scaduti / Bloccati con conteggi, filtro per area, ordinamento per scadenza (il primo da usare in alto).
 - **Allineamento**: `tests/ui/overlap.mjs` controlla tutte le viste e il pannello di modifica a 390, 820, 1.024, 1.280 e 1.440 px e segnala testi sovrapposti o tagliati (tenendo conto delle aree che scorrono). Esito finale: nessuna scritta sovrapposta o tagliata.
+
+## Modalità prova, storico per data e menu a tendina (14/11/2026)
+
+Richiesta di Teo: vedere come avverrebbero produzione e storico, consultare lo storico per data, menu laterale apribile e chiudibile per lavorare a schermo intero.
+
+- **Modalità prova** (`lib/trial.ts`): archivio di esempio costruito con le operazioni vere (`applyAction`) e orari passati; in prova `act()` applica le regole nel browser e non chiama il server. Riconoscibile ovunque: fascia gialla a righe sotto la barra, bordo giallo della barra, cartellino «Prova», voce del menu evidenziata, nomi con «PROVA», autore «modalità prova». Contatore simulato: un cartone al secondo, una lettura (`production.count`) ogni 10 cartoni; fermandolo o aprendo la chiusura registra il resto.
+- **Storico**: raggruppato per giorno di Roma (titoli fissi durante lo scorrimento), selettore del giorno con frecce, «Oggi», «Tutti i giorni», schede per tipo (pallino colorato per tipo: verde produzione, blu magazzino, ambra ordini, blu notte catalogo), ricerca. I filtri sono applicati dal server (`/api/workspace/history?from&to&group`), anche sullo storico archiviato.
+- **Menu laterale**: pulsante in alto a sinistra su desktop; nascosto, il contenuto occupa tutta la larghezza; preferenza salvata nel browser. Su telefono resta il cassetto con ☰.
+- Ritmo medio della lavorazione aperta (cartoni/ora) accanto alle unità registrate.
+- Collegamenti nel testo (titoli dei giorni, codici del catalogo) con area di tocco di almeno 34 px (44 px su touch).
+- Verifiche: `tests/ui/smoke.mjs` (nuovi passaggi: storico per giorno e tipo, menu ricordato dopo la ricarica, prova senza alcuna scrittura sul server, tipografia anche in prova), `tests/ui/overlap.mjs` senza sovrapposizioni.

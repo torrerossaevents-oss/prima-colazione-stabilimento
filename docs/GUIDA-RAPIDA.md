@@ -6,8 +6,23 @@
 2. **Magazzino → Giacenze e lotti**: «Registra entrata» solo per la merce arrivata davvero (lotto, scadenza, ubicazione). Su ogni lotto: Blocco, Sposta, Scarto, Consumo, Rettifica. «Registra reso» mette la merce bloccata finché non la controlli.
 3. **Ordini**: «Nuovo ordine» prenota la merce (il fisico non cambia) → «Segna pronto» → «Registra partenza» con il DDT (se parte meno del previsto scrivi il motivo) → eventuale «Annulla residuo» → «Collega documento» per la fattura (nessun nuovo scarico).
 4. **Produzione**: «Nuova lavorazione» → leggi il codice con il lettore (o digitalo) → controlla articolo e confezionamento → operatore, lotto, scadenza → «Conferma e avvia». Aggiungi i cartoni contati, poi «Chiudi / salva lavorazione» (eventuali scarti con nota). Il riepilogo giornaliero è sotto, esportabile in CSV. Il magazzino non viene caricato automaticamente.
-5. **Storico attività**: cerca qualunque operazione.
-6. **Configurazione**: backup completo, dispositivi del conta-cartoni, pacchetto per il PC di linea.
+5. **Storico attività**: le operazioni sono raggruppate per giorno, dalla più recente. Scegli un giorno con il calendario o con le frecce (◀ ▶), oppure «Oggi» o «Tutti i giorni»; filtra per tipo (Produzione, Magazzino, Ordini, Catalogo) e cerca un codice, un lotto o un cliente. Clic sul titolo di un giorno per vedere solo quel giorno.
+6. **Configurazione**: backup completo, dispositivi del conta-cartoni, pacchetto per il PC di linea, modalità prova.
+
+### Menu laterale
+
+Il pulsante in alto a sinistra (accanto a «Stabilimento») nasconde o mostra il menu: con il menu nascosto le schermate usano tutta la larghezza. La scelta resta salvata su quel computer. Si apre anche dalla ricerca (Ctrl K → «menu laterale»). Sul telefono il menu si apre con ☰.
+
+### Modalità prova
+
+Serve per vedere come funzionano produzione e storico senza toccare i dati veri. Si attiva dal menu laterale («Modalità prova»), da Configurazione o dalla ricerca (Ctrl K).
+
+- Genera una settimana di esempio: articoli con «PROVA» nel nome, lavorazioni (anche lo stesso prodotto più volte nello stesso giorno), scarti, carichi a magazzino, consumi, ordini e una lavorazione aperta oggi.
+- In **Produzione** premi «Avvia contatore simulato»: aggiunge un cartone al secondo, come farebbero le fotocellule, e registra una lettura ogni 10 cartoni. «Chiudi / salva lavorazione» salva la lavorazione e non carica il magazzino, come nel gestionale vero.
+- In **Storico attività** e in «Produzione del giorno» trovi tutto, giorno per giorno.
+- Le regole sono le stesse del gestionale vero (stessi controlli, stessi messaggi), ma **nulla viene inviato all'archivio**: i dati restano solo in quel browser. La fascia gialla a righe e il cartellino «Prova» ricordano sempre che sei in prova.
+- «Ricomincia» rigenera i dati di esempio; «Esci dalla prova» torna all'archivio vero. Una prova lasciata aperta il giorno prima viene rigenerata con le date di oggi.
+- In prova dispositivi e backup non sono mostrati: restano quelli dell'archivio vero.
 
 ### In alto a destra
 

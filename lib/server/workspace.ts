@@ -3,7 +3,7 @@
  * hot state + durable receipt + audit rows + archive moves, all conditioned on the
  * same compare-and-swap result, so either everything is stored or nothing is.
  */
-import { applyAction, DomainError, initialState, todayRome, upgradeState, validateState, type Action, type Audit, type State } from '../domain.ts';
+import { applyAction, auditBounds, auditFilter, AUDIT_GROUP_PREFIX, DomainError, initialState, todayRome, upgradeState, validateState, type Action, type Audit, type AuditGroup, type State } from '../domain.ts';
 import { archiveNeeds, partition, rehydrate, type ArchiveKind, type ArchiveRow } from '../archive.ts';
 
 export const WORKSPACE_ID = 'prima-colazione';
@@ -47,17 +47,22 @@ function auditFromRow(row: { id: string; at: string; action: string; detail: str
 }
 
 /** Latest audit entries: archived table plus any legacy entries still inside the hot payload. */
-export async function auditPage(db: D1Database, options: { before?: { at: string; id: string }; limit?: number; q?: string; legacy?: Audit[] } = {}): Promise<{ items: Audit[]; next: { at: string; id: string } | null }> {
+export async function auditPage(db: D1Database, options: { before?: { at: string; id: string }; limit?: number; q?: string; from?: string; to?: string; group?: AuditGroup; legacy?: Audit[] } = {}): Promise<{ items: Audit[]; next: { at: string; id: string } | null }> {
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
   const q = options.q?.trim().toLocaleLowerCase('it') || '';
   const where = ['workspace_id = ?']; const binds: unknown[] = [WORKSPACE_ID];
   if (options.before) { where.push('(at < ? OR (at = ? AND id < ?))'); binds.push(options.before.at, options.before.at, options.before.id); }
   if (q) { where.push("lower(detail) LIKE ? ESCAPE '\\'"); binds.push(`%${q.replace(/[\\%_]/g, m => '\\' + m)}%`); }
+  // Rome calendar days (both included) and operation type; validated in auditBounds.
+  const { fromAt, toAt } = auditBounds(options);
+  if (fromAt) { where.push('at >= ?'); binds.push(fromAt); }
+  if (toAt) { where.push('at < ?'); binds.push(toAt); }
+  if (options.group) { where.push('action LIKE ?'); binds.push(AUDIT_GROUP_PREFIX[options.group] + '%'); }
   const { results } = await db.prepare(`SELECT id, at, action, detail, actor, moves FROM workspace_audit WHERE ${where.join(' AND ')} ORDER BY at DESC, id DESC LIMIT ?`).bind(...binds, limit + 1).all<Parameters<typeof auditFromRow>[0]>();
   let items = results.map(auditFromRow);
   if (options.legacy?.length) {
-    const before = options.before;
-    const extra = options.legacy.filter(a => (!before || a.at < before.at || (a.at === before.at && a.id < before.id)) && (!q || a.detail.toLocaleLowerCase('it').includes(q)));
+    const before = options.before; const matches = auditFilter({ q, from: options.from, to: options.to, group: options.group });
+    const extra = options.legacy.filter(a => (!before || a.at < before.at || (a.at === before.at && a.id < before.id)) && matches(a));
     items = [...items, ...extra].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
   }
   const page = items.slice(0, limit);

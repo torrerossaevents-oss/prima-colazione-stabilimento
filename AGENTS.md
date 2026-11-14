@@ -32,13 +32,13 @@ Leggere `docs/REQUISITI.md` prima di cambiare le regole di dominio. I documenti 
 
 ## Dati e accesso
 
-Il codice può essere pubblico; le registrazioni operative restano private. Non inserire in Git credenziali, token, database, esportazioni reali, indirizzi di clienti, log sensibili o documenti aziendali riservati. Usare dati di prova riconoscibili soltanto nei test e nell'anteprima locale.
+Il codice può essere pubblico; le registrazioni operative restano private. Non inserire in Git credenziali, token, database, esportazioni reali, indirizzi di clienti, log sensibili o documenti aziendali riservati. Usare dati di prova riconoscibili soltanto nei test, nell'anteprima locale e nella **modalità prova** (`lib/trial.ts`): questa costruisce i dati nel browser con le regole di `lib/domain.ts`, non scrive mai sul server, resta segnalata in ogni schermata e usa «PROVA» nei nomi. Ogni nuova chiamata al server deve restare esclusa in prova.
 
 Il nome digitato dell'operatore è un'attribuzione della registrazione, non un'identità verificata e non un permesso. Non dichiarare implementati ruoli, inviti o accesso di reparto finché non esiste una gestione effettiva lato server.
 
 Il sito pubblicato si appoggia all'accesso riservato della piattaforma. Non renderlo pubblico per facilitare una prova. Una migrazione ad altro hosting richiede un confine di autenticazione equivalente e una procedura distinta per i dati.
 
-Dal 13/11/2026 Teo ha scelto di spostare la pubblicazione sul proprio account Cloudflare (`docs/CLOUDFLARE.md`): stesso Worker e D1, autenticazione con Cloudflare Access verificata nel codice (`AUTH_MODE=cloudflare-access`, `lib/server/auth.ts`, fallisce chiusa), `workers.dev` disattivato, pubblicazione con `scripts/cloudflare-deploy.mjs`. La configurazione Sites resta intatta finché il passaggio non è collaudato.
+Dal 13/11/2026 Teo ha scelto di spostare la pubblicazione sul proprio account Cloudflare (`docs/CLOUDFLARE.md`): stesso Worker e D1, autenticazione con Cloudflare Access verificata nel codice (`AUTH_MODE=cloudflare-access`, `lib/server/auth.ts`, fallisce chiusa), `workers.dev` disattivato, pubblicazione con `scripts/cloudflare-deploy.mjs`. Pubblicato e collaudato il 14/11/2026: si pubblica solo dal flusso GitHub «Pubblica su Cloudflare» (stato in `STATO.md`). La configurazione Sites resta intatta.
 
 ## Configurazione e portabilità
 
