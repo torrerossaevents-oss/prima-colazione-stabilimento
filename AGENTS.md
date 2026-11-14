@@ -17,7 +17,8 @@ Leggere `docs/REQUISITI.md` prima di cambiare le regole di dominio. I documenti 
 - La chiusura di produzione salva la lavorazione. Il nuovo parziale riparte da zero; lo storico e il totale precedente rimangono.
 - Nessuna lavorazione con codice sconosciuto, nessuna seconda sessione attiva sulla stessa linea.
 - Conservare nella lavorazione il confezionamento usato all'avvio, anche se il catalogo cambia in seguito.
-- Non caricare automaticamente a magazzino il conteggio manuale o delle fotocellule. L'integrazione richiede un collaudo specifico.
+- Non caricare automaticamente a magazzino il conteggio manuale o delle fotocellule. L'integrazione richiede un collaudo specifico e una regola concordata per la quantità buona.
+- Il ponte usa solo credenziali di dispositivo (`docs/CONTRATTO-PONTE.md`); il dispositivo può soltanto leggere la lavorazione attiva della sua linea e chiuderla una volta.
 - Un errore o una risposta incerta non equivalgono a un salvataggio riuscito. Evitare i doppioni con identificativi stabili.
 
 ## Metodo di lavoro
@@ -37,13 +38,15 @@ Il nome digitato dell'operatore è un'attribuzione della registrazione, non un'i
 
 Il sito pubblicato si appoggia all'accesso riservato della piattaforma. Non renderlo pubblico per facilitare una prova. Una migrazione ad altro hosting richiede un confine di autenticazione equivalente e una procedura distinta per i dati.
 
+Dal 13/11/2026 Teo ha scelto di spostare la pubblicazione sul proprio account Cloudflare (`docs/CLOUDFLARE.md`): stesso Worker e D1, autenticazione con Cloudflare Access verificata nel codice (`AUTH_MODE=cloudflare-access`, `lib/server/auth.ts`, fallisce chiusa), `workers.dev` disattivato, pubblicazione con `scripts/cloudflare-deploy.mjs`. La configurazione Sites resta intatta finché il passaggio non è collaudato.
+
 ## Configurazione e portabilità
 
 Preservare `.openai/hosting.json`, il relativo `project_id`, i nomi dei binding e l'integrazione `sites()` di Vite. Non creare un nuovo sito per una normale modifica. Non modificare migrazioni già applicate: aggiungerne nuove.
 
 Mantenere lockfile e script di avvio, build e test. Un clone nuovo deve funzionare con Node.js 22.13 o superiore. `.sites-runtime`, `.wrangler`, `node_modules` e output di build restano esclusi dal versionamento.
 
-Il percorso locale previsto è `npm ci`, `npm run setup`, `npm run dev`. Per verificare una modifica usare `npm test`, `npm run check` e `npm run build`. Preservare le ricevute permanenti in `workspace_requests`; non sostituirle con una lista troncata in memoria. Il pilota ha un limite di 2 MB per lo stato operativo, 350 articoli, tre aree e una linea: non descriverlo come archivio illimitato o gestione di più ruoli già completata.
+Il percorso locale previsto è `npm ci`, `npm run setup`, `npm run dev`. Per verificare una modifica usare `npm test`, `npm run check` e `npm run build`. Preservare le ricevute permanenti in `workspace_requests`; non sostituirle con una lista troncata in memoria. Il pilota ha un limite di 2 MB per lo stato operativo (storico e righe chiuse da oltre 30 giorni stanno nelle tabelle di archivio, scritte nella stessa transazione), 350 articoli, tre aree e una linea: non descriverlo come archivio illimitato o gestione di più ruoli già completata. Ogni variazione del fisico deve essere un movimento esplicito (`moves`) nell'evento di storico. Il backup completo (`/api/workspace/backup`) si ripristina solo in un archivio vuoto. Lo stato di avanzamento è in `STATO.md`.
 
 ## Interfaccia
 

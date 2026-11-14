@@ -1,102 +1,95 @@
-# Collegamento LOGO! — preparazione e prima prova
+# Collegamento LOGO! — guida semplice
 
-Preparato il 9 novembre 2026 per l'arrivo dell'attrezzatura previsto il 10 novembre. Riferimento funzionale: progetto conta-cartoni Rev. 02. Questa guida accompagna il pacchetto `bridge`; non certifica un impianto già collegato.
+Aggiornata il 13 novembre 2026. Accompagna il pacchetto `bridge` (vedi `bridge/README.md`). Contratto con il gestionale: `docs/CONTRATTO-PONTE.md` nel repository del progetto. Questa guida **non** certifica un impianto collegato: finora il ponte è stato provato solo in simulazione.
 
-## Oggi, prima dell'arrivo
+## In due righe
 
-1. Scegliere il PC che rimarrà vicino alla linea e collegato alla rete Ethernet dello stabilimento. Annotare sistema operativo e versione; il pacchetto include avvii manuali per Windows.
-2. Estrarre tutto il pacchetto e verificare che sia disponibile Node.js 22.13 o superiore.
-3. Avviare `bridge/AVVIA-PROVA.cmd`. Il risultato atteso è: articolo di prova A, 200 cartoni; articolo di prova B, 150 cartoni; totale, 350 cartoni.
-4. Conservare l'esito della prova. Si tratta di dati simulati: non vanno importati nella produzione o nel magazzino reali.
-5. Preparare una vera etichetta prodotto e un piccolo gruppo di cartoni da usare nel collaudo. Controllare che il codice letto dall'etichetta corrisponda esattamente a un articolo del catalogo.
+Il **LOGO!** conta i cartoni dalle due fotocellule e tiene un totale che non si azzera. Il **ponte** sul PC legge quel totale sulla rete locale, segue la lavorazione aperta nel gestionale e, alla pressione del pulsante di chiusura, salva e invia il numero di cartoni. Fino al collaudo completo il gestionale continua con i conteggi manuali.
 
-Il software LOGO! Soft Comfort acquistato serve a programmare il dispositivo. Il programma conta-cartoni, la mappa dei dati e lo scambio con il gestionale sono parti del progetto ancora da completare.
+## Cosa è pronto e cosa no
 
-## Domani, con tecnico e materiale disponibile
-
-| Passo | Risultato da ottenere |
+| Stato | Parti |
 | --- | --- |
-| Verifica della fornitura | Modello, firmware e versione Soft Comfort effettivamente ricevuti annotati. |
-| Installazione hardware | Montaggio e cablaggio secondo il progetto, eseguiti dal tecnico competente. |
-| Rete locale | PC e LOGO! raggiungibili sulla LAN con indirizzi concordati; nessuna porta PLC esposta a Internet. |
-| Programma LOGO! | Conteggio della sequenza valida dei sensori, memoria e stati di errore verificati. |
-| Mappa dati | Indirizzi, tipi e ordine delle parole confermati, senza valori presunti. |
-| Lettura diagnostica | Con linea ferma e sensori liberi, `LEGGI-LOGO.cmd` restituisce due letture uguali, coerenti con il display. |
-| Prova completa | Conteggio, chiusura, recupero e collegamento al gestionale collaudati dopo aver completato le parti mancanti. |
+| **Simulato e testato** (PC, senza hardware) | Logica dei sensori; contatore e baseline; chiusura con pulsante; archivio SQLite; coda e invio con ritentativi; Internet assente; PLC non raggiungibile o riavviato; PC riavviato; backup e ripristino. |
+| **Implementato, da verificare sull'impianto** | Lettura Modbus del LOGO! reale; lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); collegamento al gestionale con token del dispositivo; file `.cmd` su Windows (non provati su Windows); avvio automatico. |
+| **Non implementato** | Programma LOGO! conta-cartoni; carico automatico a magazzino; apertura di lavorazioni dal PC. |
 
-Il pulsante di chiusura non è un arresto macchina. Le operazioni sulla linea seguono la procedura prevista dall'impianto.
+## Oggi, senza hardware (Teo)
 
-## Foglio parametri del tecnico
+1. Installare Node.js 22.13 o superiore sul PC della linea.
+2. Estrarre tutto lo ZIP in una cartella.
+3. Doppio clic su `bridge\AVVIA-PROVA.cmd`. Atteso: `SIMULAZIONE SUPERATA`, A 200 cartoni, B 150, totale 350.
+4. Annotare l'esito. Sono dati simulati: non vanno inseriti nel gestionale o nel magazzino.
 
-Compilare una copia locale. Nessun indirizzo o registro è assegnato da questo documento.
+## Dati da raccogliere (con il tecnico)
 
-| Parametro | Valore da rilevare e confermare |
+Nessun valore è assegnato da questo documento: ogni riga va rilevata sull'impianto e confermata.
+
+| Dato | Valore |
 | --- | --- |
-| Modello e codice articolo del LOGO! | Da compilare |
-| Firmware e versione Soft Comfort | Da compilare |
-| PC: nome operativo, sistema e versione Node.js | Da compilare |
-| Indirizzo IPv4 privato LOGO! / PC | Da compilare |
-| Porta TCP e `unitId` | Da compilare |
-| Funzione di lettura: 03 oppure 04 | Da compilare |
-| Registro iniziale del cumulativo, zero-based | Da compilare |
-| Numero registri, formato unsigned 16/32 bit | Da compilare |
-| Ordine parole BE/LE e verifica con un valore noto | Da compilare |
-| Comportamento del cumulativo a spegnimento e riavvio | Da verificare |
-| Limite del contatore e gestione del suo superamento | Da definire e collaudare |
-| Tempi di filtraggio, velocità, distanza minima dei cartoni | Da misurare sulla linea |
-| Meccanismo di lettura coerente durante il conteggio | Da progettare e verificare |
-| Responsabile e data della verifica | Da compilare |
+| Modello e codice articolo del LOGO!, firmware | Da compilare |
+| Versione di LOGO! Soft Comfort | Da compilare |
+| Sensori: modello, tipo (barriera/riflessione), distanza tra i due fasci, posizione sul nastro | Da compilare |
+| Pulsante di chiusura: modello, ingresso del LOGO!, cablaggio | Da compilare |
+| Rete: IPv4 del LOGO!, IPv4 del PC, porta TCP, `unitId` Modbus | Da compilare |
+| PC: nome, versione di Windows, versione di Node.js, utente che avvia il ponte | Da compilare |
+| Avvio del ponte: all'accesso dell'utente oppure all'accensione | Da decidere |
+| Registro contatore cumulativo: funzione 03/04, indirizzo zero-based, 1 o 2 registri, ordine parole BE/LE | Da compilare |
+| Limite del contatore (16 o 32 bit) e cosa succede al superamento | Da verificare |
+| Registro stato sensori (proposta: bit 0 = A, bit 1 = B, 1 = fascio interrotto) | Da confermare |
+| Registro contatore richieste di chiusura (cresce di 1 a ogni pressione) | Da compilare |
+| Registro di riscontro scritto dal PC (funzione 06 o 16) e cosa fa il LOGO! quando lo riceve | Da compilare |
+| Ritenzione: i contatori restano dopo spegnimento e riavvio del LOGO!? | Da verificare |
+| Tempo minimo del filtro sensori (rimbalzi) nel programma LOGO! | Da misurare |
+| Tempo con sensori liberi prima di accettare la chiusura | Da misurare |
+| Cartoni al secondo massimi possibili sulla linea | Da misurare |
+| Intervallo di lettura del ponte | Da concordare |
+| Responsabile e data delle verifiche | Da compilare |
 
-La configurazione `logo.config.example.json` è intenzionalmente incompleta. Creare `logo.config.local.json` e compilarla soltanto dopo la verifica della mappa. Il comando diagnostico è in sola lettura; l'opzione `--linea-ferma` richiede che la pausa sia già stata effettuata e verificata dall'operatore.
+Questi dati vanno in `bridge\ponte.local.json` (copia di `ponte.config.example.json`). Se ne manca uno, il servizio in modalità impianto si rifiuta di partire ed elenca i campi mancanti.
 
-## Scambio dei dati da implementare
+## Cosa deve fare il programma LOGO!
 
-Questi sono segnali funzionali proposti, non indirizzi già programmati. Il tecnico e chi sviluppa il ponte devono concordare la rappresentazione prima di scrivere registri.
+La logica di riferimento è in `bridge/core/sensors.mjs` ed è provata dai test: il programma LOGO! deve comportarsi allo stesso modo.
 
-| Informazione | Direzione prevista | Scopo |
-| --- | --- | --- |
-| Contatore cumulativo conservato | LOGO! verso PC | Riferimento assoluto: non sommare di nuovo lo stesso valore a ogni lettura. |
-| Stato sensori liberi e anomalia conteggio | LOGO! verso PC | Verificare se la chiusura può essere accettata. |
-| Identificativo riavvio o stato di recupero | LOGO! verso PC | Rilevare riavvii e variazioni inattese senza attribuirle a nuova produzione. |
-| Stato di comunicazione e aggiornamento | LOGO! e PC | Riconoscere dati non più aggiornati e perdita del collegamento. |
-| Richiesta di avvio identificata e riscontro | PC e LOGO! | Associare una sola lavorazione al prodotto già confermato. |
-| Richiesta di chiusura identificata | LOGO! verso PC | Distinguere una richiesta nuova dalla ripetizione del pulsante. |
-| Conferma di salvataggio della stessa richiesta | PC verso LOGO! | Autorizzare la ripartenza solo dopo il salvataggio locale riuscito. |
+- Stato dei due sensori «AB»: `00` liberi, `10` solo il primo, `11` entrambi, `01` solo il secondo.
+- Un cartone vale +1 solo con la sequenza completa `00 → 10 → 11 → 01 → 00`.
+- Stesso stato ripetuto (cartone fermo): nessun effetto.
+- Arretramento (`10→00`, `11→10`, `01→11`): anomalia, nessun conteggio.
+- Salti (`00→11`, `00→01`, …): anomalia, nessun conteggio.
+- Filtro rimbalzi: uno stato vale solo se resta uguale per il tempo minimo misurato.
+- Totale cumulativo che non si azzera alla chiusura; contatore delle richieste di chiusura; registro di riscontro.
 
-L'associazione comprende almeno identificativo lavorazione, linea, articolo, lotto, scadenza, operatore, confezionamento, inizio e fine. Per i prodotti già espressi in `CRT`, ogni unità è un cartone; i pezzi indicati nel nome non autorizzano una conversione automatica.
+## Chiusura di una lavorazione
 
-Il giorno di produzione segue l'avvio della lavorazione nel fuso `Europe/Rome`. Una lavorazione che termina dopo mezzanotte rimane nel giorno in cui è iniziata, come previsto attualmente dal gestionale.
+1. Fermare gli arrivi secondo la procedura della linea e far uscire l'ultimo cartone.
+2. Premere il pulsante di chiusura **una volta**. Pressioni ripetute della stessa richiesta non creano una seconda chiusura.
+3. Il ponte aspetta i sensori liberi e stabili, poi salva tutto sul PC in un'unica operazione.
+4. Solo dopo il salvataggio, se le scritture sono abilitate, manda il riscontro al LOGO!.
+5. Il parziale riparte da zero; il totale del LOGO! non viene azzerato.
+6. Il ponte invia la chiusura al gestionale; se manca Internet la conserva e ritenta.
+7. Il prodotto successivo si apre nel gestionale. Avviare la linea quando lo stato del ponte mostra la nuova lavorazione seguita.
 
-## Regola di chiusura
-
-1. Sospendere gli arrivi secondo la procedura della linea e lasciare uscire l'ultimo cartone.
-2. Accettare una sola richiesta di chiusura identificata quando i sensori risultano liberi.
-3. Fissare il riferimento finale e salvare localmente lavorazione e evento da trasmettere, nella stessa operazione persistente.
-4. Solo dopo il salvataggio riuscito, inviare il riscontro della richiesta al LOGO!.
-5. Azzerare il parziale della lavorazione; mantenere cumulativo e storico. Il prodotto successivo richiede una nuova identificazione e un avvio esplicito.
-6. Trasmettere l'evento al gestionale con identificativo stabile; un ritentativo non deve creare una seconda lavorazione o un secondo movimento.
-
-Il pacchetto attuale prova l'archivio locale con dati simulati. Non contiene ancora i comandi e i riscontri LOGO! né il trasmettitore autenticato verso il gestionale. La lettura diagnostica non esegue questa procedura di chiusura.
-
-## Prove prima dell'uso operativo
+## Prova sul campo necessaria prima dell'uso
 
 | Prova | Esito da registrare |
 | --- | --- |
-| 100 cartoni contati anche manualmente | Il conteggio fisico coincide con quello del LOGO!; ripetere con formati e velocità previsti. |
-| Cartone fermo tra i sensori | Nessun incremento ripetuto. |
-| Arretramento o passaggio incompleto | Anomalia visibile, nessun conteggio accettato senza verifica. |
-| Due articoli successivi, 200 e 150 cartoni | Due lavorazioni distinte; parziale nuovo a zero; totale 350. |
-| Pressione ripetuta di chiusura | Una sola chiusura salvata, storico conservato. |
-| Internet assente durante una lavorazione già identificata | Quando il ponte completo sarà attivo: salvataggio locale, ripresa degli invii senza doppioni. Nuovi avvii offline restano bloccati. |
-| PC o collegamento LOGO! interrotto | Nessuna falsa conferma di salvataggio o reset; anomalia e procedura di recupero. |
-| Riavvio con una lavorazione aperta | Recupero controllato senza perdita, riassegnazione o doppio conteggio. |
-| Diminuzione inattesa o superamento del limite del contatore | Blocco dell'acquisizione e verifica; nessuna quantità negativa o salto interpretato automaticamente. |
-| Invio cloud ripetuto | Quando implementato: stessa registrazione riconosciuta, nessun doppio carico. |
+| Almeno 100 cartoni contati anche a mano | Conteggio a mano = LOGO! = ponte = gestionale. |
+| Più formati e velocità previsti | Ripetere la prova per ogni formato e velocità. |
+| Cartone fermo tra i sensori (sosta) | Nessun conteggio in più. |
+| Cartone che arretra o passa a metà | Anomalia visibile, nessun conteggio. |
+| Due lavorazioni di seguito (es. 200 e 150) | Due chiusure distinte, parziale da zero, totale corretto. |
+| Pressione ripetuta del pulsante | Una sola chiusura. |
+| Cavo di rete del PC staccato durante una lavorazione | Chiusura conservata sul PC e inviata dopo, senza doppioni; nessuna nuova lavorazione offline. |
+| Cavo del LOGO! staccato | «PLC non raggiungibile» nel log; nessuna quantità stimata; ripresa corretta. |
+| Riavvio del LOGO! con lavorazione aperta | Con ritenzione: conteggio prosegue. Senza: «da verificare», nessuna quantità inventata. |
+| Riavvio del PC con lavorazione aperta | Ripresa dall'archivio, nessun doppio conteggio. |
+| Token revocato in Configurazione | Allarme, invii fermi, nessun evento perso. |
+| Backup e ripristino | Stessi eventi e stessa baseline dopo il ripristino. |
+| Chiusura vista nel gestionale | Lavorazione chiusa con il numero giusto e le eventuali anomalie. |
 
-I cartoni contati non diventano automaticamente quantità buone disponibili. Regole su scarti, controlli qualità e carico a magazzino vanno concordate e collaudate prima di attivare quell'automatismo.
+Una simulazione riuscita non sostituisce queste prove. I cartoni contati non diventano merce disponibile a magazzino: il carico automatico non è previsto.
 
-## Consegna e conservazione
+## Riservatezza
 
-Conservare codice e documenti generici nel repository del progetto. Il programma LOGO! validato potrà essere versionato dopo aver escluso credenziali e dati riservati. Configurazioni di rete, database, report reali e chiavi di collegamento devono restare negli archivi locali riservati.
-
-Prima dell'uso continuativo vanno completati trasmissione autenticata, riscontri, ripresa dopo errore, avvio automatico del servizio e procedura di backup. Annotare gli esiti del collaudo sul sistema effettivamente installato; una simulazione riuscita non sostituisce questa verifica.
+Configurazioni di rete, token, archivi, log e rapporti reali restano sul PC o in archivi riservati, mai nel repository. Il programma LOGO! validato potrà essere conservato nel progetto dopo aver tolto dati riservati.

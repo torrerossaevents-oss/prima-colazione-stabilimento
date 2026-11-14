@@ -33,7 +33,7 @@ Dal 9 novembre 2026 il catalogo prevede anche categoria commerciale e tre listin
 
 La merce preparata ma non partita è ancora fisicamente presente. Una fattura arrivata prima della merce non genera una ricezione. Il riferimento documento non equivale all'emissione o alla conservazione fiscale del documento.
 
-Il processo completo prevede anche differenze fra DDT e quantità effettiva, resi bloccati in attesa di controllo, scarti e consumi interni motivati. Eventuali moduli dedicati a questi casi devono essere implementati e verificati esplicitamente; la prima versione non deve dichiarare completezza tramite semplici etichette o campi generici.
+Il processo completo prevede anche differenze fra DDT e quantità effettiva, resi bloccati in attesa di controllo, scarti e consumi interni motivati. Dal 13 novembre 2026 sono implementati come operazioni distinte: **reso** (entra come merce bloccata, con motivo e riferimento), **scarto** (dalla merce libera o da quella bloccata, con motivo e responsabile), **consumo interno** (solo merce libera non scaduta) e **motivo obbligatorio** per una partenza inferiore al residuo. Ogni variazione del fisico è registrata come movimento esplicito nell'evento di storico: la somma dei movimenti coincide con la giacenza (verificato nei test).
 
 ## Produzione
 
@@ -43,7 +43,7 @@ Prima dell'avvio si legge il codice esatto dell'articolo. Un codice sconosciuto 
 
 Il giorno di produzione deriva dall'avvio nel fuso `Europe/Rome`; una chiusura dopo mezzanotte non sposta retroattivamente la lavorazione al giorno successivo.
 
-Nella prima versione il conteggio è manuale. La chiusura conserva la quantità e termina la sessione; la lavorazione successiva parte da zero. Il comando non cancella lo storico e non comanda motore o sicurezze della macchina.
+Il conteggio è manuale oppure, se è registrato un ponte, «da fotocellule» (scelto all'avvio). Una lavorazione da fotocellule non accetta conteggi manuali e si chiude con il pulsante sulla linea; la chiusura manuale richiede un motivo e resta segnalata. La chiusura conserva cartoni letti ed eventuali scarti e termina la sessione; la lavorazione successiva parte da zero. Il comando non cancella lo storico e non comanda motore o sicurezze della macchina.
 
 Il prodotto successivo richiede una nuova identificazione. Anche riutilizzare lo stesso articolo richiede un nuovo avvio esplicito. Un salvataggio incerto o fallito non deve mostrare una conferma falsa o permettere di perdere la sessione.
 

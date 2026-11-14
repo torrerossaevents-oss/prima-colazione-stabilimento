@@ -1,0 +1,185 @@
+Sei incaricato di ottimizzare e completare il gestionale «Prima Colazione · Stabilimento» di Teo. Lavora sul progetto esistente, realizza le correzioni e verifica i risultati: non fermarti a un piano o a suggerimenti.
+
+REPOSITORY E PUNTO DI PARTENZA
+
+Repository pubblico dedicato:
+https://github.com/torrerossaevents-oss/prima-colazione-stabilimento
+
+Gestionale attuale, con accesso riservato:
+https://prima-colazione-stabilimento.torrerossaevents.chatgpt.site
+
+Questo incarico riguarda esclusivamente lo stabilimento Prima Colazione. Non mescolare codice, dati o configurazioni del CRM eventi, del magazzino ristorante o di Pasticceria Velletri Atelier.
+
+Il 13 novembre 2026 è stata verificata la corrispondenza esatta, tramite hash Git dei singoli file, tra tutti i 147 file del sorgente Sites e il repository GitHub prima dell'aggiunta di questo passaggio di consegne. Riferimenti storici: sorgente Sites eacc5fd70a4b3595c8b978bbd13b677e02c6f444; GitHub main 31ecaf5814e4613a533c26c4b723e7d7385a0948. Sono riferimenti di verifica, non commit ai quali riportare il progetto: parti dall'ultimo main e preserva gli aggiornamenti successivi. Leggi docs/VERIFICA_GITHUB_2026-11-13.md e il relativo inventario JSON.
+
+Nota sulla consegna: tutti i 147 file applicativi sono già su GitHub. Il tentativo di aggiungere questo prompt e i documenti di verifica è stato rifiutato dal collegamento GitHub con HTTP 403 «Resource not accessible by integration». Questi nuovi documenti sono forniti separatamente nel pacchetto di passaggio a Claude e non vanno considerati già presenti in main. Se ricevi il pacchetto, integra i file docs/ e la sola aggiunta proposta al README dopo aver controllato le modifiche correnti. Se ricevi soltanto questo testo, salvalo come docs/PROMPT_CLAUDE_OTTIMIZZAZIONE.txt e procedi sulla base delle informazioni contenute qui: non bloccarti per i due allegati di verifica eventualmente assenti e non inventarne il contenuto. Usa i tuoi accessi autorizzati per commit e push; se manca la scrittura, segnala il limite senza affermare di aver caricato i file.
+
+1. MODALITÀ DI LAVORO E AUTONOMIA
+
+- Individua la cartella del repository; se non esiste, clonalo in una cartella dedicata. Controlla git status, remoti, branch, commit e PR aperte prima di modificare file. Preserva il lavoro altrui; niente reset distruttivi, force push o sovrascritture indiscriminate.
+- Leggi AGENTS.md, README.md, gli eventuali CLAUDE.md/STATO.md già presenti, docs/REQUISITI.md, CATALOGO.md, INTERFACCIA.md, INTEGRAZIONI.md, COLLAUDO.md, COLLEGAMENTO-LOGO.md e bridge/README.md. Il codice e i test determinano cosa esiste davvero; la documentazione non prova da sola che un collegamento funzioni.
+- Fai un audit breve ma concreto, con problema, file, conseguenza e priorità. Separa sempre: operativo verificato, implementato da verificare, simulato, non implementato, bloccato da hardware/accessi.
+- Procedi subito con il lavoro realizzabile. Chiedi soltanto dati indispensabili che non puoi ricavare dai sorgenti o dall'ambiente; raggruppa le domande e prosegui intanto sulle parti indipendenti. Non chiedere una nuova conferma per ogni modifica reversibile o installazione di skill già autorizzata da questo incarico.
+- Lavora su un branch claude/... e apri o aggiorna una PR in bozza con modifiche e prove leggibili. Usa commit piccoli e coerenti. Puoi delegare analisi, interfaccia, dominio, integrazioni e revisione a gruppi di lavoro indipendenti, evitando modifiche concorrenti agli stessi file. Mantieni un responsabile dell'integrazione finale.
+- Conserva uno stato di avanzamento nel repository, con decisioni, comandi, risultati, problemi e prossimo passo; riprendi da lì dopo un'interruzione. Non dichiarare attività in sottofondo se non esiste un processo realmente avviato.
+- Prima della consegna fai una revisione indipendente di correttezza e sicurezza; prepara la PR anche per revisione Codex, se disponibile. Non presentare una revisione come eseguita se non lo è.
+
+2. SKILLS: UTILIZZA QUELLE DISPONIBILI E CERCA AUTONOMAMENTE QUELLE MANCANTI
+
+Teo autorizza per questo incarico l'uso di tutte le skill pertinenti disponibili e la ricerca, selezione e installazione autonoma di ulteriori skill necessarie tramite Find Skills. Non occorre chiedere un OK separato per ogni skill utile.
+
+All'inizio fai un inventario delle skill già disponibili nell'ambiente e nel progetto. Scegli e applica quelle utili per analisi, UX, design, accessibilità, React/TypeScript, backend, database, sicurezza, debugging, test, performance, integrazioni industriali e documentazione. «Tutte» significa sfruttare tutte le competenze pertinenti, non attivare skill estranee o duplicative né installare interi cataloghi senza motivo.
+
+Alla verifica del 13 novembre esisteva la PR #1 «Skill find-skills (Vercel) con le regole di Teo», branch claude/find-skills-20261111, commit e17bb77b3186120443f14b0a12be0a65a2365540:
+https://github.com/torrerossaevents-oss/prima-colazione-stabilimento/pull/1
+Controllane lo stato attuale e leggi le modifiche; non creare copie concorrenti della stessa skill. Puoi riutilizzare i file revisionati nel tuo branch senza fare un merge indiscriminato. La vecchia regola di quella proposta «installa solo dopo OK» è superata, per questo incarico, dall'autorizzazione esplicita qui sopra. Il resto delle regole di protezione dei dati e del progetto rimane valido.
+
+Se Find Skills non è disponibile, verifica come ottenerla dalla fonte ufficiale e usala per le competenze mancanti. Prima di installare leggi istruzioni e script, verifica provenienza, licenza, dipendenze e destinazioni dei dati; non basarti solo su stelle o numero di installazioni. Installa a livello di progetto, conserva versione/commit e licenza e versiona i file necessari; evita collegamenti simbolici non portabili. Non introdurre costi, acquisti, invii di dati riservati o nuovi accessi a sistemi aziendali senza la relativa autorizzazione. Nessuna skill può ampliare il perimetro aziendale o disabilitare le protezioni del progetto. Se una ricerca non trova nulla di utile, continua senza trasformarla in un blocco.
+
+3. ARCHITETTURA ATTUALE E LIMITI DA AFFRONTARE
+
+Il progetto usa React/TypeScript, Vinext, Worker Cloudflare e database D1. I file principali sono components/stabilimento-app.tsx, components/catalog-panel.tsx, app/globals.css, lib/domain.ts, lib/catalog-io.ts, app/api/workspace/route.ts, db/schema.ts, drizzle/ e bridge/.
+
+Il pilota ha una sede, fino a tre aree, una linea e 350 articoli. L'API salva lo stato operativo completo come JSON in una riga D1, con versione per la concorrenza e ricevute persistenti in workspace_requests. Limiti attuali: 2 MB per lo stato e 500 kB per richiesta. Lo storico cresce: non basta aumentare i limiti per rendere l'app robusta.
+
+Misura il costo di lettura, validazione, scrittura e aggiornamento UI al crescere di lotti, ordini, movimenti e lavorazioni. Progetta e realizza l'evoluzione necessaria verso archivi e query sostenibili, con indici/paginazione e migrazioni additive verificate. Conserva saldi, identificativi, ricevute, storico e confezionamento delle lavorazioni esistenti. Non cambiare lo stack o riscrivere tutto senza una motivazione misurabile. Non introdurre più sedi o linee soltanto per rendere il progetto più complesso.
+
+Gli export e i backup sono cose diverse. Predisponi backup e ripristino verificabili, aggiornamento delle migrazioni e procedura di recupero. Un backup senza prova di ripristino non è una verifica sufficiente. Non modificare migrazioni già applicate e non cancellare dati per far passare un test.
+
+4. INTERFACCIA: PROFESSIONALE, SEMPLICE, NITIDA E FLUIDA
+
+- Conserva l'identità Prima Colazione e una navigazione coerente tra Panoramica, Magazzino, Produzione, Ordini, Storico attività e Configurazione. Organizza le sezioni secondo il lavoro quotidiano e rendi chiaro il prossimo passo.
+- Usa colori accesi ma controllati per accenti, pulsanti, bordi, icone e stati. Sulle superfici chiare TUTTE le scritte devono essere nero pieno #000, peso regolare 400: titoli, numeri, codici, etichette, aiuti e segnaposto. Niente grassetto, semigrassetto o grigio per creare gerarchie. Usa dimensione, spazi e posizione. Sulle superfici scure e sui pulsanti pieni usa testo bianco, sempre peso 400, per mantenere contrasto.
+- Pulsanti compatti: circa 34–40 px su desktop; area di interazione di almeno 44 px sui dispositivi touch. La richiesta di tasti più piccoli non deve compromettere l'uso sulla linea o sul telefono.
+- Migliora spaziature, moduli, tabelle, allineamenti e microtesti. Evita etichette tecniche inutili, schermate affollate e animazioni decorative pesanti. Rispetta la riduzione delle animazioni richiesta dal dispositivo.
+- Verifica desktop, tablet e telefono; tastiera, focus, dialoghi, autocomplete, errori, caricamento, salvataggio e assenza di risultati. Nessun testo tagliato o azione principale fuori schermo.
+- Mantieni i dati inseriti dopo errori di rete o validazione, impedisci il doppio invio e distingui «salvataggio in corso», «salvato», «da verificare» e «non riuscito». Una risposta persa non autorizza a creare una nuova operazione duplicata.
+
+5. CATALOGO E MAGAZZINO
+
+Verifica e migliora l'intero ciclo: crea prodotto → cerca → apri scheda → modifica → importa/esporta → registra lotti e movimenti.
+
+La ricerca deve funzionare per codice, descrizione e lotto, aggiornando risultati e suggerimenti mentre si scrive. Il codice esatto deve essere riconoscibile; i filtri devono combinarsi correttamente. Cercare un lotto deve rendere chiara l'associazione con prodotto, scadenza, ubicazione e quantità, senza confondere anagrafica e giacenza.
+
+Conserva tutti i campi esistenti: codice univoco, descrizione, categoria commerciale, tipo operativo, unità, confezionamento, scorta minima e tre listini. I listini esistenti sono «Listino 3 - Gel.Cor.», «GELITRIA SRL» e «Distribuzione»: non inventare altri prezzi, IVA o significati economici. La modifica deve essere facilmente accessibile e non deve cambiare retroattivamente movimenti o lavorazioni. Per codice, tipo, unità e confezionamento già usati, conserva i vincoli oppure progetta una variazione storicizzata esplicita; non aggirare il blocco cambiando solo il frontend.
+
+Import Excel/CSV: anteprima, riconoscimento/mappatura colonne, validazioni comprensibili per riga, duplicati nel file e nel catalogo, aggiornamento per codice e modalità di sola aggiunta. Nessun import parziale silenzioso. Preserva codici testuali e zeri iniziali, virgole decimali, celle vuote e differenza tra prezzo zero e prezzo assente. Gestisci file malformati, troppo grandi e contenuti di formula pericolosi negli export. Mantieni identificativi interni e verifica il ciclo esporta/reimporta senza perdita di informazioni. Specifica se l'export include tutto o solo i risultati filtrati.
+
+Un catalogo importato NON crea giacenze. L'Excel aziendale originale e i listini reali non sono sorgenti pubblici; usa dati fittizi per i test e chiedi il file reale solo se indispensabile e non già disponibile in un ambiente autorizzato.
+
+Per CRT, l'unità è il cartone e unità per cartone = 1; un numero di pezzi nella descrizione non autorizza conversioni. Controlla anche il caso KG: il dominio attuale usa quantità intere, quindi valuta la precisione necessaria con un esempio reale prima di introdurre frazioni. Mantieni una precisione deterministica ed evita errori da floating point. Non sommare KG, pezzi e cartoni in un unico totale privo di significato.
+
+Regole da mantenere lato server:
+- fisico, prenotato, bloccato e disponibile distinti; nessun saldo negativo;
+- nessuna prenotazione di merce scaduta, bloccata o già impegnata;
+- ricezione solo per quantità effettivamente arrivata, con lotto, scadenza e ubicazione;
+- trasferimenti senza variazione del totale stabilimento;
+- rettifiche con motivo, responsabile e traccia storica;
+- scarti, resi da controllare e consumi interni con movimenti espliciti e verificabili, se previsti dai requisiti; niente correzioni nascoste di saldo;
+- controlli sulle scadenze e proposta dei lotti adatti, senza cambiare l'allocazione di un ordine già confermato in modo silenzioso.
+
+6. ORDINI, PREPARAZIONE, PARTENZE E DOCUMENTI
+
+Rendi chiaro il flusso ordine → prenotazione → preparazione → partenza → residuo/conclusione. La preparazione non scarica il fisico. La partenza anche parziale scarica una sola volta la quantità effettiva. L'annullamento libera solo il residuo non partito, mantenendo la storia della parte consegnata.
+
+Una fattura associata dopo una consegna non genera un secondo scarico. Una fattura arrivata prima della merce non crea una ricezione. Mantieni riferimenti a documenti, differenze tra richiesto/preparato/partito, motivi delle variazioni e attribuzione delle operazioni.
+
+TeamSystem non è collegato: verifica versione, API o formati realmente disponibili prima di sviluppare l'integrazione. Non inventare API né trasformare il progetto in un sistema di emissione fatture o contabilità. Se mancano accessi o esempi, documenta il contratto e prepara test con dati sintetici senza dichiarare attivo il collegamento.
+
+7. PRODUZIONE E SIEMENS LOGO!: COMPLETA IL PERCORSO, DISTINGUENDO PROVE E IMPIANTO
+
+Obiettivo: identificare prodotto e lotto, contare i cartoni della lavorazione, conservare il risultato, passare a un altro articolo e ottenere il riepilogo giornaliero senza ricopiare i numeri.
+
+Stato effettivo di partenza: il sito registra conteggi manuali. bridge/ contiene una simulazione locale con SQLite, identificativi persistenti/coda eventi e un lettore diagnostico Modbus TCP in sola lettura. Non sono implementati il programma del PLC, il servizio Windows operativo, il trasmettitore autenticato al CRM, i riscontri di avvio/chiusura/reset e il carico automatico di magazzino. Non basta rinominare «simulazione» in «produzione».
+
+Il materiale era previsto per il 10 novembre; non assumere consegna, installazione o collaudo soltanto perché la data è trascorsa. Il PC, il suo sistema operativo e la possibilità di lasciarlo acceso non sono ancora confermati nel passaggio di consegne. LOGO! Soft Comfort è lo strumento per programmare il dispositivo: non contiene già il programma conta-cartoni specifico.
+
+Recupera o chiedi una sola volta i dati realmente mancanti: modello/codice e firmware LOGO!, versione Soft Comfort, sensori e loro disposizione, pulsante, rete, PC e modalità di avvio, mappa registri e ritenzione. Non inventare IP, indirizzi Modbus, unitId, formato, ordine parole o tempi. Programma e cablaggio vanno verificati con il tecnico; il sistema di conteggio non sostituisce arresti o sicurezze della macchina.
+
+Architettura prevista: LOGO! sulla LAN → ponte sul PC locale con archivio persistente → API autenticata del gestionale via HTTPS. Non esporre Modbus/PLC su Internet e non collocare il client TCP nel browser o nel Worker ospitato. Usa credenziali di dispositivo dedicate e revocabili, mai token della sessione personale nel codice pubblico.
+
+Realizza e verifica, dove l'ambiente lo consente:
+- identificazione obbligatoria prima dell'avvio; codice esatto noto, lotto, scadenza, operatore, linea e confezionamento fotografato nella lavorazione;
+- una sola sessione attiva per linea, ID stabile, stati e transizioni espliciti;
+- contatore cumulativo come riferimento e differenza dalla baseline, senza riaggiungere ogni volta lo stesso valore;
+- letture coerenti durante il moto: una doppia lettura uguale a linea ferma è solo diagnostica e non dimostra l'atomicità di un contatore in movimento;
+- verifica della sequenza sensori prevista 00 → 10 → 11 → 01 → 00 sulla disposizione reale; soste, ritorni, rimbalzi, passaggi incompleti, velocità e distanze verificati;
+- pulsante fisico come richiesta identificata di chiusura: attendi le condizioni concordate, salva localmente lavorazione ed evento in modo atomico, poi invia il riscontro della stessa richiesta;
+- azzera soltanto il parziale della lavorazione dopo il salvataggio previsto; conserva cumulativo, storico e totale giornaliero. Il nuovo articolo richiede una nuova scansione/conferma e un avvio esplicito;
+- coda persistente, invii ripetibili con stesso ID, deduplicazione lato server e registrazione atomica. Conserva le ricevute: non sostituirle con una lista in memoria o troncata;
+- perdita di Internet, perdita della LAN, PC fermo e PLC riavviato come casi distinti; heartbeat e ultimo aggiornamento visibili, nessuna falsa conferma di reset;
+- la sessione già identificata può proseguire offline solo con il ponte operativo validato. Nuovi avvii offline restano bloccati finché non esiste un'anagrafica/interfaccia locale affidabile;
+- riavvio, diminuzione inattesa, rollover, sequenze fuori ordine, conteggi corrotti e reset esterni gestiti con un protocollo verificato, senza fabbricare quantità;
+- avvio automatico, log leggibili con rotazione, stato del servizio, backup/ripristino locale e procedura semplice di installazione/aggiornamento per il sistema operativo confermato.
+
+Se manca l'hardware, completa i contratti, il simulatore di protocollo e i test eseguibili; lascia l'attivazione reale disabilitata e indica esattamente la prova sul campo necessaria. Un mock o un test verde non certifica l'impianto.
+
+8. QUANTITÀ BUONE, CARICO E RIEPILOGO GIORNALIERO
+
+Cartoni letti, scarti e quantità buona sono grandezze distinte. Il requisito finale è aggiornare produzione e magazzino senza ricopiatura; attiva il carico automatico soltanto dopo la definizione della regola di quantità buona e il collaudo completo. Ogni chiusura deve produrre al massimo un carico, anche con retry o riavvii. Evita duplicazioni tra inserimento manuale e acquisizione automatica e rendi tracciate le correzioni.
+
+Mostra produzione giornaliera per articolo/lotto, lavorazioni, orari, operatore, conteggio e stato di sincronizzazione. Le lavorazioni multiple nello stesso giorno restano distinte. Il giorno viene dall'avvio nel fuso Europe/Rome, anche se la chiusura è dopo mezzanotte; conserva la regola attuale salvo richiesta diversa. Distingui totali confermati, in corso e ancora da sincronizzare, e rendi esportabili i riepiloghi con unità esplicite.
+
+9. BARCODE E STAMPA ETICHETTE
+
+Verifica lo scanner che si comporta come tastiera e i formati reali delle etichette: codice, eventuale lotto/scadenza e separatori. Non assumere che il barcode contenga tutto. Per la fotocamera, verifica supporto sui dispositivi reali e conserva una modalità alternativa scanner/tastiera. Evita doppie scansioni, letture ambigue e aperture della lavorazione sbagliata.
+
+L'obiettivo comprende due stampanti e modelli etichetta già usati dall'azienda. Servono modelli/connessioni/driver o linguaggi e file effettivi: non promettere compatibilità senza verificarli. Progetta anteprima, campi variabili di lotto e scadenza, quantità, destinazione stampante, stato del lavoro e ristampe tracciate. Distingui invio del comando da stampa fisica riuscita: un esito incerto non deve causare ristampe automatiche duplicate. Non cambiare ricette o impostazioni macchina sulla base di supposizioni.
+
+10. ACCESSO, AFFIDABILITÀ E DATI
+
+Oggi l'accesso è riservato al proprietario dalla piattaforma; il nome scritto nel campo operatore non è un account autenticato. Predisponi l'uso per amministrazione, produzione e magazzino con identità e permessi reali lato server, coerenti con le mansioni. Non aprire il sito al pubblico per aggirare un problema di accesso.
+
+Controlla autenticazione, autorizzazione, origine delle richieste, validazioni, deduplicazione, concorrenza e limiti. Gli header di identità attuali sono affidabili solo dietro la piattaforma che li verifica: una migrazione di hosting deve mantenere un confine equivalente. Non esporre l'anteprima senza login su Internet.
+
+Il browser usa sessionStorage per la richiesta incerta: prova anche chiusura scheda/browser, timeout dopo salvataggio server e recupero su ricarica. Migliora il recupero senza usare il browser come unica fonte autorevole e senza ritentare con un nuovo ID ciò che potrebbe essere già riuscito.
+
+Controlli mirati emersi dalla lettura dei sorgenti: le chiamate fetch non hanno un timeout applicativo; il ritorno a una scheda aperta non forza l'aggiornamento dei dati; i totali ricalcolano più volte lotti e prenotazioni. Misura e correggi i problemi riprodotti, preservando le modifiche non salvate. Uniforma inoltre le scadenze della panoramica al calendario Europe/Rome: il calcolo attuale dei sette giorni vicini usa conversioni UTC e intervalli di 24 ore, mentre la produzione usa il giorno locale. Prova mezzanotte, cambio ora e pagina rimasta aperta a lungo.
+
+Il codice deve essere pubblico e trasferibile. Credenziali, database, export operativi, listini reali, documenti clienti, configurazioni LAN e log sensibili devono restare privati. GitHub non è il backup del database. Proteggi anche eventuali allegati e download operativi con autorizzazioni effettive.
+
+11. VERIFICHE E CRITERI DI ACCETTAZIONE
+
+Prima delle modifiche registra l'esito della baseline. I comandi esistenti sono npm ci, npm run setup, npm run dev; per i controlli npm test, npm run check, npm run build, npm run test:bridge e npm run bridge:simulate. Node.js minimo dichiarato: 22.13. Il pacchetto LOGO! usa solo moduli Node integrati. Non cambiare versioni o lockfile in blocco: verifica compatibilità e motivazione degli aggiornamenti necessari. Esegui lint se previsto dal piano e aggiungi controlli utili in CI. Verifica Windows per i .cmd e i percorsi con spazi; non dichiararlo provato solo perché funziona su Linux.
+
+Scrivi test che verifichino effetti e invarianti, non copie dell'implementazione. Usa un database locale dedicato e dati fittizi; prova il percorso completo nell'interfaccia e le API con persistenza reale di test dove necessario.
+
+I test API esistenti usano un adattatore SQLite di prova: aggiungi le verifiche necessarie sul runtime D1 di test per concorrenza e transazioni. I limiti attuali del parser sono 5 MB, 350 prodotti, 1.000 righe e 60 colonne; verifica messaggi ed effetti ai confini prima di decidere se modificarli. Gli avvii .cmd e l'hardware richiedono prove nel loro ambiente effettivo.
+
+Scenari minimi:
+1) Prodotto con codice 00123: creazione, ricerca progressiva, modifica, export e reimport senza perdita di zeri o campi; prezzi vuoti distinti da zero; nessuna giacenza creata dall'import.
+2) Ricerca per lotto: articolo, scadenza, area e quantità corretti; codice sconosciuto e duplicato gestiti con errore comprensibile.
+3) Import con riga invalida o duplicata: nessuna modifica parziale nascosta; retry e conflitto concorrente senza doppioni.
+4) 150 presenti, 2 bloccati, ordine 30: 118 disponibili. Preparazione invariata; partenza 20: 130 presenti e residuo 10; annullamento residuo: 128 disponibili; fattura successiva senza nuovo scarico.
+5) Lotto scaduto/bloccato, richiesta sopra il disponibile, trasferimento e rettifica: invarianti rispettati anche da chiamata diretta API.
+6) Due client dalla stessa versione, doppio clic, risposta persa dopo commit e vecchia richiesta ripetuta: un solo effetto e conflitti recuperabili.
+7) Produzione A 200 e B 150: due sessioni, totale 350, nuova sessione da zero, storico conservato; nessun avvio con codice sconosciuto o seconda sessione sulla stessa linea.
+8) Chiusura prima/dopo mezzanotte Europe/Rome e cambio ora: giorno coerente e nessuno spostamento retroattivo della lavorazione.
+9) Ponte: letture e chiusure ripetute, riavvio del processo, coda pendente, LAN/Internet assenti, salvataggio incerto, sensori occupati e pulsante ripetuto. Nessuna perdita di dati confermati né quantità duplicate.
+10) Su hardware reale: almeno 100 cartoni contati anche manualmente, più formati/velocità, sosta, arretramento e riavvii. Registra dispositivo, configurazione, esito e limiti.
+11) Quando il carico automatico viene abilitato: quantità buona concordata caricata una sola volta, con origine tracciabile e correzione motivata.
+12) Etichette: prodotto/lotto/scadenza/quantità corretti, stampante corretta, ristampa registrata; test fisico distinto dal mock.
+13) UI desktop/tablet/telefono, tastiera e fotocamera supportata/non supportata; errori visibili e dati del modulo conservati.
+14) Archivio vicino ai limiti, crescita dello storico, migrazione e ripristino: nessuna perdita; prestazioni misurate con dataset sintetici rappresentativi.
+15) Clone nuovo: installazione, inizializzazione, test, build e avvio riproducibili senza cartelle o segreti della macchina dello sviluppatore.
+
+Registra risultati reali, data, commit e ambiente. Distingui test superati, falliti e non eseguibili. Non promettere «zero bug», «nessuna interruzione» o affidabilità assoluta: consegna evidenze, recupero dagli errori e limiti noti.
+
+12. GITHUB, PUBBLICAZIONE E CONSEGNA
+
+Versiona nello stesso repository ogni sorgente, script, migrazione, test, documentazione e configurazione di esempio necessaria. Mantieni lockfile e istruzioni di avvio. Se modifichi bridge/, rigenera public/downloads/ponte-logo-preparazione.zip con python scripts/package-logo.py, controlla manifest e contenuti ed esegui la prova dal pacchetto estratto. Non includere dati reali, segreti, node_modules o build rigenerabili.
+
+Preserva .openai/hosting.json, project_id, binding e integrazione sites() in Vite. GitHub e il repository sorgente di pubblicazione hanno storie Git distinte: un push su GitHub non aggiorna automaticamente il sito. Non creare un sito nuovo, cambiare accesso o migrare hosting senza una decisione esplicita. Per questo incarico prepara branch, anteprima, test e PR revisionabile; attivazione dell'impianto e distribuzione operativa richiedono i rispettivi collaudi e il percorso autorizzato. Se non hai accesso alla pubblicazione, consegna il commit esatto e la procedura senza fingere che sia online.
+
+Ordine di lavoro: prima integrità dei dati e problemi che impediscono l'uso; poi interfaccia e flussi quotidiani; poi completamento del ponte/integratori e crescita dell'archivio secondo le dipendenze reali. Mantieni avanzamento anche quando una prova fisica è in attesa.
+
+Alla fine consegna:
+- problemi trovati e risolti, con comportamento prima/dopo;
+- funzioni effettivamente pronte e ancora incomplete;
+- prove e misure eseguite, senza nascondere i fallimenti;
+- istruzioni molto semplici per usare il gestionale e installare il ponte;
+- dati/hardware/accessi ancora necessari, ciascuno legato a una specifica attività;
+- commit e PR con tutti i file, stato di pubblicazione distinto dal salvataggio GitHub;
+- procedura di backup, recupero e collaudo finale.
+
+Inizia ora dall'ultimo stato del repository e dall'inventario delle skill. Dopo il controllo iniziale procedi con le modifiche realizzabili, senza fermarti alla sola analisi.

@@ -11,7 +11,7 @@ Il sito registra dati manuali in un database centrale. Il lettore barcode che si
 | Accesso riservato | Gestito dalla piattaforma ospitante |
 | Ruoli distinti e inviti agli operatori | Da implementare prima dell'uso con più ruoli |
 | Fotocellule e programma LOGO! | Da sviluppare/configurare e collaudare sull'impianto |
-| Base del ponte locale | Simulatore con archivio SQLite e lettura diagnostica Modbus disponibili in `bridge/`; servizio operativo e sincronizzazione ancora da completare |
+| Ponte locale | Servizio, coda persistente, trasmettitore autenticato, simulatore di protocollo e test in `bridge/`; endpoint `/api/devices/production` e credenziali di dispositivo nel gestionale. **Provato solo in simulazione** (13/11/2026); collaudo su impianto da fare |
 | TeamSystem | Da verificare versione, accessi e formati disponibili |
 | Etichettatrice | Da verificare interfaccia e caratteristiche del dispositivo |
 | Consumo ingredienti tramite ricette | Da definire e collaudare |
@@ -50,4 +50,8 @@ Il repository contiene l'applicazione e le migrazioni; non contiene il database 
 
 Il pacchetto scaricabile da **Configurazione** contiene una simulazione locale di due lavorazioni, un archivio SQLite separato con identificativi persistenti e coda eventi, e una lettura diagnostica Modbus TCP senza scritture. Gli eventi della simulazione sono marcati come tali; non vengono inviati al gestionale. Il comando diagnostico richiede configurazione esplicita e linea ferma; due letture coincidenti non sostituiscono il collaudo del programma o la coerenza dei registri durante il moto.
 
-Il servizio sempre acceso, la ricezione autenticata nel CRM, gli scambi di avvio/chiusura con LOGO!, il recupero operativo e la gestione del pulsante fisico non sono ancora implementati. IP, mappa, ritenzione e tempi devono essere confermati sull’hardware ricevuto. Vedere `COLLEGAMENTO-LOGO.md` per i dati da raccogliere e il passaggio dalla prova al collegamento reale.
+Aggiornamento 13 novembre 2026: servizio, ricezione autenticata nel gestionale, protocollo di chiusura su richiesta del pulsante, coda e recupero sono implementati e provati con simulatore e test (anche ponte reale ↔ API reali su HTTP locale). Restano da fare il programma LOGO!, la conferma di IP/mappa/ritenzione/tempi sull'hardware, la prova dei `.cmd` su Windows e il collaudo sulla linea. Contratto: `CONTRATTO-PONTE.md`; dati da raccogliere: `COLLEGAMENTO-LOGO.md`.
+
+## Etichette
+
+Non implementato. Servono modelli e collegamento delle due stampanti, driver o linguaggio (es. ZPL/EPL) e i file dei modelli in uso. Requisiti di progetto già fissati: anteprima, campi variabili di lotto e scadenza, quantità, stampante di destinazione, stato del lavoro, ristampe tracciate; l'invio del comando non equivale a stampa riuscita e un esito incerto non deve generare ristampe automatiche.

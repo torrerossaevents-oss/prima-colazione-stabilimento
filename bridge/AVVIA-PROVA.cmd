@@ -9,7 +9,7 @@ title Prima Colazione - Prova locale LOGO!
 echo SIMULAZIONE LOCALE - nessun dato viene inviato al gestionale.
 echo Atteso: articolo A 200 cartoni, articolo B 150, totale 350.
 echo.
-node bridge/simulate.mjs
+node --disable-warning=ExperimentalWarning "bridge\simulate.mjs"
 
 set "bridgeExit=%ERRORLEVEL%"
 echo.
