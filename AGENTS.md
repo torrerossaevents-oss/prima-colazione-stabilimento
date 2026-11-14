@@ -29,6 +29,7 @@ Leggere `docs/REQUISITI.md` prima di cambiare le regole di dominio. I documenti 
 4. Aggiungere o modificare test mirati per cambiamenti ai conteggi e ai passaggi di stato.
 5. Eseguire i test pertinenti e la compilazione; verificare nell'interfaccia il percorso interessato.
 6. Aggiornare documentazione e limiti effettivi. Salvare il lavoro nello stesso repository, con commit comprensibili; nessun force push non richiesto.
+7. Per decisione di Teo (14/11/2026): dopo ogni modifica verificata, cioè test, controlli e build superati e CI verde sulla PR, unire la PR in `main` senza chiedere conferma. Restano vietati force push e unioni con controlli rossi o conflitti. La pubblicazione su Cloudflare resta un passo esplicito (flusso «Pubblica su Cloudflare»).
 
 ## Dati e accesso
 
