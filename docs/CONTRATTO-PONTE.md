@@ -10,7 +10,7 @@ LOGO! (LAN, Modbus TCP) → ponte sul PC locale (archivio SQLite persistente) �
 
 - Modbus/PLC non sono mai esposti su Internet; il client TCP non è nel browser né nel Worker.
 - Il ponte non avvia lavorazioni: l'identificazione (codice esatto, lotto, scadenza, operatore) avviene nel gestionale. Il ponte segue la lavorazione attiva della propria linea.
-- Il carico automatico a magazzino **non** è previsto da questo contratto.
+- La chiusura dal ponte carica in magazzino i cartoni letti (meno gli scarti) nel lotto della lavorazione, una sola volta per evento (regola del 14/11/2026, disattivabile in Configurazione). Il ponte non invia quantità di magazzino: il carico lo fa il server.
 
 ## Autenticazione
 

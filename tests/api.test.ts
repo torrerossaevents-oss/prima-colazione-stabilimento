@@ -173,7 +173,9 @@ for (const engine of ['sqlite', 'd1'] as const) {
       const results = await Promise.all([deviceCall('POST', token, close), deviceCall('POST', token, close)]);
       const bodies = await Promise.all(results.map(x => x.json() as Promise<Body>));
       assert.deepEqual(results.map(x => x.status), [200, 200]); assert.equal(bodies.filter(b => b.duplicate).length, 1);
-      const after = await client(r).get(); assert.equal(after.state.sessions[0].cartons, 200); assert.equal(after.state.sessions[0].closedBy, 'device'); assert.equal(after.state.lots.length, 0);
+      const after = await client(r).get(); assert.equal(after.state.sessions[0].cartons, 200); assert.equal(after.state.sessions[0].closedBy, 'device');
+      // Closing from the line loads the good cartons once, with an explicit move (rule of 14/11/2026).
+      assert.equal(after.state.lots.length, 1); assert.equal(after.state.lots[0].quantity, 200); assert.equal(after.state.sessions[0].stockLoaded, true);
       assert.equal(((await (await deviceCall('POST', token, { ...close, cartons: 199, counterEnd: 1199 })).json()) as Body).code, 'event-id-reused');
       const late = await deviceCall('POST', token, { ...close, eventId: 'evt_0000002' }); assert.equal(late.status, 409); assert.equal(((await late.json()) as Body).code, 'session-closed');
       assert.equal((await deviceCall('POST', token, { eventId: 'evt_0000003', type: 'lot.adjust' })).status, 400);

@@ -51,7 +51,7 @@ test('bridge transmitter ↔ /api/devices/production: close once, lost response 
     const again = await requestJson({ url: origin + '/api/devices/production', method: 'POST', token: created.token, body: event, timeoutMs: 5000 });
     assert.equal(again.status, 200); assert.equal(again.json.duplicate, true);
     const read = await (await workspace.GET(new Request(origin + '/api/workspace', { headers: owner }))).json() as { state: State };
-    assert.equal(read.state.sessions[0].cartons, 200); assert.equal(read.state.sessions[0].status, 'closed'); assert.equal(read.state.lots.length, 0, 'no automatic stock load');
+    assert.equal(read.state.sessions[0].cartons, 200); assert.equal(read.state.sessions[0].status, 'closed'); assert.equal(read.state.lots.length, 1, 'one automatic load at the close'); assert.equal(read.state.lots[0].quantity, 200, 'loaded once despite the retried delivery');
 
     store.setHeartbeat({ eventId: 'hb_' + Date.now(), type: 'heartbeat', at: new Date().toISOString(), bridgeVersion: '1.0.0', plc: { reachable: true, lastReadAt: new Date().toISOString() }, queueLength: 0, session: null }, new Date().toISOString());
     assert.equal(await tx.sendHeartbeat(), true);

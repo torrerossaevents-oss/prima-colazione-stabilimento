@@ -47,7 +47,7 @@ Il conteggio è manuale oppure, se è registrato un ponte, «da fotocellule» (s
 
 Il prodotto successivo richiede una nuova identificazione. Anche riutilizzare lo stesso articolo richiede un nuovo avvio esplicito. Un salvataggio incerto o fallito non deve mostrare una conferma falsa o permettere di perdere la sessione.
 
-Il conteggio è distinto dalla quantità buona da caricare a magazzino. Non esiste un carico automatico finché non sono stati validati hardware, quantità buone, scarti e regole di integrazione.
+Il conteggio è distinto dalla quantità buona. Regola concordata il 14/11/2026: quantità buona = cartoni letti − scarti, caricata alla chiusura nel lotto della lavorazione (lotto = data di produzione AAMMGG, scadenza = produzione + durata del prodotto) con un movimento esplicito. Le correzioni successive sono dell'amministrazione, con causale e responsabile. Il conteggio delle fotocellule va comunque collaudato sulla linea (`COLLAUDO.md`).
 
 ## Ordini e controlli
 

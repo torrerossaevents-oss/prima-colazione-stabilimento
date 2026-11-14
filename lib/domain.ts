@@ -1,5 +1,7 @@
 /** Domain rules for the Prima Colazione pilot. Quantities are always base units. */
-export type Product = { id:string; code:string; name:string; kind:'finished'|'raw'|'packaging'; unit:string; unitsPerBox:number; minStock:number; category?:string; priceGelCor?:number|null; priceGelitria?:number|null; priceDistribution?:number|null; inUse?:boolean };
+export type Product = { id:string; code:string; name:string; kind:'finished'|'raw'|'packaging'; unit:string; unitsPerBox:number; minStock:number; category?:string; priceGelCor?:number|null; priceGelitria?:number|null; priceDistribution?:number|null; inUse?:boolean;
+ /** Etichetta: EAN-13/EAN-8, pezzi e peso per cartone, durata in mesi (scadenza = produzione + mesi), testi. */
+ ean?:string; piecesPerCarton?:number; pieceWeightG?:number; shelfLifeMonths?:number; labelDescription?:string; ingredients?:string; storage?:string };
 export type ProductInput = Omit<Product,'id'>;
 export type Lot = { id:string; productId:string; code:string; expiry:string; area:string; quantity:number; blocked:number };
 export type OrderLine = { lotId:string; quantity:number; shipped:number };
@@ -8,11 +10,15 @@ export type Order = { id:string; customer:string; destination:string; date:strin
 export const PRODUCTION_LINE='linea-1';
 export type DeviceClose = {eventId:string;deviceId:string;counterStart:number;counterEnd:number;counterModulo?:number;deviceClosedAt:string;anomalies:string[]};
 /** cartons = cartoni letti; scrapCartons = scarti dichiarati alla chiusura. La quantità buona non viene caricata a magazzino. */
-export type Session = { id:string; productId:string; productCode:string; productName:string; unitsPerBox:number; unit?:string; line?:string; day:string; operator:string; lotCode:string; expiry:string; status:'active'|'closed'; cartons:number; startedAt:string; closedAt?:string; source:'manual'|'device'; stockLoaded:false; scrapCartons?:number; closeNote?:string; closedBy?:'manual'|'device'|'manual-override'; device?:DeviceClose };
+export type Session = { id:string; productId:string; productCode:string; productName:string; unitsPerBox:number; unit?:string; line?:string; day:string; operator:string; lotCode:string; expiry:string; status:'active'|'closed'; cartons:number; startedAt:string; closedAt?:string; source:'manual'|'device'; stockLoaded:boolean; loadedLotId?:string; loadedQuantity?:number; piecesPerCarton?:number; pieceWeightG?:number; corrections?:SessionCorrection[]; scrapCartons?:number; closeNote?:string; closedBy?:'manual'|'device'|'manual-override'; device?:DeviceClose };
+/** Rettifica dei cartoni di una lavorazione (solo amministrazione): causale e responsabile obbligatori. */
+export type SessionCorrection = {id:string;at:string;delta:number;before:number;after:number;reason:string;responsible:string;actor?:string;stockDelta:number};
 /** Variazione esplicita del fisico di un lotto, registrata nell'evento che la causa. */
-export type Move = {lotId:string;delta:number;kind:'receive'|'return'|'dispatch'|'transfer'|'adjust'|'scrap'|'consume'};
+export type Move = {lotId:string;delta:number;kind:'receive'|'return'|'dispatch'|'transfer'|'adjust'|'scrap'|'consume'|'produce'|'production-adjust'};
 export type Audit = {id:string;at:string;action:string;detail:string;actor?:string;moves?:Move[]};
-export type State = {products:Product[];lots:Lot[];orders:Order[];sessions:Session[];audit:Audit[];areas?:string[]};
+/** Impostazioni di produzione ed etichetta. autoLoad: carico automatico alla chiusura (predefinito sì). */
+export type Settings = {productionArea?:string;autoLoad?:boolean;labelProducer?:string;labelIdent?:string};
+export type State = {products:Product[];lots:Lot[];orders:Order[];sessions:Session[];audit:Audit[];areas?:string[];settings?:Settings};
 export type Action =
  | {type:'product.add';product:Omit<Product,'id'>}
  | {type:'product.update';productId:string;product:Omit<Product,'id'>}
@@ -28,7 +34,9 @@ export type Action =
  | {type:'order.prepare'|'order.cancel';orderId:string}
  | {type:'order.dispatch';orderId:string;documentRef:string;quantities?:{lotId:string;quantity:number}[];note?:string}
  | {type:'order.document';orderId:string;documentRef:string}
- | {type:'production.start';code:string;operator:string;lotCode:string;expiry:string;counting?:'manual'|'device'}
+ | {type:'production.start';code:string;operator:string;lotCode?:string;expiry?:string;counting?:'manual'|'device'}
+ | {type:'production.adjust';sessionId:string;delta:number;reason:string;responsible:string}
+ | {type:'settings.update';settings:Settings}
  | {type:'production.count';sessionId:string;cartons:number}
  | {type:'production.close';sessionId:string;scrapCartons?:number;note?:string;override?:string}
  | {type:'production.deviceClose';sessionId:string;eventId:string;cartons:number;counterStart:number;counterEnd:number;counterModulo?:number;closedAt:string;anomalies?:string[]};
@@ -53,12 +61,36 @@ export function romeDayStart(day:string):string{
  for(const hours of [1,2]){const t=base-hours*3_600_000;if(todayRome(new Date(t))===day&&todayRome(new Date(t-1))!==day)return new Date(t).toISOString();}
  return new Date(base).toISOString();
 }
+/** Lotto di produzione: la data di produzione AAMMGG (2 ottobre 2026 → 261002), come sull'etichetta. */
+export function productionLot(day:string):string{return day.slice(2).replaceAll('-','');}
+/** Scadenza: stesso giorno dopo N mesi; se quel giorno non esiste (29/02, 31) l'ultimo giorno del mese. */
+export function productionExpiry(day:string,months:number):string{
+ const [y,m,d]=day.split('-').map(Number);const total=m-1+months;const year=y+Math.floor(total/12);const month=((total%12)+12)%12;
+ const last=new Date(Date.UTC(year,month+1,0)).getUTCDate();
+ return `${year}-${String(month+1).padStart(2,'0')}-${String(Math.min(d,last)).padStart(2,'0')}`;
+}
+export const DEFAULT_SHELF_LIFE_MONTHS=12;
+/** EAN-13 o EAN-8 con cifra di controllo corretta. */
+export function eanValid(code:string):boolean{
+ if(!/^(\d{8}|\d{13})$/.test(code))return false;
+ const digits=[...code].map(Number);const check=digits.pop()!;
+ const sum=digits.reverse().reduce((total,digit,i)=>total+digit*(i%2===0?3:1),0);
+ return (10-sum%10)%10===check;
+}
+/** Articolo finito letto dal lettore: codice articolo oppure EAN dell'etichetta. */
+export function productByScan(state:State,scanned:string){
+ const value=scanned.trim().toUpperCase();
+ return state.products.find(p=>p.kind==='finished'&&(p.code===value||(!!p.ean&&p.ean===value)));
+}
+/** Area in cui la chiusura carica la produzione: quella scelta, altrimenti la prima area esistente. */
+export function productionArea(state:State):string{return state.settings?.productionArea||knownAreas(state)[0]||'Prodotti finiti';}
 /** History filters: days are Rome calendar days, both ends included. */
-export type AuditGroup='production'|'inventory'|'orders'|'catalog';
-export const AUDIT_GROUP_PREFIX:Record<AuditGroup,string>={production:'production.',inventory:'lot.',orders:'order.',catalog:'product.'};
+export type AuditGroup='corrections'|'production'|'inventory'|'orders'|'catalog';
+/** Operation prefixes per history tab. «Correzioni» = carton corrections and stock adjustments (also listed in their own tab). */
+export const AUDIT_GROUP_PREFIX:Record<AuditGroup,string[]>={corrections:['production.adjust','lot.adjust'],production:['production.'],inventory:['lot.'],orders:['order.'],catalog:['product.','settings.']};
 export type AuditFilter={from?:string;to?:string;q?:string;group?:AuditGroup};
 export function auditGroupOf(action:string):AuditGroup|undefined{
- return (Object.keys(AUDIT_GROUP_PREFIX) as AuditGroup[]).find(g=>action.startsWith(AUDIT_GROUP_PREFIX[g]));
+ return (Object.keys(AUDIT_GROUP_PREFIX) as AuditGroup[]).find(g=>AUDIT_GROUP_PREFIX[g].some(prefix=>action.startsWith(prefix)));
 }
 export function auditBounds(filter:Pick<AuditFilter,'from'|'to'>):{fromAt?:string;toAt?:string}{
  if(filter.from)date(filter.from,'Dal giorno');if(filter.to)date(filter.to,'Al giorno');
@@ -67,8 +99,8 @@ export function auditBounds(filter:Pick<AuditFilter,'from'|'to'>):{fromAt?:strin
 }
 /** Predicate for a filter: bounds computed once, then applied to many entries. */
 export function auditFilter(filter:AuditFilter):(entry:Audit)=>boolean{
- const {fromAt,toAt}=auditBounds(filter);const q=filter.q?.trim().toLocaleLowerCase('it');const prefix=filter.group?AUDIT_GROUP_PREFIX[filter.group]:'';
- return entry=>(!fromAt||entry.at>=fromAt)&&(!toAt||entry.at<toAt)&&(!prefix||entry.action.startsWith(prefix))&&(!q||entry.detail.toLocaleLowerCase('it').includes(q));
+ const {fromAt,toAt}=auditBounds(filter);const q=filter.q?.trim().toLocaleLowerCase('it');const prefixes=filter.group?AUDIT_GROUP_PREFIX[filter.group]:[];
+ return entry=>(!fromAt||entry.at>=fromAt)&&(!toAt||entry.at<toAt)&&(!prefixes.length||prefixes.some(prefix=>entry.action.startsWith(prefix)))&&(!q||entry.detail.toLocaleLowerCase('it').includes(q));
 }
 export function auditMatches(entry:Audit,filter:AuditFilter):boolean{return auditFilter(filter)(entry);}
 function text(value:unknown,name:string,max=160):string{
@@ -108,7 +140,20 @@ export function normalizeProduct(input:ProductInput,previous?:Product):ProductIn
   priceGelCor:price(input.priceGelCor===undefined?previous?.priceGelCor:input.priceGelCor,'Listino 3 - Gel.Cor.'),
   priceGelitria:price(input.priceGelitria===undefined?previous?.priceGelitria:input.priceGelitria,'GELITRIA SRL'),
   priceDistribution:price(input.priceDistribution===undefined?previous?.priceDistribution:input.priceDistribution,'Distribuzione'),
+  ...labelFields(input,previous),
  };
+}
+/** Campi dell'etichetta: facoltativi; se mancano (es. import senza colonne) restano quelli salvati; vuoto o null li cancella. */
+function labelFields(input:ProductInput,previous?:Product):Partial<ProductInput>{
+ const pick=<K extends keyof ProductInput>(key:K)=>input[key]===undefined?previous?.[key]:input[key];
+ const out:Partial<ProductInput>={};
+ const cleared=(key:keyof ProductInput)=>{const value=pick(key);if(value===null||(value as unknown)===''){(out as Record<string,unknown>)[key]=undefined;return true;}return value===undefined;};
+ const ean=pick('ean');if(!cleared('ean')){if(typeof ean!=='string'||!eanValid(ean.trim()))fail('EAN: inserisci 13 (o 8) cifre con la cifra di controllo corretta, come sotto il codice a barre.');out.ean=(ean as string).trim();}
+ const positive=(key:'piecesPerCarton'|'pieceWeightG'|'shelfLifeMonths',name:string,max:number)=>{const value=pick(key);if(cleared(key))return;if(typeof value!=='number'||!Number.isSafeInteger(value)||value<1||value>max)fail(`${name}: inserisci un numero intero da 1 a ${max}.`);out[key]=value as number;};
+ positive('piecesPerCarton','Pezzi per cartone',100_000);positive('pieceWeightG','Peso di un pezzo (g)',100_000);positive('shelfLifeMonths','Durata (mesi)',120);
+ const longText=(key:'labelDescription'|'ingredients'|'storage',name:string,max:number)=>{if(cleared(key))return;const t=optionalText(pick(key),name,max);out[key]=t||undefined;};
+ longText('labelDescription','Descrizione in etichetta',200);longText('ingredients','Ingredienti e allergeni',1500);longText('storage','Conservazione e uso',500);
+ return out;
 }
 function assertProductUpdateAllowed(state:State,previous:Product,next:ProductInput):void{
  const referenced=previous.inUse||state.lots.some(lot=>lot.productId===previous.id)||state.sessions.some(session=>session.productId===previous.id);
@@ -246,6 +291,17 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
  const moves:Move[]=[];const move=(lot:Lot,delta:number,kind:Move['kind'])=>{lot.quantity+=delta;moves.push({lotId:lot.id,delta,kind});};
  const free=(lot:Lot)=>lot.quantity-lot.blocked-(reservations().get(lot.id)??0);
  let detail='';
+ /** Carico della produzione alla chiusura (decisione di Teo, 14/11/2026): cartoni letti − scarti, movimento esplicito. */
+ const loadProduction=(session:Session):string=>{
+  const good=(session.cartons-(session.scrapCartons??0))*session.unitsPerBox;const product=state.products.find(p=>p.id===session.productId)!;const unit=session.unit??product.unit;
+  if(state.settings?.autoLoad===false)return 'Carico automatico disattivato: registra l’entrata a mano.';
+  if(good<=0)return 'Nessun cartone buono da caricare.';
+  const area=ensureArea(state,productionArea(state));
+  const target=state.lots.find(l=>l.productId===session.productId&&l.code===session.lotCode&&l.area===area)??(()=>{const lot:Lot={id:id(),productId:session.productId,code:session.lotCode,expiry:session.expiry,area,quantity:0,blocked:0};state.lots.push(lot);return lot;})();
+  number(target.quantity+good,'Giacenza');move(target,good,'produce');product.inUse=true;
+  session.stockLoaded=true;session.loadedLotId=target.id;session.loadedQuantity=good;
+  return `Magazzino: caricati ${good} ${unit} nel lotto ${target.code} (scadenza ${target.expiry}) in ${area}.`;
+ };
  if(action.type==='production.deviceClose'&&!context.device)fail('Chiusura da dispositivo consentita solo al ponte autenticato.');
  if(context.device&&action.type!=='production.deviceClose')fail('Il dispositivo può registrare soltanto la chiusura della lavorazione.');
  switch(action.type){
@@ -343,11 +399,15 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
  case 'order.cancel':{const order=orderById(action.orderId);if(!activeOrder(order))fail('Questo ordine è già chiuso.');order.status='cancelled';order.closedAt=now;detail=`Ordine ${order.customer}: residuo annullato, prenotazioni liberate. Le uscite già registrate rimangono nello storico.`;break;}
  case 'order.document':{const order=orderById(action.orderId);const documentRef=text(action.documentRef,'Riferimento documento',120);if(!order.lines.some(line=>line.shipped>0))fail('Registra prima l’uscita della merce.');order.documentRef=documentRef;order.documents.push({reference:documentRef,at:now,quantities:[]});detail=`Ordine ${order.customer}: collegato documento ${documentRef}. Nessun nuovo scarico di magazzino.`;break;}
  case 'production.start':{
-  if(activeSession(state))fail('Chiudi e salva la lavorazione attiva prima di iniziarne un’altra.');const code=text(action.code,'Codice articolo',80).toUpperCase();const p=state.products.find(row=>row.code===code&&row.kind==='finished')??fail('Codice sconosciuto o articolo non finito: avvio non consentito.');const expiry=date(action.expiry,'Scadenza');if(expiry<today)fail('La scadenza della produzione non può essere passata.');
+  if(activeSession(state))fail('Chiudi e salva la lavorazione attiva prima di iniziarne un’altra.');const p=productByScan(state,text(action.code,'Codice articolo',80))??fail('Codice sconosciuto o articolo non finito: avvio non consentito.');
+  // Lotto e scadenza dalla data di produzione (regola dell'etichetta), salvo valori indicati espressamente.
+  const lotCode=action.lotCode===undefined||action.lotCode===''?productionLot(today):text(action.lotCode,'Codice lotto',80);
+  const expiry=action.expiry===undefined||action.expiry===''?productionExpiry(today,p.shelfLifeMonths??DEFAULT_SHELF_LIFE_MONTHS):date(action.expiry,'Scadenza');if(expiry<today)fail('La scadenza della produzione non può essere passata.');
+  const sameLot=state.lots.find(l=>l.productId===p.id&&l.code===lotCode&&l.expiry!==expiry);if(sameLot)fail(`Il lotto ${lotCode} è già in magazzino con scadenza ${sameLot.expiry}: usa la stessa scadenza o un altro lotto.`);
   const counting=action.counting??'manual';if(counting!=='manual'&&counting!=='device')fail('Modalità di conteggio non valida.');
   if(counting==='device'&&!context.devicesEnabled)fail('Nessun ponte conta-cartoni attivo: avvia la lavorazione con conteggio manuale.');
-  const session:Session={id:id(),productId:p.id,productCode:p.code,productName:p.name,unitsPerBox:p.unitsPerBox,unit:p.unit,line:PRODUCTION_LINE,day:today,operator:text(action.operator,'Operatore',100),lotCode:text(action.lotCode,'Codice lotto',80),expiry,status:'active',cartons:0,startedAt:now,source:counting,stockLoaded:false};state.sessions.push(session);p.inUse=true;
-  detail=`Lavorazione ${counting==='device'?'con conteggio fotocellule':'manuale'} avviata: ${p.code} · ${p.name} · lotto ${session.lotCode} · ${session.operator}.`;break;
+  const session:Session={id:id(),productId:p.id,productCode:p.code,productName:p.name,unitsPerBox:p.unitsPerBox,unit:p.unit,line:PRODUCTION_LINE,day:today,operator:text(action.operator,'Operatore',100),lotCode,expiry,status:'active',cartons:0,startedAt:now,source:counting,stockLoaded:false,...(p.piecesPerCarton?{piecesPerCarton:p.piecesPerCarton}:{}),...(p.pieceWeightG?{pieceWeightG:p.pieceWeightG}:{})};state.sessions.push(session);p.inUse=true;
+  detail=`Lavorazione ${counting==='device'?'con conteggio fotocellule':'manuale'} avviata: ${p.code} · ${p.name} · lotto ${session.lotCode}, scadenza ${session.expiry} · ${session.operator}.`;break;
  }
  case 'production.count':{const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.');if(session.status!=='active')fail('La lavorazione è chiusa.');if(session.source==='device')fail('Questa lavorazione è contata dalle fotocellule: non aggiungere cartoni a mano.');const cartons=number(action.cartons,'Cartoni da aggiungere',1);number(session.cartons+cartons,'Totale cartoni');session.cartons+=cartons;detail=`Conteggio manuale ${session.productCode}: +${cartons} cartoni, parziale ${session.cartons}.`;break;}
  case 'production.close':{
@@ -357,7 +417,7 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   const scrap=action.scrapCartons===undefined?0:number(action.scrapCartons,'Cartoni scartati');if(scrap>session.cartons)fail('Gli scarti non possono superare i cartoni letti.');
   const note=optionalText(action.note,'Nota di chiusura');if(scrap>0&&!note)fail('Indica il motivo degli scarti.');
   session.status='closed';session.closedAt=now;session.closedBy=session.source==='device'?'manual-override':'manual';if(scrap)session.scrapCartons=scrap;const closeNote=[override,note].filter(Boolean).join(' · ');if(closeNote)session.closeNote=closeNote;
-  detail=`Lavorazione salvata: ${session.productCode} · ${session.cartons} cartoni letti${scrap?`, ${scrap} scartati`:''}.${override?` Chiusura manuale di una lavorazione da fotocellule: ${override}.`:''} Storico conservato; la prossima lavorazione parte da zero. Nessun carico automatico a magazzino.`;break;
+  detail=`Lavorazione salvata: ${session.productCode} · ${session.cartons} cartoni letti${scrap?`, ${scrap} scartati`:''}.${override?` Chiusura manuale di una lavorazione da fotocellule: ${override}.`:''} ${loadProduction(session)} La prossima lavorazione parte da zero.`;break;
  }
  case 'production.deviceClose':{
   const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.','session-unknown');
@@ -373,7 +433,33 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   const anomalies=(action.anomalies??[]);if(!Array.isArray(anomalies)||anomalies.length>20||anomalies.some(a=>typeof a!=='string'||!a.trim()||a.length>60))fail('Anomalie non valide.');
   session.cartons=cartons;session.status='closed';session.closedAt=now;session.closedBy='device';
   session.device={eventId,deviceId:context.device!.id,counterStart:start,counterEnd:end,...(modulo?{counterModulo:modulo}:{}),deviceClosedAt:closedAt,anomalies:anomalies.map(a=>a.trim())};
-  detail=`Lavorazione chiusa dal ponte: ${session.productCode} · ${cartons} cartoni letti (contatore ${start} → ${end}).${anomalies.length?` Anomalie da verificare: ${anomalies.join(', ')}.`:''} Nessun carico automatico a magazzino.`;break;
+  detail=`Lavorazione chiusa dal ponte: ${session.productCode} · ${cartons} cartoni letti (contatore ${start} → ${end}).${anomalies.length?` Anomalie da verificare: ${anomalies.join(', ')}.`:''} ${loadProduction(session)}`;break;
+ }
+ case 'production.adjust':{
+  const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.');
+  if(typeof action.delta!=='number'||!Number.isSafeInteger(action.delta)||action.delta===0||Math.abs(action.delta)>1_000_000)fail('Cartoni da correggere: inserisci un numero intero diverso da zero (negativo per togliere).');
+  if(session.source==='device'&&session.status==='active')fail('Lavorazione contata dalle fotocellule: correggila dopo la chiusura.');
+  const reason=text(action.reason,'Causale della correzione',300);const responsible=text(action.responsible,'Responsabile',100);
+  const before=session.cartons;const after=before+action.delta;
+  if(after<0)fail('La correzione porterebbe i cartoni sotto zero.');if(after<(session.scrapCartons??0))fail('I cartoni non possono scendere sotto gli scarti registrati.');
+  let stockDelta=0;const unit=session.unit??'';
+  if(session.status==='closed'&&session.stockLoaded&&session.loadedLotId){
+   const lot=lotById(session.loadedLotId);stockDelta=action.delta*session.unitsPerBox;
+   if(stockDelta<0&&-stockDelta>free(lot))fail(`Del lotto ${lot.code} sono disponibili solo ${Math.max(0,free(lot))} ${unit}: la merce prenotata, bloccata o già partita non si può togliere con una correzione di produzione.`);
+   move(lot,stockDelta,'production-adjust');session.loadedQuantity=(session.loadedQuantity??0)+stockDelta;
+  }
+  session.cartons=after;
+  (session.corrections??=[]).push({id:id(),at:now,delta:action.delta,before,after,reason,responsible,...(context.actor?{actor:context.actor}:{}),stockDelta});
+  detail=`Correzione produzione ${session.productCode} · lotto ${session.lotCode}: ${before} → ${after} cartoni (${action.delta>0?'+':''}${action.delta}). Causale: ${reason}. Responsabile: ${responsible}.${stockDelta?` Magazzino ${stockDelta>0?'+':''}${stockDelta} ${unit} sul lotto.`:session.status==='closed'&&!session.stockLoaded?' Lavorazione chiusa senza carico: magazzino invariato.':''}`;break;
+ }
+ case 'settings.update':{
+  const input=action.settings??fail('Impostazioni mancanti.');const next:Settings={...(state.settings??{})};
+  if(input.productionArea!==undefined)next.productionArea=ensureArea(state,text(input.productionArea,'Area di carico della produzione',60));
+  if(input.autoLoad!==undefined){if(typeof input.autoLoad!=='boolean')fail('Carico automatico: valore non valido.');next.autoLoad=input.autoLoad;}
+  if(input.labelProducer!==undefined)next.labelProducer=optionalText(input.labelProducer,'Produttore in etichetta',300);
+  if(input.labelIdent!==undefined)next.labelIdent=optionalText(input.labelIdent,'Identificativo in etichetta',40);
+  state.settings=next;
+  detail=`Impostazioni di produzione aggiornate: carico automatico ${next.autoLoad===false?'disattivato':'attivo'}, area ${productionArea(state)}.`;break;
  }
  default:fail('Operazione non riconosciuta.');
  }

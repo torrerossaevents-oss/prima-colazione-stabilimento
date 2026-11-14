@@ -98,7 +98,10 @@ test('scenario 7: production A 200 and B 150, totals per article, history kept, 
  const rows=productionSummary(state.sessions,today,today);
  assert.equal(rows.length,2);assert.equal(rows.reduce((n,r)=>n+r.confirmedCartons,0),350);
  assert.deepEqual(rows.map(r=>[r.productCode,r.confirmedCartons,r.scrapCartons,r.unit]),[['A1',200,0,'CRT'],['B1',150,3,'confezioni']]);
- assert.equal(state.lots.length,0,'no automatic stock load');
+ // Each close loads its good cartons (read − scrap) into its own lot, with a 'produce' move.
+ assert.deepEqual(state.sessions.map(s=>[s.stockLoaded,s.loadedQuantity]),[[true,200],[true,147*state.sessions[1].unitsPerBox]]);
+ assert.deepEqual(state.lots.map(l=>l.quantity),[200,147*state.sessions[1].unitsPerBox]);
+ assert.ok(state.audit.filter(a=>a.action==='production.close').every(a=>a.moves?.[0]?.kind==='produce'));
  assert.throws(()=>act(state,{type:'production.close',sessionId:state.sessions[1].id}),/già stata salvata/);
 });
 
@@ -124,7 +127,7 @@ test('device sessions: only the authenticated bridge closes them once; manual co
  assert.throws(()=>act(state,{...close,cartons:199} as Action,{device:{id:'dev_1'}}),/non coerenti/);
  assert.throws(()=>act(state,{type:'lot.block',lotId:'x',blocked:0},{device:{id:'dev_1'}}),/soltanto la chiusura/);
  const closed=act(state,close,{device:{id:'dev_1'}});
- assert.equal(closed.sessions[0].cartons,200);assert.equal(closed.sessions[0].closedBy,'device');assert.deepEqual(closed.sessions[0].device!.anomalies,['arretramento']);assert.equal(closed.lots.length,0);
+ assert.equal(closed.sessions[0].cartons,200);assert.equal(closed.sessions[0].closedBy,'device');assert.deepEqual(closed.sessions[0].device!.anomalies,['arretramento']);assert.equal(closed.lots.length,1);assert.equal(closed.lots[0].quantity,200);
  try{act(closed,close,{device:{id:'dev_1'}});assert.fail('expected');}catch(error){assert.ok(error instanceof DomainError);assert.equal(error.code,'session-closed');}
  const override=act(state,{type:'production.close',sessionId,override:'Ponte guasto, conteggio a mano su foglio'});
  assert.equal(override.sessions[0].closedBy,'manual-override');

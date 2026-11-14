@@ -61,8 +61,8 @@ export function ProductionSummaryPanel({ sessions, today, archivedCount, onExpor
 }
 
 /** Paginated activity log with server-side search. */
-const historyGroups: [AuditGroup | '', string][] = [['', 'Tutte'], ['production', 'Produzione'], ['inventory', 'Magazzino'], ['orders', 'Ordini'], ['catalog', 'Catalogo']];
-const groupName: Record<AuditGroup, string> = { production: 'Produzione', inventory: 'Magazzino', orders: 'Ordini', catalog: 'Catalogo' };
+const historyGroups: [AuditGroup | '', string][] = [['', 'Tutte'], ['production', 'Produzione'], ['inventory', 'Magazzino'], ['orders', 'Ordini'], ['catalog', 'Catalogo'], ['corrections', 'Correzioni']];
+const groupName: Record<AuditGroup, string> = { corrections: 'Correzione', production: 'Produzione', inventory: 'Magazzino', orders: 'Ordini', catalog: 'Catalogo' };
 const hour = (v: string) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }).format(new Date(v));
 function dayTitle(d: string, today: string) { const label = day(d); return d === today ? 'Oggi · ' + label : d === addDays(today, -1) ? 'Ieri · ' + label : label; }
 
