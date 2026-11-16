@@ -15,6 +15,7 @@ import { canRecord, roleNames, type Role } from '../lib/permissions';
 import { describeError, listPending, readWorkspaceResponse, removePending, request, writePending } from '../lib/client-api';
 import type { LabelScan } from '../lib/label-reader';
 import LabelPreview from './label-preview';
+import LabelCamera from './label-camera';
 
 type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean };
 const OPERATOR_KEY = 'prima-colazione-linea-operatore';
@@ -155,7 +156,11 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
   const [typed, setTyped] = useState('');
   const [chosen, setChosen] = useState<string | null>(null);
   const [operator, setOperator] = useState('');
-  const camera = useRef<HTMLInputElement>(null); const upload = useRef<HTMLInputElement>(null);
+  const upload = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  // Article recognised from the barcode alone (no text reading needed); the frame is kept to read the text on request.
+  const [detected, setDetected] = useState<{ ean: string; preview: string; frame: HTMLCanvasElement } | null>(null);
+  const startCard = useRef<HTMLDivElement>(null);
   useEffect(() => { try { const saved = localStorage.getItem(OPERATOR_KEY); if (saved) queueMicrotask(() => setOperator(saved)); } catch { /* not remembered */ } }, []);
 
   const r = scan?.reading;
@@ -166,6 +171,19 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
     try { const { scanLabel } = await import('../lib/label-reader'); setScan(await scanLabel(file, (step, fraction) => setProgress({ step, fraction }))); }
     catch (err) { setScanError(describeError(err, 'Etichetta non letta. Riprova con più luce, inquadrando tutta l’etichetta, oppure scrivi il codice.')); }
     finally { setProgress(null); }
+  }
+  async function readFrame(frame: HTMLCanvasElement, barcode?: string) {
+    setScan(null); setChosen(null); setDetected(null); setScanError(''); setProgress({ step: 'Lettura del testo dell’etichetta…' });
+    try { const { scanCanvas } = await import('../lib/label-reader'); setScan(await scanCanvas(frame, (step, fraction) => setProgress({ step, fraction }), barcode)); }
+    catch (err) { setScanError(describeError(err, 'Etichetta non letta. Riprova con più luce, inquadrando tutta l’etichetta, oppure scrivi il codice.')); }
+    finally { setProgress(null); }
+  }
+  /** Scanner hit: known article → straight to the start; unknown → read the text of the same frame. */
+  function onDetected(code: string, frame: HTMLCanvasElement) {
+    setCameraOpen(false); setScanError('');
+    const known = productByScan(state, code);
+    if (known) { setScan(null); setChosen(known.id); setDetected({ ean: code, preview: frame.toDataURL('image/jpeg', 0.6), frame }); }
+    else void readFrame(frame, code);
   }
   function findTyped() { const p = productByScan(state, typed); if (p) { setChosen(p.id); setScan(null); setScanError(''); } else setScanError(`Nessun prodotto finito con codice o EAN «${typed.trim()}».`); }
 
@@ -178,6 +196,10 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
   ] as [string, string, string][]).filter(([, a, b]) => b && a !== b) : [];
   const fromLabel = () => ({ ...(r?.ean ? { ean: r.ean } : {}), ...(r?.piecesPerCarton ? { piecesPerCarton: r.piecesPerCarton } : {}), ...(r?.pieceWeightG ? { pieceWeightG: r.pieceWeightG } : {}), ...(r?.shelfLifeMonths ? { shelfLifeMonths: r.shelfLifeMonths } : {}), ...(r?.description ? { labelDescription: r.description.slice(0, 160) } : {}), ...(r?.ingredients ? { ingredients: r.ingredients } : {}), ...(r?.storage ? { storage: r.storage } : {}) });
 
+  // Once an article is recognised, bring the start card into view (the operator only types the name).
+  const foundId = found?.id;
+  useEffect(() => { if (foundId) startCard.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [foundId]);
+
   async function start() {
     if (!found) return;
     try { localStorage.setItem(OPERATOR_KEY, operator.trim()); } catch { /* not remembered */ }
@@ -186,16 +208,20 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
   return <section className="ipad-start" aria-label="Avvio della produzione">
     <div className="ipad-card">
       <h1 className="ipad-step"><span>1</span>Etichetta del prodotto</h1>
-      <p className="ipad-help">Fotografa l’etichetta del cartone o carica una foto: l’iPad legge codice a barre, codice, descrizione, pezzi, peso, lotto e scadenza. La foto resta sull’iPad.</p>
+      <p className="ipad-help">Inquadra l’etichetta del cartone: appena l’iPad riconosce il codice a barre la fotocamera si chiude da sola e si passa all’avvio. Per un articolo nuovo legge anche codice, descrizione, pezzi, peso, lotto e scadenza. Le immagini restano sull’iPad.</p>
       <div className="ipad-row">
-        <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={onFile}/>
         <input ref={upload} type="file" accept="image/*" hidden onChange={onFile}/>
-        <button className="ipad-btn primary big" disabled={!!progress} onClick={() => camera.current?.click()}><Camera size={26}/>Fotografa l’etichetta</button>
+        <button className="ipad-btn primary big" disabled={!!progress} onClick={() => { setScanError(''); setCameraOpen(true); }}><Camera size={26}/>Inquadra l’etichetta</button>
         <button className="ipad-btn big" disabled={!!progress} onClick={() => upload.current?.click()}><ImageUp size={26}/>Carica foto o file</button>
       </div>
       <div className="ipad-row ipad-manual"><label className="ipad-field grow"><span>Oppure scrivi il codice o l’EAN</span><input value={typed} onChange={e => setTyped(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') findTyped(); }} inputMode="text" autoCapitalize="characters" placeholder="Es. 024 o 8000000004642"/></label><button className="ipad-btn" disabled={!typed.trim()} onClick={findTyped}><ScanLine size={22}/>Cerca</button></div>
       {progress && <div className="ipad-progress" role="status"><RefreshCw size={20} className="spin"/><span>{progress.step}</span>{progress.fraction !== undefined && <progress max={1} value={progress.fraction}/>}</div>}
       {scanError && <div className="ipad-alert" role="alert"><CircleAlert size={22}/><span>{scanError}</span></div>}
+      {detected && found && <div className="ipad-detected" role="status">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={detected.preview} alt="Fotogramma dell’etichetta riconosciuta"/>
+        <div><span className="ipad-code">Riconosciuto dal codice a barre · EAN {detected.ean}</span><b>{found.code} · {found.name}</b>{<button className="ipad-btn" onClick={() => void readFrame(detected.frame, detected.ean)}><ScanLine size={22}/>Leggi anche il testo e confronta con la scheda</button>}</div>
+      </div>}
       {scan && r && <div className="ipad-scan">
         {/* A local data URL of the photo just read: nothing for an image optimizer to serve. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -210,7 +236,8 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
         {can('product.update') ? <button className="ipad-btn" disabled={busy} onClick={() => void send({ type: 'product.update', productId: found.id, product: { ...found, ...fromLabel() } }, 'Scheda prodotto aggiornata con i dati dell’etichetta')}><Check size={22}/>Aggiorna la scheda con l’etichetta</button> : <p className="ipad-help">Solo l’amministrazione può aggiornare la scheda. Puoi comunque avviare con i dati della scheda.</p>}
       </div>}
     </div>
-    {found && <div className="ipad-card">
+    {cameraOpen && <LabelCamera onDetected={onDetected} onCapture={frame => { setCameraOpen(false); void readFrame(frame); }} onClose={message => { setCameraOpen(false); if (message) setScanError(message); }}/>}
+    {found && <div className="ipad-card" ref={startCard}>
       <h1 className="ipad-step"><span>2</span>Avvio della produzione</h1>
       <div className="ipad-found"><span className="ipad-code">Codice {found.code}{found.ean ? ` · EAN ${found.ean}` : ''}</span><h2>{found.name}</h2></div>
       <dl className="ipad-facts big"><div><dt>Lotto</dt><dd>{lot}</dd></div><div><dt>Scadenza</dt><dd>{itDate(expiry)}</dd></div><div><dt>Cartone</dt><dd>{found.piecesPerCarton ? `${found.piecesPerCarton} pezzi` : '—'}</dd></div></dl>
