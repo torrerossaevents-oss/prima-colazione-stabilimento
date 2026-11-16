@@ -154,7 +154,7 @@ Richiesta di Teo, con la foto dell'etichetta reale del Fagottino PF cioccolato 9
 
 - Etichetta per prodotto: EAN verificato, pezzi per cartone, peso del pezzo (peso netto calcolato), durata in mesi, descrizione, ingredienti, conservazione; produttore e IDENT. comuni in Configurazione; anteprima con codice a barre EAN nella scheda prodotto, all'avvio e sulla postazione. Nessun collegamento all'etichettatrice.
 - Lotto AAMMGG e scadenza produzione + durata calcolati all'avvio; il lettore accetta codice o EAN; scadenza diversa per un lotto esistente rifiutata all'avvio.
-- Carico alla chiusura (manuale o dal contapezzi) dei cartoni buoni nel lotto della lavorazione, area di produzione configurabile, movimento `produce`; disattivabile.
+- Carico alla chiusura (manuale o dal contapezzi) dei cartoni buoni nel lotto della lavorazione, solo nell'area di carico scelta esplicitamente, movimento `produce`; disattivabile. Chiusura manuale di una lavorazione da fotocellule con i cartoni contati a mano. EAN unici e diversi da ogni codice. Testi dell'etichetta limitati (160/700/250 caratteri) per lo spazio dell'archivio.
 - Correzioni dei cartoni solo dell'amministrazione, con causale e responsabile: nella scheda del giorno, nel registro «Correzioni dei cartoni», nella scheda «Correzioni» dello storico; il lotto segue la correzione.
 - Ordini: fasi con conteggi, passaggi per ordine, prossimo passo con il pulsante giusto, righe richiesto/partito/da consegnare, consegne oggi/domani/in ritardo.
 - Da chiarire con Teo: significato di «IDENT. 02/F» (oggi è un testo unico per tutte le etichette); se la durata è sempre 12 mesi per tutti i prodotti.

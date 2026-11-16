@@ -13,7 +13,7 @@ let seq = 0;
 const ctx = (now = '2026-10-02T06:00:00.000Z', extra: Context = {}): Context => ({ now, id: () => 'id-' + (++seq), ...extra });
 const act = (s: State, a: Action, c = ctx()) => applyAction(s, a, c);
 const fagottino = { code: '024', name: 'Fagottino PF cioccolato 90 g (prova)', kind: 'finished' as const, unit: 'CRT', unitsPerBox: 1, minStock: 0, ean: '8000000004642', piecesPerCarton: 50, pieceWeightG: 90, shelfLifeMonths: 12, labelDescription: 'Prodotto da forno crudo congelato' };
-const base = () => act(initialState(), { type: 'product.add', product: fagottino });
+const base = () => act(act(initialState(), { type: 'product.add', product: fagottino }), { type: 'settings.update', settings: { productionArea: 'Cella frigo' } });
 
 test('lotto AAMMGG e scadenza a +N mesi, anche a fine mese e negli anni bisestili', () => {
   assert.equal(productionLot('2026-10-02'), '261002', 'come sull’etichetta: Lotto 261002');
@@ -93,4 +93,48 @@ test('campi dell’etichetta: conservati se assenti (import), cancellati se vuot
   const cleared = act(s, { type: 'product.update', productId: p.id, product: { ...p, ean: '', piecesPerCarton: null as unknown as number, labelDescription: '' } });
   assert.equal(JSON.parse(JSON.stringify(cleared.products[0])).ean, undefined); assert.equal(cleared.products[0].piecesPerCarton, undefined); assert.equal(cleared.products[0].labelDescription, undefined);
   assert.throws(() => act(s, { type: 'product.update', productId: p.id, product: { ...p, shelfLifeMonths: 0 } }), /Durata/);
+});
+
+test('EAN unici e mai uguali a un codice; il codice esatto vince sull’EAN', () => {
+  const s = base();
+  assert.throws(() => act(s, { type: 'product.add', product: { ...fagottino, code: '025', name: 'Copia' } }), /già usato dall’articolo 024/);
+  assert.throws(() => act(s, { type: 'product.import', mode: 'skip', products: [{ ...fagottino, code: '030', name: 'A' }, { ...fagottino, code: '031', name: 'B', ean: '4006381333931' }] }), /già usato/);
+  const withCode = act(s, { type: 'product.add', product: { ...fagottino, code: '026', name: 'Altro', ean: '4006381333931' } });
+  assert.throws(() => act(withCode, { type: 'product.add', product: { code: '4006381333931', name: 'Codice uguale a un EAN', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } }), /coincide con un codice/);
+});
+
+test('senza area di carico scelta la chiusura non carica e lo dice', () => {
+  let s = act(initialState(), { type: 'product.add', product: fagottino });
+  s = act(s, { type: 'production.start', code: '024', operator: 'Operatore prova' }); const id = activeSession(s)!.id;
+  s = act(s, { type: 'production.count', sessionId: id, cartons: 5 }); s = act(s, { type: 'production.close', sessionId: id });
+  assert.equal(s.lots.length, 0); assert.match(s.audit.at(-1)!.detail, /Area di carico non impostata/);
+});
+
+test('chiusura manuale di una lavorazione da fotocellule con i cartoni contati; cartoni aggiunti dopo una chiusura a zero entrano in magazzino', () => {
+  let d = act(base(), { type: 'production.start', code: '024', operator: 'Operatore prova', counting: 'device' }, ctx(undefined, { devicesEnabled: true }));
+  const dev = activeSession(d)!.id;
+  assert.throws(() => act(d, { type: 'production.close', sessionId: dev, override: 'Ponte guasto' }), /Cartoni contati a mano/);
+  d = act(d, { type: 'production.close', sessionId: dev, override: 'Ponte guasto', cartons: 120 });
+  assert.equal(d.lots[0].quantity, 120);
+  let z = act(base(), { type: 'production.start', code: '024', operator: 'Operatore prova' }); const zid = activeSession(z)!.id;
+  z = act(z, { type: 'production.close', sessionId: zid });
+  assert.equal(z.lots.length, 0);
+  z = act(z, { type: 'production.adjust', sessionId: zid, delta: 7, reason: 'Cartoni registrati in ritardo', responsible: 'Ufficio' });
+  assert.equal(z.lots[0].quantity, 7); assert.equal(z.sessions[0].loadedQuantity, 7); assert.equal(z.audit.at(-1)!.moves![0].kind, 'production-adjust');
+});
+
+test('un’entrata a mano con il lotto in produzione ma un’altra scadenza è rifiutata', () => {
+  const s = act(base(), { type: 'production.start', code: '024', operator: 'Operatore prova' });
+  assert.throws(() => act(s, { type: 'lot.receive', lot: { productId: s.products[0].id, code: '261002', expiry: '2027-01-01', area: 'Cella frigo', quantity: 5 } }), /in produzione con scadenza 2027-10-02/);
+});
+
+test('350 articoli con i testi dell’etichetta al massimo restano ben sotto lo spazio dell’archivio', () => {
+  let s = initialState();
+  // Realistic Italian label text (mostly ASCII, some accents); all-multibyte text would be ~3× but is not realistic.
+  const long = (n: number) => 'Farina di FRUMENTO, zucchero, UOVA pastorizzate, latte; può contenere tracce di frutta a guscio. '.repeat(20).slice(0, n);
+  const products = Array.from({ length: 350 }, (_, i) => ({ ...fagottino, code: 'P' + i, name: 'Articolo ' + i, ean: undefined, labelDescription: long(160), ingredients: long(700), storage: long(250) }));
+  s = act(s, { type: 'product.import', mode: 'skip', products });
+  const bytes = new TextEncoder().encode(JSON.stringify(s)).length;
+  assert.ok(bytes < 600_000, `catalogo: ${bytes} byte su 2 MB`);
+  assert.throws(() => act(s, { type: 'product.update', productId: s.products[0].id, product: { ...products[0], ingredients: 'x'.repeat(701) } }), /massimo 700/);
 });

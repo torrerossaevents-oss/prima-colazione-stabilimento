@@ -32,7 +32,7 @@ const aliases: Record<string, Field> = {
   gelitriasrl: 'priceGelitria', listinogelitriasrl: 'priceGelitria', listinogelitria: 'priceGelitria', gelitria: 'priceGelitria', pricegelitria: 'priceGelitria',
   distribuzione: 'priceDistribution', listinodistribuzione: 'priceDistribution', pricedistribution: 'priceDistribution',
   tipologia: 'kind', tipo: 'kind', tipooperativo: 'kind', kind: 'kind',
-  unitapercartone: 'unitsPerBox', pezzipercartone: 'unitsPerBox', unitsperbox: 'unitsPerBox',
+  unitapercartone: 'unitsPerBox', unitsperbox: 'unitsPerBox',
   scortaminima: 'minStock', minstock: 'minStock',
 };
 function normalizedHeader(value: unknown): string {

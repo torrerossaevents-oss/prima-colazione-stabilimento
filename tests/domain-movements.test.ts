@@ -9,6 +9,7 @@ const today='2026-11-07';
 function fixture(quantity=150){
  let state=act(initialState(),{type:'product.add',product:{code:'00123',name:'Prodotto fittizio',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
  state=act(state,{type:'lot.receive',lot:{productId:state.products[0].id,code:'LOT-A',expiry:'2026-12-31',area:'Area A',quantity}});
+ state.settings={productionArea:'Area A'}; // production loads into an area chosen explicitly
  return state;
 }
 /** Physical balance must always equal the sum of explicit moves since the empty workspace. */
@@ -89,6 +90,7 @@ test('Europe/Rome calendar: expiring lots within 7 days use calendar days, not U
 
 test('scenario 7: production A 200 and B 150, totals per article, history kept, no unknown code or second session',()=>{
  let state=act(initialState(),{type:'product.import',mode:'skip',products:[{code:'A1',name:'Articolo A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0},{code:'B1',name:'Articolo B',kind:'finished',unit:'confezioni',unitsPerBox:12,minStock:0}]});
+ state=act(state,{type:'settings.update',settings:{productionArea:'Cella'}});
  const start=(code:string,lotCode:string)=>({type:'production.start' as const,code,operator:'Operatore prova',lotCode,expiry:'2026-12-31'});
  assert.throws(()=>act(state,start('ZZZ','L')),/Codice sconosciuto/);
  state=act(state,start('A1','PA'));assert.throws(()=>act(state,start('B1','PB')),/Chiudi e salva/);
@@ -117,6 +119,7 @@ test('scenario 8: session day comes from the Rome start, also across midnight an
 
 test('device sessions: only the authenticated bridge closes them once; manual counts and silent closes refused',()=>{
  let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
+ state=act(state,{type:'settings.update',settings:{productionArea:'Cella'}});
  const start={type:'production.start' as const,code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device' as const};
  assert.throws(()=>act(state,start),/Nessun ponte/);
  state=act(state,start,{devicesEnabled:true});const sessionId=state.sessions[0].id;assert.equal(state.sessions[0].source,'device');
@@ -129,7 +132,9 @@ test('device sessions: only the authenticated bridge closes them once; manual co
  const closed=act(state,close,{device:{id:'dev_1'}});
  assert.equal(closed.sessions[0].cartons,200);assert.equal(closed.sessions[0].closedBy,'device');assert.deepEqual(closed.sessions[0].device!.anomalies,['arretramento']);assert.equal(closed.lots.length,1);assert.equal(closed.lots[0].quantity,200);
  try{act(closed,close,{device:{id:'dev_1'}});assert.fail('expected');}catch(error){assert.ok(error instanceof DomainError);assert.equal(error.code,'session-closed');}
- const override=act(state,{type:'production.close',sessionId,override:'Ponte guasto, conteggio a mano su foglio'});
+ assert.throws(()=>act(state,{type:'production.close',sessionId,override:'Ponte guasto'}),/Cartoni contati a mano/,'a manual close of a photocell run needs the hand count');
+ const override=act(state,{type:'production.close',sessionId,override:'Ponte guasto, conteggio a mano su foglio',cartons:180});
+ assert.equal(override.sessions[0].cartons,180);assert.equal(override.lots.find(l=>l.id===override.sessions[0].loadedLotId)!.quantity,180,'hand count loaded');
  assert.equal(override.sessions[0].closedBy,'manual-override');
  try{act(override,close,{device:{id:'dev_1'}});assert.fail('expected');}catch(error){assert.equal((error as DomainError).code,'session-closed');}
 });
@@ -156,7 +161,7 @@ test('import update without kind/minStock columns keeps stored values; new rows 
 test('production summary flags manual closes of bridge sessions and bridge anomalies as to verify',()=>{
  let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
  state=act(state,{type:'production.start',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device'},{devicesEnabled:true});
- state=act(state,{type:'production.close',sessionId:state.sessions[0].id,override:'Ponte guasto'});
+ state=act(state,{type:'production.close',sessionId:state.sessions[0].id,override:'Ponte guasto',cartons:10});
  assert.equal(productionSummary(state.sessions)[0].toVerify,1);
 });
 

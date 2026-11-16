@@ -7,6 +7,7 @@ const act=(state:State,action:Action)=>applyAction(state,action,context);
 function fixture(){
  let state=act(initialState(),{type:'product.add',product:{code:'PC001',name:'Articolo di prova',kind:'finished',unit:'confezioni',unitsPerBox:12,minStock:20}});
  state=act(state,{type:'lot.receive',lot:{productId:state.products[0].id,code:'LOT-A',expiry:'2026-12-31',area:'Area A',quantity:150}});
+ state.settings={productionArea:'Area A'}; // production loads into an area chosen explicitly
  return state;
 }
 function reserve(state:State,quantity=30){return act(state,{type:'order.create',order:{customer:'Cliente di prova',destination:'Destinazione di prova',date:'2026-11-07',lines:[{lotId:state.lots[0].id,quantity}]}});}

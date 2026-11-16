@@ -85,9 +85,14 @@ export function archiveNeeds(action: Action, state: State): ArchiveNeeds {
     case 'order.prepare': case 'order.cancel': case 'order.dispatch': case 'order.document':
       if (typeof a.orderId === 'string' && !state.orders.some(o => o.id === a.orderId)) needs.order.push(a.orderId);
       break;
-    case 'production.count': case 'production.close': case 'production.deviceClose':
-      if (typeof a.sessionId === 'string' && !state.sessions.some(s => s.id === a.sessionId)) needs.session.push(a.sessionId);
+    case 'production.count': case 'production.close': case 'production.deviceClose': {
+      if (typeof a.sessionId !== 'string') break;
+      const hot = state.sessions.find(s => s.id === a.sessionId);
+      if (!hot) needs.session.push(a.sessionId);
+      // The close loads into the day's lot: an archived empty row of that lot is brought back instead of creating a twin.
+      else if (action.type !== 'production.count') needs.lotRef.push(lotRef(hot.productId, hot.lotCode));
       break;
+    }
     case 'production.adjust': {
       // An old closed run and the lot it loaded may both be archived: bring them back to correct them.
       if (typeof a.sessionId !== 'string') break;

@@ -124,6 +124,13 @@ s = await api(); assert.equal(s.state.lots[0].quantity, 126); assert.equal(s.sta
 await page.getByLabel('Cerca in magazzino').fill('LOT-PROVA'); await row.waitFor();
 log('scarto dalla quantità bloccata e ricerca per lotto');
 
+// Production loads stock only into an area chosen explicitly: without it the production page says so.
+await page.goto(base + '/#production'); await page.getByText('Scegli l’area di carico').first().waitFor();
+await page.goto(base + '/#settings'); await page.getByLabel('Area di carico della produzione').fill('Cella frigo');
+await page.getByRole('button', { name: 'Salva impostazioni' }).click(); await page.getByText('Impostazioni di produzione salvate').waitFor();
+assert.equal((await api()).state.settings.productionArea, 'Cella frigo');
+log('area di carico della produzione scelta in Configurazione');
+
 // Scenario 7 in the UI: A 200 closes, unknown code refused, B starts from zero.
 await page.goto(base + '/#production'); await page.getByRole('button', { name: 'Nuova lavorazione' }).first().click();
 await dialog().getByRole('button', { name: 'Usa fotocamera' }).click();

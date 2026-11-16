@@ -83,7 +83,7 @@ export function buildTrialState(now: Date = new Date()): State {
     }
     if (d === 2) {
       const run0 = state.sessions.filter(x => x.day === day && x.status === 'closed')[0];
-      run({ type: 'production.adjust', sessionId: run0.id, delta: 2, reason: 'Due cartoni non letti dalla fotocellula (prova)', responsible: 'Ufficio PROVA' }, at(day, 1020));
+      if (run0) run({ type: 'production.adjust', sessionId: run0.id, delta: 2, reason: 'Due cartoni non letti dalla fotocellula (prova)', responsible: 'Ufficio PROVA' }, at(day, 1020));
     }
     if (d === 5) run({ type: 'order.create', order: { customer: 'Pasticceria Sole PROVA', destination: 'Piazza Garibaldi 3 (prova)', date: addDays(day, 1), lines: [{ lotId: lotOf('00124', 10).id, quantity: 10 }] } }, at(day, 950));
   }

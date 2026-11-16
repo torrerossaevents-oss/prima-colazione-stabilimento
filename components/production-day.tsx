@@ -19,7 +19,7 @@ const when = (v: string) => new Intl.DateTimeFormat('it-IT', { day: '2-digit', m
 const signed = (v: number) => (v > 0 ? '+' : '') + n(v);
 
 /** onCorrect: present only for the administration, which may correct cartons with a reason. */
-export default function ProductionDay({ sessions, today, archivedCount, onExport, onCorrect }: { sessions: Session[]; today: string; archivedCount: number; onExport: (name: string, content: string, type: string) => void; onCorrect?: (sessionId: string) => void }) {
+export default function ProductionDay({ sessions, today, archivedCount, onExport, onCorrect }: { sessions: Session[]; today: string; archivedCount: number; onExport: (name: string, content: string, type: string) => void; onCorrect?: (session: Session) => void }) {
   const [day, setDay] = useState(today);
   const [archived, setArchived] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,7 +95,7 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
                 {(sessionById.get(r.id)?.corrections?.length ?? 0) > 0 && <span className="chip amber">Corretta {sessionById.get(r.id)!.corrections!.length === 1 ? 'una volta' : sessionById.get(r.id)!.corrections!.length + ' volte'}</span>}
               </span>
               {sessionById.get(r.id)?.corrections?.map(c => <small key={c.id} className="flow-correction">{when(c.at)} · {n(c.before)} → {n(c.after)} cartoni ({signed(c.delta)}) · Causale: {c.reason} · {c.responsible}</small>)}
-              {onCorrect && (r.status === 'closed' || r.source === 'manual') && <button className="button ghost small flow-correct" onClick={() => onCorrect(r.id)}><PenLine size={15}/>Correggi cartoni</button>}
+              {onCorrect && sessionById.get(r.id) && (r.status === 'closed' || r.source === 'manual') && <button className="button ghost small flow-correct" aria-label={`Correggi cartoni: ${r.productCode} delle ${time(r.startedAt)}`} onClick={() => onCorrect(sessionById.get(r.id)!)}><PenLine size={15}/>Correggi cartoni</button>}
             </span>
             <span className="flow-qty"><b>{n(r.cartons)}</b><small>cartoni</small>{r.scrapCartons > 0 && <small>{n(r.scrapCartons)} scartati</small>}</span>
           </li>)}
@@ -116,15 +116,15 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
 }
 
 /** Every carton correction (administration only), newest first: what changed, why, who, when. */
-export function CorrectionsPanel({ sessions, onCorrect }: { sessions: Session[]; onCorrect?: (sessionId: string) => void }) {
+export function CorrectionsPanel({ sessions, onCorrect }: { sessions: Session[]; onCorrect?: (session: Session) => void }) {
   const rows = useMemo(() => sessions.flatMap(x => (x.corrections ?? []).map(c => ({ c, x }))).sort((a, b) => b.c.at.localeCompare(a.c.at)), [sessions]);
   return <section className="panel corrections-panel" aria-labelledby="corrections-title">
-    <div className="panel-head"><div><h2 id="corrections-title">Correzioni dei cartoni</h2><p>Ogni modifica fatta dall’amministrazione, con causale e responsabile. Resta anche nello storico attività.</p></div></div>
+    <div className="panel-head"><div><h2 id="corrections-title">Correzioni dei cartoni</h2><p>Ogni modifica fatta dall’amministrazione, con causale e responsabile, sulle lavorazioni degli ultimi 30 giorni. Tutte restano nello storico attività (scheda «Correzioni»).</p></div></div>
     {rows.length ? <div className="table-scroll"><table className="data-table">
       <thead><tr><th>Quando</th><th>Lavorazione</th><th className="num">Cartoni</th><th>Causale</th><th>Responsabile</th><th className="num">Magazzino</th></tr></thead>
       <tbody>{rows.map(({ c, x }) => <tr key={c.id}>
         <td className="nowrap">{when(c.at)}</td>
-        <td>{x.productCode} · {x.productName}<span className="cell-sub">Lotto {x.lotCode}, del {x.day.split('-').reverse().join('/')}{onCorrect ? <> · <button className="link-button" onClick={() => onCorrect(x.id)}>correggi ancora</button></> : null}</span></td>
+        <td>{x.productCode} · {x.productName}<span className="cell-sub">Lotto {x.lotCode}, del {x.day.split('-').reverse().join('/')}{onCorrect ? <> · <button className="link-button" onClick={() => onCorrect(x)}>correggi ancora</button></> : null}</span></td>
         <td className="num nowrap">{n(c.before)} → {n(c.after)}<span className="cell-sub">{signed(c.delta)}</span></td>
         <td>{c.reason}</td>
         <td>{c.responsible}{c.actor && <span className="cell-sub">{c.actor}</span>}</td>
