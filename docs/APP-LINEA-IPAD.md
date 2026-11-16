@@ -15,7 +15,11 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 
 ## Uso
 
-1. **Etichetta**: «Fotografa l'etichetta» (fotocamera) oppure «Carica foto o file», o in alternativa scrivi codice o EAN. L'iPad legge:
+1. **Etichetta**: «Inquadra l'etichetta» apre la fotocamera come un **lettore**. Appena riconosce il codice a barre emette un bip, si chiude da sola e:
+   - se l'articolo è nel catalogo, passa subito all'avvio (con «Leggi anche il testo e confronta con la scheda» se serve un controllo);
+   - se è nuovo, legge il testo dello stesso fotogramma e propone la scheda.
+
+   Se il codice a barre non si legge: avvicina l'iPad, accendi la «Luce» se disponibile, oppure «Scatta adesso» e l'app legge il testo. In alternativa «Carica foto o file» o scrivi codice o EAN. Dalla foto o dal fotogramma l'iPad legge:
    - il **codice a barre EAN**;
    - il **testo**: codice (COD.), nome, descrizione, pezzi e peso netto, lotto stampato, scadenza, IDENT., ingredienti e conservazione.
 2. **Calcolati in automatico**:
@@ -48,7 +52,7 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 ## Verifiche
 
 - `tests/label-parse.test.ts`: testo dell'etichetta pulito, testo OCR reale della foto (con produttore e indirizzo sostituiti), errori tipici dell'OCR.
-- `tests/ui/linea.mjs`: su una vista da iPad (1180×820, tocco) prova questo percorso, con un'etichetta di prova generata dalla modalità prova:
+- `tests/ui/linea.mjs`: su una vista da iPad (1180×820, tocco) prova questo percorso, con un'etichetta di prova generata dalla modalità prova (il lettore dal vivo con una fotocamera simulata che inquadra l'etichetta: riconoscimento, chiusura automatica, articolo pronto all'avvio):
   1. immagine letta, con il codice a barre;
   2. articolo creato;
   3. avvio con lotto automatico;

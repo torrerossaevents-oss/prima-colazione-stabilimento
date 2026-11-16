@@ -13,7 +13,7 @@
 
 ### App Linea sull'iPad
 
-Sull'iPad della linea: Safari → indirizzo del gestionale + `/linea` → Condividi → **Aggiungi alla schermata Home**. Dall'icona **Linea** si fotografa l'etichetta (o si carica la foto), l'app riconosce l'articolo e calcola lotto e scadenza, poi «Avvia produzione», si contano i cartoni con i pulsanti grandi e si chiude caricando il magazzino. Dettagli in `APP-LINEA-IPAD.md`.
+Sull'iPad della linea: Safari → indirizzo del gestionale + `/linea` → Condividi → **Aggiungi alla schermata Home**. Dall'icona **Linea** si inquadra l'etichetta con la fotocamera-lettore, che si chiude da sola appena riconosce il codice a barre (oppure si carica una foto), l'app riconosce l'articolo e calcola lotto e scadenza, poi «Avvia produzione», si contano i cartoni con i pulsanti grandi e si chiude caricando il magazzino. Dettagli in `APP-LINEA-IPAD.md`.
 
 ### Menu laterale
 

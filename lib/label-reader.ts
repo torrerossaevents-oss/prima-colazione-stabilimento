@@ -43,7 +43,7 @@ function luminance(canvas: HTMLCanvasElement): Uint8ClampedArray {
   return out;
 }
 
-async function readBarcode(canvas: HTMLCanvasElement): Promise<string | undefined> {
+export async function readBarcode(canvas: HTMLCanvasElement): Promise<string | undefined> {
   const ZX = await import('@zxing/library');
   const hints = new Map(); hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [ZX.BarcodeFormat.EAN_13, ZX.BarcodeFormat.EAN_8]); hints.set(ZX.DecodeHintType.TRY_HARDER, true);
   const reader = new ZX.MultiFormatReader(); reader.setHints(hints);
@@ -56,12 +56,31 @@ async function readBarcode(canvas: HTMLCanvasElement): Promise<string | undefine
   return undefined;
 }
 
+/**
+ * Live scanner: decodes one camera frame quickly (EAN only). Returns the code or undefined.
+ * The reader is created once and reused for every frame.
+ */
+let frameReader: Promise<(canvas: HTMLCanvasElement) => string | undefined> | null = null;
+export async function decodeFrame(canvas: HTMLCanvasElement): Promise<string | undefined> {
+  frameReader ??= (async () => {
+    const ZX = await import('@zxing/library');
+    const hints = new Map(); hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [ZX.BarcodeFormat.EAN_13, ZX.BarcodeFormat.EAN_8]);
+    const reader = new ZX.MultiFormatReader(); reader.setHints(hints);
+    return (c: HTMLCanvasElement) => { try { return reader.decode(new ZX.BinaryBitmap(new ZX.HybridBinarizer(new ZX.RGBLuminanceSource(luminance(c), c.width, c.height)))).getText(); } catch { return undefined; } };
+  })();
+  return (await frameReader)(canvas);
+}
+
 export async function scanLabel(file: File, progress: Progress = () => {}): Promise<LabelScan> {
   if (!file.type.startsWith('image/')) throw new Error('Carica una foto dell’etichetta (JPG, PNG o foto dell’iPad). I PDF non sono letti.');
   progress('Apertura della foto…');
-  const canvas = await loadImage(file);
+  return scanCanvas(await loadImage(file), progress);
+}
+
+/** Full reading of an image already on a canvas (photo or camera frame); a barcode already decoded is reused. */
+export async function scanCanvas(canvas: HTMLCanvasElement, progress: Progress = () => {}, knownBarcode?: string): Promise<LabelScan> {
   progress('Lettura del codice a barre…');
-  const barcode = await readBarcode(canvas);
+  const barcode = knownBarcode ?? await readBarcode(canvas);
   const ocr = await ocrWorker(progress);
   progress('Lettura del testo…', 0);
   const { data } = await ocr.recognize(canvas);
