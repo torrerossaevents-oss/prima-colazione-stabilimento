@@ -159,6 +159,16 @@ Richiesta di Teo, con la foto dell'etichetta reale del Fagottino PF cioccolato 9
 - Ordini: fasi con conteggi, passaggi per ordine, prossimo passo con il pulsante giusto, righe richiesto/partito/da consegnare, consegne oggi/domani/in ritardo.
 - Da chiarire con Teo: significato di «IDENT. 02/F» (oggi è un testo unico per tutte le etichette); se la durata è sempre 12 mesi per tutti i prodotti.
 
+## App Linea per l'iPad (16/11/2026)
+
+App web installabile su `/linea` (`components/line-app.tsx`, guida in `docs/APP-LINEA-IPAD.md`):
+- foto o file dell'etichetta letti sull'iPad (codice a barre e testo, nessun servizio esterno);
+- articolo riconosciuto o creato dall'amministrazione con i dati letti;
+- lotto, scadenza, peso e durata calcolati;
+- avvio, contatore grande, chiusura con carico.
+
+Verificata sulla foto reale del Fagottino e con il test `tests/ui/linea.mjs` su vista iPad.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.

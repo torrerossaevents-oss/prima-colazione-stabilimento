@@ -57,3 +57,6 @@ yarn-error.log*
 prima-colazione-backup-*.json
 /ui-smoke-output/
 /graphify-out/
+
+# On-device label reader, copied from node_modules at dev/build time
+/public/ocr/

@@ -1,0 +1,17 @@
+{
+  "name": "Linea · Prima Colazione",
+  "short_name": "Linea",
+  "description": "Avvio della produzione dall’etichetta, contatore e chiusura con carico.",
+  "lang": "it",
+  "start_url": "/linea",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#10283c",
+  "theme_color": "#10283c",
+  "icons": [
+    { "src": "/icons/linea-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/linea-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/linea-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

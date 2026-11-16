@@ -1,10 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { readExecutionProfile } from "./execution-profile.mjs";
+import { copyOcrAssets } from "./copy-ocr-assets.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!["dev", "build"].includes(command)) throw new Error("Expected dev or build.");
 const managedLinux = readExecutionProfile() === "managed-linux";
+// The iPad label reader is served from our own domain (public/ocr), never from a CDN.
+copyOcrAssets();
 
 if (managedLinux && command === "build") {
   const result = spawnSync("bash", [
