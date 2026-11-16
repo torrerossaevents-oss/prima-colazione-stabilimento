@@ -92,3 +92,27 @@ test('testo OCR reale della foto: i dati che servono alla produzione ci sono, il
   assert.match(r.ingredients!, /^Farina di FRUMENTO/);
   assert.equal(parseLabel(realOcr).ean, undefined, 'senza codice a barre le cifre lette male non bastano');
 });
+
+test('dicitura: parole tipiche corrette quando l’OCR sbaglia una lettera, frasi separate', () => {
+  const r = parseLabel('FAGOTTINO PF CIOCCOLATO 90g COD.024\nProdotto da forno orudo congelato Da sonsumarsi previa Idonea cottura');
+  assert.equal(r.description, 'Prodotto da forno crudo congelato. Da consumarsi previa idonea cottura');
+  // A word that is right is never changed into another one.
+  assert.equal(parseLabel('X COD.1\nProdotto da forno cotto surgelato').description, 'Prodotto da forno cotto surgelato');
+});
+
+test('dicitura già usata da un altro articolo: ripresa identica', () => {
+  const known = ['Prodotto da forno crudo congelato. Da consumarsi previa idonea cottura', 'Prodotto da forno precotto surgelato'];
+  const r = parseLabel('Y COD.7\nProdolto da forno crudo congelalo Da consumarsi previa idonea coltura', undefined, { known });
+  assert.equal(r.description, known[0]);
+  assert.equal(parseLabel('Y COD.7\nTorta di mele della casa', undefined, { known }).description, 'Torta di mele della casa', 'testo diverso: non sostituito');
+});
+
+test('due letture della stessa etichetta: ogni dato preso dalla lettura che lo riporta', () => {
+  const gray = 'FAGOTTINO PF CIOCCOLATO 90g COD.024\nProdotto da forno crudo congelato Da consumarsi previa idonea cottura\nContiene n 50 pezzi peso netto 4500g\nDa consumarsi preferibilmente entro il 02/10/2027';
+  const color = 'FAGOTTINO PF CIOCCOLATO 90g COD.024\nProdotto da forno orudo congelato Da sonsumarsi previa ldonea\nSontiene n 50 pezzi peso nello 46009\nLotto: 261002\nIDENT. 02/F';
+  const r = parseLabel([gray, color], '8000000004642');
+  assert.equal(r.description, 'Prodotto da forno crudo congelato. Da consumarsi previa idonea cottura', 'la dicitura più pulita');
+  assert.equal(r.lot, '261002'); assert.equal(r.expiry, '2027-10-02'); assert.equal(r.shelfLifeMonths, 12);
+  assert.equal(r.netWeightG, 4500); assert.equal(r.ident, '02/F');
+  assert.ok(!r.warnings.some(w => /Lotto non letto|Scadenza non letta/.test(w)));
+});
