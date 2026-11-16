@@ -30,7 +30,7 @@ export type Action =
  | {type:'lot.scrap';lotId:string;quantity:number;fromBlocked:boolean;reason:string;responsible:string}
  | {type:'lot.consume';lotId:string;quantity:number;reason:string;responsible:string}
  | {type:'lot.return';lot:Omit<Lot,'id'|'blocked'>;reason:string;reference:string}
- | {type:'order.create';order:{customer:string;destination:string;date:string;lines:{lotId:string;quantity:number}[]}}
+ | {type:'order.create';order:{customer:string;destination:string;date:string;lines:({lotId:string;quantity:number}|{productId:string;quantity:number})[]}}
  | {type:'order.prepare'|'order.cancel';orderId:string}
  | {type:'order.dispatch';orderId:string;documentRef:string;quantities?:{lotId:string;quantity:number}[];note?:string}
  | {type:'order.document';orderId:string;documentRef:string}
@@ -177,6 +177,18 @@ export function reservationIndex(state:State):Map<string,number>{
 }
 export function reservedForLot(state:State,lotId:string,index?:Map<string,number>):number{return (index??reservationIndex(state)).get(lotId)??0;}
 function lotAvailable(lot:Lot,reserved:number,today:string){return lot.expiry&&lot.expiry<today?0:lot.quantity-lot.blocked-reserved;}
+/**
+ * FEFO (first expired, first out — decisione di Teo, 16/11/2026): the quantity of a product is taken from
+ * the lots that expire first, across several lots if needed; expired, blocked and reserved goods are never used.
+ * Lots without an expiry (packaging) come last. `missing` > 0 when the free stock is not enough.
+ */
+export function allocateFefo(state:State,productId:string,quantity:number,today=todayRome(),index=reservationIndex(state)){
+ const lots=state.lots.filter(l=>l.productId===productId).map(l=>({lot:l,free:Math.max(0,lotAvailable(l,index.get(l.id)??0,today))})).filter(x=>x.free>0)
+  .sort((a,b)=>(a.lot.expiry||'9999-12-31').localeCompare(b.lot.expiry||'9999-12-31')||a.lot.code.localeCompare(b.lot.code)||a.lot.area.localeCompare(b.lot.area));
+ const lines:{lotId:string;quantity:number}[]=[];let left=quantity;
+ for(const {lot,free} of lots){if(left<=0)break;const take=Math.min(free,left);lines.push({lotId:lot.id,quantity:take});left-=take;}
+ return {lines,available:lots.reduce((t,x)=>t+x.free,0),missing:Math.max(0,left)};
+}
 export function availableForLot(state:State,lotId:string,today=todayRome(),index?:Map<string,number>):number{
  const lot=state.lots.find(row=>row.id===lotId);if(!lot)return 0;
  return lotAvailable(lot,reservedForLot(state,lotId,index),today);
@@ -392,10 +404,22 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   move(lot,-quantity,'consume');const p=productOf(lot);detail=`Consumo interno lotto ${lot.code}: −${quantity} ${p.unit} · ${p.code}. Motivo: ${reason}. Responsabile: ${responsible}.`;break;
  }
  case 'order.create':{
-  const input=action.order??fail('Dati ordine mancanti.');array(input.lines,'Ordine',350);if(input.lines.some(line=>!line||typeof line!=='object'))fail('Riga ordine non valida.');if(new Set(input.lines.map(l=>l.lotId)).size!==input.lines.length)fail('Ogni lotto può comparire una sola volta nell’ordine.');
+  const input=action.order??fail('Dati ordine mancanti.');array(input.lines,'Ordine',350);if(input.lines.some(line=>!line||typeof line!=='object'))fail('Riga ordine non valida.');
+  // Product lines are turned into lot lines by FEFO; explicit lot lines are kept as they are.
+  const byProduct=input.lines.filter((l):l is {productId:string;quantity:number}=>'productId' in l&&typeof l.productId==='string');
+  if(new Set(byProduct.map(l=>l.productId)).size!==byProduct.length)fail('Ogni prodotto può comparire una sola volta nell’ordine: indica la quantità totale.');
+  const fefo:string[]=[];const expanded:{lotId:string;quantity:number}[]=[];
+  for(const line of input.lines){
+   if('productId' in line&&typeof line.productId==='string'){
+    const p=state.products.find(x=>x.id===line.productId)??fail('Articolo dell’ordine non trovato.');const quantity=number(line.quantity,'Quantità richiesta',1);
+    const plan=allocateFefo(state,p.id,quantity,today);if(plan.missing)fail(`${p.code} · ${p.name}: disponibili solo ${plan.available} ${p.unit} (esclusi scaduti, bloccati e prenotati).`);
+    expanded.push(...plan.lines);fefo.push(`${p.code} ${plan.lines.map(l=>`lotto ${lotById(l.lotId).code} × ${l.quantity}`).join(', ')}`);
+   }else expanded.push(line as {lotId:string;quantity:number});
+  }
+  if(new Set(expanded.map(l=>l.lotId)).size!==expanded.length)fail('Ogni lotto può comparire una sola volta nell’ordine.');
   const index=reservations();
-  const lines=input.lines.map(line=>{const lot=lotById(line.lotId);const quantity=number(line.quantity,'Quantità richiesta',1);if(lot.expiry&&lot.expiry<today)fail(`Il lotto ${lot.code} è scaduto.`);if(quantity>lotAvailable(lot,index.get(lot.id)??0,today))fail(`Disponibilità insufficiente per il lotto ${lot.code}.`);return {lotId:lot.id,quantity,shipped:0};});
-  const order:Order={id:id(),customer:text(input.customer,'Cliente'),destination:text(input.destination,'Destinazione'),date:date(input.date,'Data ordine'),status:'reserved',lines,documents:[]};state.orders.push(order);detail=`Ordine ${order.customer} · ${order.destination}: merce prenotata, giacenza fisica invariata.`;break;
+  const lines=expanded.map(line=>{const lot=lotById(line.lotId);const quantity=number(line.quantity,'Quantità richiesta',1);if(lot.expiry&&lot.expiry<today)fail(`Il lotto ${lot.code} è scaduto.`);if(quantity>lotAvailable(lot,index.get(lot.id)??0,today))fail(`Disponibilità insufficiente per il lotto ${lot.code}.`);return {lotId:lot.id,quantity,shipped:0};});
+  const order:Order={id:id(),customer:text(input.customer,'Cliente'),destination:text(input.destination,'Destinazione'),date:date(input.date,'Data ordine'),status:'reserved',lines,documents:[]};state.orders.push(order);detail=`Ordine ${order.customer} · ${order.destination}: merce prenotata, giacenza fisica invariata.${fefo.length?` Lotti assegnati per scadenza più vicina: ${fefo.join('; ')}.`:''}`;break;
  }
  case 'order.prepare':{const order=orderById(action.orderId);if(order.status!=='reserved')fail('Puoi preparare soltanto un ordine prenotato.');order.status='prepared';detail=`Ordine ${order.customer}: preparazione completata. Giacenza fisica invariata.`;break;}
  case 'order.dispatch':{

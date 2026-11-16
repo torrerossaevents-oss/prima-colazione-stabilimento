@@ -17,7 +17,7 @@ import type { LabelScan } from '../lib/label-reader';
 import LabelPreview from './label-preview';
 import LabelCamera from './label-camera';
 
-type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean };
+type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean; devicesEnabled?: boolean };
 const OPERATOR_KEY = 'prima-colazione-linea-operatore';
 const n = (v: number) => new Intl.NumberFormat('it-IT').format(v);
 const itDate = (d: string) => d.split('-').reverse().join('/');
@@ -35,7 +35,15 @@ export default function LineApp() {
   const today = todayRome(new Date(now));
   const can = (type: Action['type']) => canRecord(role, type);
 
-  const apply = (data: Resp) => { setState(data.state); setVersion(data.version); if (data.role) setRole(data.role); };
+  const [devicesEnabled, setDevicesEnabled] = useState(false);
+  const activeLive = useRef<string | undefined>(undefined);
+  const apply = (data: Resp) => {
+    // The line's button closed the run: tell the operator what entered stock.
+    const was = activeLive.current; const closed = was ? data.state.sessions.find(x => x.id === was && x.status === 'closed' && x.closedBy === 'device') : undefined;
+    if (closed) setToast(`Chiusa dal contapezzi: ${n(closed.cartons)} cartoni${closed.stockLoaded ? ' caricati in magazzino' : ''}`);
+    activeLive.current = activeSession(data.state)?.id;
+    setState(data.state); setVersion(data.version); if (data.role) setRole(data.role); if (typeof data.devicesEnabled === 'boolean') setDevicesEnabled(data.devicesEnabled);
+  };
   const load = useCallback(async () => {
     try {
       const res = await request('/api/workspace'); const data = await readWorkspaceResponse<Resp>(res);
@@ -100,7 +108,7 @@ export default function LineApp() {
       {uncertain && !error && <div className="ipad-alert amber" role="status"><CircleAlert size={22}/><span>Un’operazione è in attesa di conferma: se la ripeti non viene registrata due volte.</span></div>}
       {!state ? <p className="ipad-loading"><RefreshCw size={20} className="spin"/> Collegamento al gestionale…</p>
         : current ? <RunView key={current.id} state={state} sessionId={current.id} busy={busy} can={can} send={send} now={now}/>
-        : <StartView state={state} busy={busy} can={can} send={send} today={today}/>}
+        : <StartView state={state} busy={busy} can={can} send={send} today={today} devicesEnabled={devicesEnabled}/>}
       {day && day.totals.runs > 0 && <section className="ipad-card ipad-today" aria-label="Produzione di oggi">
         <h2>Oggi</h2>
         <div className="ipad-today-totals"><span><b>{n(day.totals.confirmedCartons)}</b> cartoni confermati</span><span><b>{n(day.totals.runs)}</b> lavorazioni</span>{day.totals.activeCartons > 0 && <span><b>{n(day.totals.activeCartons)}</b> in corso</span>}</div>
@@ -149,7 +157,7 @@ function RunView({ state, sessionId, busy, can, send, now }: ViewProps & { sessi
   </section>;
 }
 
-function StartView({ state, busy, can, send, today }: ViewProps & { today: string }) {
+function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps & { today: string; devicesEnabled: boolean }) {
   const [scan, setScan] = useState<LabelScan | null>(null);
   const [progress, setProgress] = useState<{ step: string; fraction?: number } | null>(null);
   const [scanError, setScanError] = useState('');
@@ -207,7 +215,7 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
   async function start() {
     if (!found) return;
     try { localStorage.setItem(OPERATOR_KEY, operator.trim()); } catch { /* not remembered */ }
-    if (await send({ type: 'production.start', code: found.code, operator: operator.trim(), ident: ident.trim().toUpperCase() }, `Produzione avviata: ${found.code}, lotto ${lot}, impasto ${ident.trim().toUpperCase()}`)) { setScan(null); setChosen(null); setIdent(''); }
+    if (await send({ type: 'production.start', code: found.code, operator: operator.trim(), ident: ident.trim().toUpperCase(), counting: devicesEnabled ? 'device' : 'manual' }, `Produzione avviata: ${found.code}, lotto ${lot}, impasto ${ident.trim().toUpperCase()}`)) { setScan(null); setChosen(null); setIdent(''); }
   }
   return <section className="ipad-start" aria-label="Avvio della produzione">
     <div className="ipad-card">
@@ -245,7 +253,7 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
       <h1 className="ipad-step"><span>2</span>Avvio della produzione</h1>
       <div className="ipad-found"><span className="ipad-code">Codice {found.code}{found.ean ? ` · EAN ${found.ean}` : ''}</span><h2>{found.name}</h2></div>
       <dl className="ipad-facts big"><div><dt>Lotto</dt><dd>{lot}</dd></div><div><dt>Scadenza</dt><dd>{itDate(expiry)}</dd></div><div><dt>Cartone</dt><dd>{found.piecesPerCarton ? `${found.piecesPerCarton} pezzi` : '—'}</dd></div></dl>
-      <p className="ipad-help">Lotto = data di oggi (AAMMGG); scadenza = oggi + {months} mesi. {productionArea(state) ? `Alla chiusura i cartoni entrano in ${productionArea(state)}.` : 'Area di carico non impostata: la chiusura non caricherà il magazzino.'}</p>
+      <p className="ipad-help">{devicesEnabled ? 'Conteggio dal contapezzi: a fine produzione basta il pulsante sulla linea, la chiusura e il carico avvengono da soli. ' : 'Contapezzi non collegato: conterete i cartoni qui e chiuderete dall’iPad. '}Lotto = data di oggi (AAMMGG); scadenza = oggi + {months} mesi. {productionArea(state) ? `Alla chiusura i cartoni entrano in ${productionArea(state)}.` : 'Area di carico non impostata: la chiusura non caricherà il magazzino.'}</p>
       <div className="ipad-grid two"><label className="ipad-field"><span>Operatore</span><input value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nome di chi lavora sulla linea" autoComplete="name"/></label>
       <label className="ipad-field"><span>Impasto (IDENT.)</span><input value={ident} maxLength={20} onChange={e => setIdent(e.target.value)} placeholder="Es. 02/F" autoCapitalize="characters" autoComplete="off"/></label></div>
       <button className="ipad-btn primary wide" disabled={busy || !operator.trim() || !ident.trim() || !can('production.start')} onClick={() => void start()}><Play size={24}/>Avvia produzione</button>
