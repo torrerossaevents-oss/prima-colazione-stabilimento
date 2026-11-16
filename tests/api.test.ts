@@ -159,13 +159,14 @@ for (const engine of ['sqlite', 'd1'] as const) {
       assert.equal((await r.devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { ...owner, origin: 'https://evil.example' }, body: '{"op":"create","name":"PC linea"}' }))).status, 403);
       assert.equal((await r.devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin }, body: '{"op":"create","name":"PC linea"}' }))).status, 401);
       await post(product('A1'), 0, 'request-product');
-      assert.equal((await post({ type: 'production.start', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 1, 'request-no-device')).status, 422);
+      assert.equal((await post({ type: 'settings.update', settings: { productionArea: 'Cella' } }, 1, 'request-settings')).status, 200);
+      assert.equal((await post({ type: 'production.start', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 2, 'request-no-device')).status, 422);
       const created = await (await r.devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: owner, body: '{"op":"create","name":"PC linea"}' }))).json() as Body;
       const token = created.token!; assert.match(token, /^pcd_/);
       assert.equal(String((await t.raw('SELECT token_hash FROM devices'))[0].token_hash).includes(token), false, 'only the hash is stored');
       assert.equal((await deviceCall('GET', 'pcd_' + 'x'.repeat(43))).status, 401);
       assert.equal(((await (await deviceCall('GET', token)).json()) as { activeSession: unknown }).activeSession, null);
-      const started = await post({ type: 'production.start', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 1, 'request-device-start');
+      const started = await post({ type: 'production.start', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 2, 'request-device-start');
       assert.equal(started.status, 200, started.body.error); const sessionId = started.body.state.sessions[0].id;
       assert.equal(((await (await deviceCall('GET', token)).json()) as { activeSession: { id: string } }).activeSession.id, sessionId);
       assert.equal((await deviceCall('POST', token, { eventId: 'hb_0000001', type: 'heartbeat', at: '2026-11-13T08:00:00.000Z', plc: { reachable: true }, queueLength: 0, session: { id: sessionId, cartons: 57 }, extra: 'x'.repeat(100) })).status, 200);
@@ -173,7 +174,9 @@ for (const engine of ['sqlite', 'd1'] as const) {
       const results = await Promise.all([deviceCall('POST', token, close), deviceCall('POST', token, close)]);
       const bodies = await Promise.all(results.map(x => x.json() as Promise<Body>));
       assert.deepEqual(results.map(x => x.status), [200, 200]); assert.equal(bodies.filter(b => b.duplicate).length, 1);
-      const after = await client(r).get(); assert.equal(after.state.sessions[0].cartons, 200); assert.equal(after.state.sessions[0].closedBy, 'device'); assert.equal(after.state.lots.length, 0);
+      const after = await client(r).get(); assert.equal(after.state.sessions[0].cartons, 200); assert.equal(after.state.sessions[0].closedBy, 'device');
+      // Closing from the line loads the good cartons once, with an explicit move (rule of 14/11/2026).
+      assert.equal(after.state.lots.length, 1); assert.equal(after.state.lots[0].quantity, 200); assert.equal(after.state.sessions[0].stockLoaded, true);
       assert.equal(((await (await deviceCall('POST', token, { ...close, cartons: 199, counterEnd: 1199 })).json()) as Body).code, 'event-id-reused');
       const late = await deviceCall('POST', token, { ...close, eventId: 'evt_0000002' }); assert.equal(late.status, 409); assert.equal(((await late.json()) as Body).code, 'session-closed');
       assert.equal((await deviceCall('POST', token, { eventId: 'evt_0000003', type: 'lot.adjust' })).status, 400);

@@ -29,13 +29,16 @@ test('giornata con lo stesso prodotto lavorato più volte, scarti e carico espli
   assert.ok(state.sessions.some(s => (s.scrapCartons ?? 0) > 0), 'almeno uno scarto');
   assert.ok(state.audit.some(a => a.action === 'lot.receive' && a.moves?.length), 'carico a magazzino come operazione esplicita');
   assert.ok(state.orders.some(o => o.status === 'dispatched') && state.orders.some(o => o.status === 'reserved'));
+  assert.ok(state.sessions.some(s => s.corrections?.length), 'un esempio di correzione con causale');
+  assert.ok(state.sessions.filter(s => s.status === 'closed').every(s => s.stockLoaded && s.lotCode === s.day.slice(2).replaceAll('-', '')), 'lotto AAMMGG e carico a ogni chiusura');
 });
 
-test('nella prova la chiusura salva la lavorazione e non tocca il magazzino', () => {
+test('nella prova la chiusura salva la lavorazione e carica i cartoni buoni', () => {
   const now = new Date('2026-11-14T09:30:00Z'); const state = buildTrialState(now); const open = activeSession(state)!;
   const counted = applyAction(state, { type: 'production.count', sessionId: open.id, cartons: 5 }, { now: now.toISOString(), actor: TRIAL_ACTOR });
   const closed = applyAction(counted, { type: 'production.close', sessionId: open.id }, { now: now.toISOString(), actor: TRIAL_ACTOR });
-  assert.deepEqual(closed.lots, state.lots);
+  const loaded = closed.sessions.find(s => s.id === open.id)!; assert.equal(loaded.stockLoaded, true);
+  assert.equal(closed.lots.find(l => l.id === loaded.loadedLotId)!.quantity - (state.lots.find(l => l.id === loaded.loadedLotId)?.quantity ?? 0), loaded.cartons, 'carico dei cartoni letti');
   assert.equal(closed.sessions.find(s => s.id === open.id)!.status, 'closed');
   assert.equal(activeSession(closed), undefined, 'la nuova lavorazione ripartirà da zero');
 });

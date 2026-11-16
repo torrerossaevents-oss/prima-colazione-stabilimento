@@ -37,6 +37,7 @@ test('bridge transmitter ↔ /api/devices/production: close once, lost response 
   const store = new BridgeStore(join(dir, 'ponte.sqlite'), { mode: 'simulazione', line: 'linea-1' });
   try {
     await post({ type: 'product.add', product: { code: '00123', name: 'Articolo fittizio', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } });
+    await post({ type: 'settings.update', settings: { productionArea: 'Cella' } });
     const created = await (await devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { ...owner, origin }, body: '{"op":"create","name":"PC prova"}' }))).json() as { token: string; device: { id: string } };
     const state = await post({ type: 'production.start', code: '00123', operator: 'Operatore prova', lotCode: 'LP1', expiry: '2099-12-31', counting: 'device' });
     const tx = new Transmitter({ store, baseUrl: origin, token: created.token, timeoutMs: 5000, retry: { baseMs: 10, maxMs: 50 } });
@@ -51,7 +52,7 @@ test('bridge transmitter ↔ /api/devices/production: close once, lost response 
     const again = await requestJson({ url: origin + '/api/devices/production', method: 'POST', token: created.token, body: event, timeoutMs: 5000 });
     assert.equal(again.status, 200); assert.equal(again.json.duplicate, true);
     const read = await (await workspace.GET(new Request(origin + '/api/workspace', { headers: owner }))).json() as { state: State };
-    assert.equal(read.state.sessions[0].cartons, 200); assert.equal(read.state.sessions[0].status, 'closed'); assert.equal(read.state.lots.length, 0, 'no automatic stock load');
+    assert.equal(read.state.sessions[0].cartons, 200); assert.equal(read.state.sessions[0].status, 'closed'); assert.equal(read.state.lots.length, 1, 'one automatic load at the close'); assert.equal(read.state.lots[0].quantity, 200, 'loaded once despite the retried delivery');
 
     store.setHeartbeat({ eventId: 'hb_' + Date.now(), type: 'heartbeat', at: new Date().toISOString(), bridgeVersion: '1.0.0', plc: { reachable: true, lastReadAt: new Date().toISOString() }, queueLength: 0, session: null }, new Date().toISOString());
     assert.equal(await tx.sendHeartbeat(), true);

@@ -5,7 +5,7 @@
  * several times and is numbered (1ª, 2ª…); totals per article and for the whole day.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Download, Printer, RefreshCw } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Download, PenLine, Printer, RefreshCw } from 'lucide-react';
 import { addDays, productionDay, type Session } from '../lib/domain';
 import { describeError, request } from '../lib/client-api';
 
@@ -15,7 +15,11 @@ const longDay = (d: string) => new Intl.DateTimeFormat('it-IT', { weekday: 'long
 const ordinal = (k: number) => `${k}ª`;
 const csvCell = (v: unknown) => '"' + String(v ?? '').replaceAll('"', '""').replace(/^[=+\-@\t\r]/, "'$&") + '"';
 
-export default function ProductionDay({ sessions, today, archivedCount, onExport }: { sessions: Session[]; today: string; archivedCount: number; onExport: (name: string, content: string, type: string) => void }) {
+const when = (v: string) => new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }).format(new Date(v));
+const signed = (v: number) => (v > 0 ? '+' : '') + n(v);
+
+/** onCorrect: present only for the administration, which may correct cartons with a reason. */
+export default function ProductionDay({ sessions, today, archivedCount, onExport, onCorrect }: { sessions: Session[]; today: string; archivedCount: number; onExport: (name: string, content: string, type: string) => void; onCorrect?: (session: Session) => void }) {
   const [day, setDay] = useState(today);
   const [archived, setArchived] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,6 +41,7 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
   const sheet = useMemo(() => { const all = new Map([...(needsArchive ? archived : []), ...sessions].map(s => [s.id, s])); return productionDay([...all.values()], day); }, [archived, needsArchive, sessions, day]);
   const { flow, byProduct, totals } = sheet;
 
+  const sessionById = useMemo(() => new Map([...archived, ...sessions].map(x => [x.id, x])), [sessions, archived]);
   function exportCsv() {
     const head = ['Giorno (avvio, Europe/Rome)', 'Avvio', 'Chiusura', 'Codice', 'Articolo', 'Lavorazione dell’articolo', 'Lotto', 'Operatore', 'Stato', 'Cartoni', 'Cartoni scartati', 'Unità per cartone', 'Unità', 'Unità di misura'];
     const rows = flow.map(r => [day, time(r.startedAt), r.closedAt ? time(r.closedAt) : '', r.productCode, r.productName, `${r.runOfProduct} di ${r.runsOfProduct}`, r.lotCode, r.operator, r.status === 'closed' ? 'Confermata' : 'In corso', r.cartons, r.scrapCartons, r.unitsPerBox, r.cartons * r.unitsPerBox, r.unit]);
@@ -86,7 +91,11 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
                 {r.status === 'closed' ? <span className="chip green">{r.closedAt ? `Confermata alle ${time(r.closedAt)}` : 'Confermata'}</span> : <span className="chip blue">In corso</span>}
                 {r.runsOfProduct > 1 && <span className="chip amber">{ordinal(r.runOfProduct)} lavorazione di {r.runsOfProduct} dello stesso articolo</span>}
                 {r.toVerify && <span className="chip red">Da verificare</span>}
+                {sessionById.get(r.id)?.stockLoaded && <span className="chip blue">In magazzino: {n(sessionById.get(r.id)!.loadedQuantity ?? 0)} {r.unit}</span>}
+                {(sessionById.get(r.id)?.corrections?.length ?? 0) > 0 && <span className="chip amber">Corretta {sessionById.get(r.id)!.corrections!.length === 1 ? 'una volta' : sessionById.get(r.id)!.corrections!.length + ' volte'}</span>}
               </span>
+              {sessionById.get(r.id)?.corrections?.map(c => <small key={c.id} className="flow-correction">{when(c.at)} · {n(c.before)} → {n(c.after)} cartoni ({signed(c.delta)}) · Causale: {c.reason} · {c.responsible}</small>)}
+              {onCorrect && sessionById.get(r.id) && (r.status === 'closed' || r.source === 'manual') && <button className="button ghost small flow-correct" aria-label={`Correggi cartoni: ${r.productCode} delle ${time(r.startedAt)}`} onClick={() => onCorrect(sessionById.get(r.id)!)}><PenLine size={15}/>Correggi cartoni</button>}
             </span>
             <span className="flow-qty"><b>{n(r.cartons)}</b><small>cartoni</small>{r.scrapCartons > 0 && <small>{n(r.scrapCartons)} scartati</small>}</span>
           </li>)}
@@ -100,8 +109,27 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
           <tbody>{byProduct.map(p => <tr key={p.productId}><td><b>{p.productName}</b><span className="cell-sub">{p.productCode}, lott{p.lots.length === 1 ? 'o' : 'i'} {p.lots.map((l, i) => <span key={l} className="nowrap">{l}{i < p.lots.length - 1 ? ', ' : ''}</span>)}</span><span className="cell-sub day-units-inline">{n(p.confirmedCartons * p.unitsPerBox)} {p.unit}</span></td><td className="num">{p.runs > 1 ? <span className="chip amber plain">{p.runs} volte</span> : '1'}</td><td className="num">{n(p.confirmedCartons)}{p.activeCartons > 0 && <small className="cell-sub">+{n(p.activeCartons)} in corso</small>}</td><td className="num">{n(p.confirmedCartons * p.unitsPerBox)} <small>{p.unit}</small></td></tr>)}</tbody>
           <tfoot><tr><td>Totale giorno</td><td className="num">{n(totals.runs)}</td><td className="num">{n(totals.confirmedCartons)}</td><td className="num"><small>per articolo</small></td></tr></tfoot>
         </table>
-        <p className="form-help">I cartoni si sommano su tutti gli articoli. Le unità di misura sono diverse da articolo ad articolo: il loro totale resta per riga. Nessun carico automatico a magazzino.</p>
+        <p className="form-help">I cartoni si sommano su tutti gli articoli. Le unità di misura sono diverse da articolo ad articolo: il loro totale resta per riga. Alla chiusura i cartoni buoni (letti − scarti) vengono caricati in magazzino.</p>
       </div>
     </div>}
+  </section>;
+}
+
+/** Every carton correction (administration only), newest first: what changed, why, who, when. */
+export function CorrectionsPanel({ sessions, onCorrect }: { sessions: Session[]; onCorrect?: (session: Session) => void }) {
+  const rows = useMemo(() => sessions.flatMap(x => (x.corrections ?? []).map(c => ({ c, x }))).sort((a, b) => b.c.at.localeCompare(a.c.at)), [sessions]);
+  return <section className="panel corrections-panel" aria-labelledby="corrections-title">
+    <div className="panel-head"><div><h2 id="corrections-title">Correzioni dei cartoni</h2><p>Ogni modifica fatta dall’amministrazione, con causale e responsabile, sulle lavorazioni degli ultimi 30 giorni. Tutte restano nello storico attività (scheda «Correzioni»).</p></div></div>
+    {rows.length ? <div className="table-scroll"><table className="data-table">
+      <thead><tr><th>Quando</th><th>Lavorazione</th><th className="num">Cartoni</th><th>Causale</th><th>Responsabile</th><th className="num">Magazzino</th></tr></thead>
+      <tbody>{rows.map(({ c, x }) => <tr key={c.id}>
+        <td className="nowrap">{when(c.at)}</td>
+        <td>{x.productCode} · {x.productName}<span className="cell-sub">Lotto {x.lotCode}, del {x.day.split('-').reverse().join('/')}{onCorrect ? <> · <button className="link-button" onClick={() => onCorrect(x)}>correggi ancora</button></> : null}</span></td>
+        <td className="num nowrap">{n(c.before)} → {n(c.after)}<span className="cell-sub">{signed(c.delta)}</span></td>
+        <td>{c.reason}</td>
+        <td>{c.responsible}{c.actor && <span className="cell-sub">{c.actor}</span>}</td>
+        <td className="num nowrap">{c.stockDelta ? `${signed(c.stockDelta)} ${x.unit ?? ''}` : 'invariato'}</td>
+      </tr>)}</tbody>
+    </table></div> : <p className="panel-body muted">Nessuna correzione registrata. Si corregge dalla scheda «Produzione del giorno» → «Correggi cartoni».</p>}
   </section>;
 }

@@ -7,6 +7,13 @@
  */
 import { addDays, applyAction, initialState, romeDayStart, todayRome, upgradeState, validateState, type Action, type ProductInput, type State } from './domain.ts';
 
+/** EAN-13 di prova (prefisso 200, uso interno) con cifra di controllo calcolata. */
+function trialEan(n: number): string {
+  const body = '200' + String(n).padStart(9, '0');
+  const sum = [...body].reverse().reduce((t, d, i) => t + Number(d) * (i % 2 === 0 ? 3 : 1), 0);
+  return body + ((10 - sum % 10) % 10);
+}
+
 export const TRIAL_STORAGE_KEY = 'prima-colazione-prova-v1';
 export const TRIAL_ACTOR = 'modalità prova';
 
@@ -19,7 +26,11 @@ const products: ProductInput[] = ([
   ['MP-FAR0', 'Farina tipo 0 PROVA sacco 25 kg', 'Materie prime', 'raw', 'sacchi', 20],
   ['MP-BUR', 'Burro PROVA blocco 10 kg', 'Materie prime', 'raw', 'blocchi', 5],
   ['IM-CRT40', 'Cartone ondulato PROVA 40x30', 'Imballaggi', 'packaging', 'pezzi', 500],
-] as const).map(([code, name, category, kind, unit, minStock]) => ({ code, name, category, kind, unit, unitsPerBox: 1, minStock }));
+] as const).map(([code, name, category, kind, unit, minStock], i) => ({
+  code, name, category, kind, unit, unitsPerBox: 1, minStock,
+  // Finished goods carry the label data, as on the real carton label (pieces, weight, 12 months).
+  ...(kind === 'finished' ? { ean: trialEan(i + 1), piecesPerCarton: [50, 50, 40, 30, 60][i], pieceWeightG: [45, 80, 90, 33, 50][i], shelfLifeMonths: 12, labelDescription: 'Prodotto da forno crudo congelato (PROVA)', ingredients: 'Ingredienti di esempio per la prova: farina di FRUMENTO, burro, zucchero, UOVA, lievito.', storage: 'Conservare a −18 °C. Prodotto di prova: non è un’etichetta reale.' } : {}),
+}));
 
 /** [codice, inizio in minuti dalla mezzanotte, conteggi successivi, fine] */
 type Run = [code: string, start: number, counts: number[], end: number];
@@ -43,20 +54,21 @@ export function buildTrialState(now: Date = new Date()): State {
 
   const first = addDays(today, -6);
   run({ type: 'product.import', mode: 'skip', products }, at(first, 330));
+  run({ type: 'settings.update', settings: { labelProducer: 'Stabilimento PROVA · indirizzo di esempio', labelIdent: 'PROVA/1' } }, at(first, 331));
   run({ type: 'lot.receive', lot: { productId: pid('MP-FAR0'), code: 'F-PROVA-1', expiry: addDays(first, 120), area: 'Magazzino secco', quantity: 34 } }, at(first, 335));
   run({ type: 'lot.receive', lot: { productId: pid('MP-BUR'), code: 'B-PROVA-1', expiry: addDays(first, 30), area: 'Cella frigo', quantity: 12 } }, at(first, 336));
   run({ type: 'lot.receive', lot: { productId: pid('IM-CRT40'), code: 'C-PROVA-1', expiry: '', area: 'Area spedizioni', quantity: 1800 } }, at(first, 337));
+  run({ type: 'settings.update', settings: { productionArea: 'Cella frigo' } }, at(first, 338));
 
   const produce = (day: string, [code, start, counts, end]: Run, index: number, closeIt: boolean, scrap = 0) => {
-    run({ type: 'production.start', code, operator: operators[index % 2], lotCode: `P${day.slice(2).replaceAll('-', '')}${String.fromCharCode(65 + index)}`, expiry: addDays(day, 45) }, at(day, start));
+    // Lot and expiry come from the production day (AAMMGG, +12 months), as on the label.
+    run({ type: 'production.start', code, operator: operators[index % 2] }, at(day, start));
     const session = state.sessions.at(-1)!;
     const step = closeIt ? Math.max(1, Math.floor((end - start) / (counts.length + 1))) : 10;
     counts.forEach((cartons, k) => { const when = start + step * (k + 1); if (closeIt || day !== today || when <= nowMinutes) run({ type: 'production.count', sessionId: session.id, cartons }, at(day, when)); });
     if (!closeIt) return;
+    // The close loads the good cartons (read − scrap) into the production area with an explicit move.
     run({ type: 'production.close', sessionId: session.id, ...(scrap ? { scrapCartons: scrap, note: 'Cartoni schiacciati in uscita (prova)' } : {}) }, at(day, end));
-    // The close never loads stock: the good quantity is loaded with its own explicit operation.
-    const saved = state.sessions.find(s => s.id === session.id)!; // each operation returns a new state
-    run({ type: 'lot.receive', lot: { productId: saved.productId, code: saved.lotCode, expiry: saved.expiry, area: 'Cella frigo', quantity: saved.cartons - scrap } }, at(day, end + 10));
   };
 
   for (let d = 0; d < 6; d++) {
@@ -68,6 +80,10 @@ export function buildTrialState(now: Date = new Date()): State {
       const order = state.orders.at(-1)!;
       run({ type: 'order.prepare', orderId: order.id }, at(day, 960));
       run({ type: 'order.dispatch', orderId: order.id, documentRef: 'DDT PROVA 101' }, at(day, 1000));
+    }
+    if (d === 2) {
+      const run0 = state.sessions.filter(x => x.day === day && x.status === 'closed')[0];
+      if (run0) run({ type: 'production.adjust', sessionId: run0.id, delta: 2, reason: 'Due cartoni non letti dalla fotocellula (prova)', responsible: 'Ufficio PROVA' }, at(day, 1020));
     }
     if (d === 5) run({ type: 'order.create', order: { customer: 'Pasticceria Sole PROVA', destination: 'Piazza Garibaldi 3 (prova)', date: addDays(day, 1), lines: [{ lotId: lotOf('00124', 10).id, quantity: 10 }] } }, at(day, 950));
   }

@@ -31,7 +31,7 @@ L'inizializzazione locale con `npm run setup` è stata verificata con compilazio
 | Codice produzione sconosciuto | Avvio impedito |
 | Avvio con una lavorazione già attiva | Nessuna seconda sessione |
 | Articolo A 200, chiusura; B 150, chiusura | Due sessioni distinte, totale 350, B ripartito da zero |
-| Chiusura di una lavorazione | Storico conservato, nessun carico automatico a magazzino |
+| Chiusura di una lavorazione | Storico conservato; cartoni buoni (letti − scarti) caricati nel lotto AAMMGG con movimento esplicito; nessun doppio carico se la chiusura arriva due volte |
 | Ripetizione dello stesso identificativo richiesta | Nessun movimento duplicato |
 | Due modifiche dalla stessa versione | Una riesce; l'altra riceve un conflitto e deve ricaricare |
 | Reinvio di una vecchia richiesta già riuscita | La ricevuta persistente impedisce il doppione anche dopo altre operazioni |
@@ -59,7 +59,7 @@ Concordare catalogo, unità, confezionamenti, nomi delle aree e inventario inizi
 
 Resta da eseguire con tecnico e linea reale: sequenza fotocellule, velocità massima, distanza cartoni, soste, arretramenti, sensori occupati durante chiusura, disconnessione LAN/Internet, riavvio PLC/PC, salvataggio locale incerto, recupero della coda, contatore cumulativo e doppie pressioni.
 
-Il superamento dei test software non abilita il carico automatico di magazzino. L'attivazione richiede un collaudo positivo e documentato dell'intero flusso.
+Dal 14/11/2026 il carico alla chiusura è attivo per decisione di Teo (disattivabile in Configurazione). Prima di affidarsi al conteggio delle fotocellule serve comunque un collaudo positivo e documentato sulla linea: almeno 100 cartoni contati anche a mano, con eventuali differenze corrette dall'amministrazione con causale.
 
 ## Verifica della consegna iniziale — 7 novembre 2026
 

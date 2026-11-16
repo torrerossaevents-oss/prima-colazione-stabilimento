@@ -17,7 +17,8 @@ Leggere `docs/REQUISITI.md` prima di cambiare le regole di dominio. I documenti 
 - La chiusura di produzione salva la lavorazione. Il nuovo parziale riparte da zero; lo storico e il totale precedente rimangono.
 - Nessuna lavorazione con codice sconosciuto, nessuna seconda sessione attiva sulla stessa linea.
 - Conservare nella lavorazione il confezionamento usato all'avvio, anche se il catalogo cambia in seguito.
-- Non caricare automaticamente a magazzino il conteggio manuale o delle fotocellule. L'integrazione richiede un collaudo specifico e una regola concordata per la quantità buona.
+- Carico della produzione (decisione di Teo del 14/11/2026): alla chiusura di una lavorazione, manuale o dal pulsante del contapezzi, i cartoni buoni (letti − scarti) entrano in magazzino nel lotto della lavorazione, nell'area di produzione scelta, con un movimento esplicito `produce` nello stesso evento. Il carico si può disattivare in Configurazione. Le correzioni dei cartoni (`production.adjust`) sono solo dell'amministrazione, con causale e responsabile obbligatori, restano nella lavorazione e nello storico e correggono anche il lotto (`production-adjust`); non si può togliere merce prenotata, bloccata o partita. Il conteggio delle fotocellule resta da collaudare sulla linea prima di fidarsene.
+- Lotto e scadenza (etichetta reale del 14/11/2026): lotto = data di produzione AAMMGG, scadenza = produzione + durata del prodotto (12 mesi se non indicata); un valore diverso si indica solo espressamente all'avvio. Il lettore riconosce il codice articolo o l'EAN.
 - Il ponte usa solo credenziali di dispositivo (`docs/CONTRATTO-PONTE.md`); il dispositivo può soltanto leggere la lavorazione attiva della sua linea e chiuderla una volta.
 - Un errore o una risposta incerta non equivalgono a un salvataggio riuscito. Evitare i doppioni con identificativi stabili.
 

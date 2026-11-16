@@ -12,7 +12,7 @@ Il **LOGO!** conta i cartoni dalle due fotocellule e tiene un totale che non si 
 | --- | --- |
 | **Simulato e testato** (PC, senza hardware) | Logica dei sensori; contatore e baseline; chiusura con pulsante; archivio SQLite; coda e invio con ritentativi; Internet assente; PLC non raggiungibile o riavviato; PC riavviato; backup e ripristino. |
 | **Implementato, da verificare sull'impianto** | Lettura Modbus del LOGO! reale; lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); collegamento al gestionale con token del dispositivo; file `.cmd` su Windows (non provati su Windows); avvio automatico. |
-| **Non implementato** | Programma LOGO! conta-cartoni; carico automatico a magazzino; apertura di lavorazioni dal PC. |
+| **Non implementato** | Programma LOGO! conta-cartoni; apertura di lavorazioni dal PC. Il carico a magazzino alla chiusura è fatto dal server (regola del 14/11/2026). |
 
 ## Oggi, senza hardware (Teo)
 
@@ -88,7 +88,7 @@ La logica di riferimento è in `bridge/core/sensors.mjs` ed è provata dai test:
 | Backup e ripristino | Stessi eventi e stessa baseline dopo il ripristino. |
 | Chiusura vista nel gestionale | Lavorazione chiusa con il numero giusto e le eventuali anomalie. |
 
-Una simulazione riuscita non sostituisce queste prove. I cartoni contati non diventano merce disponibile a magazzino: il carico automatico non è previsto.
+Una simulazione riuscita non sostituisce queste prove. Alla chiusura i cartoni contati diventano merce a magazzino: per questo il collaudo con conteggio manuale di confronto è indispensabile prima dell'uso reale.
 
 ## Riservatezza
 

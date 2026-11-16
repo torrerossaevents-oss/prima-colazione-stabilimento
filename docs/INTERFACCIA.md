@@ -68,3 +68,12 @@ Richiesta di Teo: vedere come avverrebbero produzione e storico, consultare lo s
 - Ritmo medio della lavorazione aperta (cartoni/ora) accanto alle unità registrate.
 - Collegamenti nel testo (titoli dei giorni, codici del catalogo) con area di tocco di almeno 34 px (44 px su touch).
 - Verifiche: `tests/ui/smoke.mjs` (nuovi passaggi: storico per giorno e tipo, menu ricordato dopo la ricarica, prova senza alcuna scrittura sul server, tipografia anche in prova), `tests/ui/overlap.mjs` senza sovrapposizioni.
+
+## Etichetta, carico alla chiusura, correzioni, ordini (14/11/2026, sera)
+
+- Anteprima dell'etichetta (`components/label-preview.tsx`): impaginazione dell'etichetta reale, carta bianca, testo nero 400 con la gerarchia data dalle dimensioni, codice a barre EAN-13/EAN-8 disegnato in SVG. È nella scheda prodotto (sola lettura e modifica), nell'avvio della lavorazione e sulla postazione.
+- Avvio: riquadro con lotto, scadenza e cartone calcolati; «Lotto o scadenza diversi» chiuso di norma.
+- Produzione del giorno: etichette «In magazzino: N», «Corretta N volte», righe delle correzioni con causale, pulsante «Correggi cartoni» per l'amministrazione; riquadro «Correzioni dei cartoni» con quando, lavorazione, prima → dopo, causale, responsabile, effetto sul magazzino.
+- Configurazione → «Produzione ed etichette»: carico automatico, area di carico, IDENT. e produttore.
+- Ordini (`components/orders-panel.tsx`): cinque riquadri di fase con conteggi; per ogni ordine i passaggi con pallini numerati, la tabella delle righe, documenti, «Prossimo passo» e un solo pulsante principale. Su telefono le azioni occupano tutta la larghezza.
+- Nota tecnica: nelle finestre a scorrimento i blocchi con `overflow: hidden` hanno `flex: none`, altrimenti si schiacciano (trovato con il test dell'interfaccia: il riquadro del lotto era alto 2 px).

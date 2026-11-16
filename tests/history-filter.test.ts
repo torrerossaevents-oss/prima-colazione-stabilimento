@@ -35,3 +35,12 @@ test('auditGroupOf e auditMatches: tipo, giorno di Roma e testo', () => {
   assert.ok(!auditMatches(a, { group: 'orders' }));
   assert.ok(!auditMatches(a, { q: 'cliente' }));
 });
+
+test('scheda Correzioni: correzioni dei cartoni e rettifiche di magazzino, che restano anche nei loro tipi', () => {
+  const fix: Audit = { id: 'c', at: '2026-11-14T10:00:00.000Z', action: 'production.adjust', detail: 'Correzione produzione 024: 54 → 56' };
+  const lot: Audit = { id: 'l', at: '2026-11-14T10:00:00.000Z', action: 'lot.adjust', detail: 'Rettifica' };
+  assert.equal(auditGroupOf('production.adjust'), 'corrections');
+  assert.ok(auditMatches(fix, { group: 'corrections' }) && auditMatches(lot, { group: 'corrections' }));
+  assert.ok(auditMatches(fix, { group: 'production' }) && auditMatches(lot, { group: 'inventory' }));
+  assert.ok(!auditMatches({ ...fix, action: 'production.count' }, { group: 'corrections' }));
+});

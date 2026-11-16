@@ -7,6 +7,7 @@ const act=(state:State,action:Action)=>applyAction(state,action,context);
 function fixture(){
  let state=act(initialState(),{type:'product.add',product:{code:'PC001',name:'Articolo di prova',kind:'finished',unit:'confezioni',unitsPerBox:12,minStock:20}});
  state=act(state,{type:'lot.receive',lot:{productId:state.products[0].id,code:'LOT-A',expiry:'2026-12-31',area:'Area A',quantity:150}});
+ state.settings={productionArea:'Area A'}; // production loads into an area chosen explicitly
  return state;
 }
 function reserve(state:State,quantity=30){return act(state,{type:'order.create',order:{customer:'Cliente di prova',destination:'Destinazione di prova',date:'2026-11-07',lines:[{lotId:state.lots[0].id,quantity}]}});}
@@ -38,7 +39,7 @@ test('unknown code or concurrent production session cannot start',()=>{
 });
 test('close retains immutable session and next start resets only the partial',()=>{
  let state=fixture();const start={type:'production.start' as const,code:'PC001',operator:'Operatore prova',lotCode:'PROD-A',expiry:'2026-12-31'};
- state=act(state,start);const first=activeSession(state)!.id;state=act(state,{type:'production.count',sessionId:first,cartons:200});state=act(state,{type:'production.close',sessionId:first});assert.equal(activeSession(state),undefined);assert.equal(state.sessions[0].cartons,200);assert.equal(state.lots[0].quantity,150);assert.equal(state.sessions[0].stockLoaded,false);
+ state=act(state,start);const first=activeSession(state)!.id;state=act(state,{type:'production.count',sessionId:first,cartons:200});state=act(state,{type:'production.close',sessionId:first});assert.equal(activeSession(state),undefined);assert.equal(state.sessions[0].cartons,200);assert.equal(state.lots[0].quantity,150,'existing lot untouched');assert.equal(state.sessions[0].stockLoaded,true);assert.equal(state.lots.find(l=>l.id===state.sessions[0].loadedLotId)!.quantity,200*12,'good cartons loaded in stock units (12 per carton)');
  state=act(state,{...start,lotCode:'PROD-B'});assert.equal(activeSession(state)!.cartons,0);assert.equal(state.sessions[0].cartons,200);assert.equal(state.sessions[0].productCode,'PC001');assert.equal(state.sessions[0].unitsPerBox,12);assert.throws(()=>act(state,{type:'production.count',sessionId:first,cartons:1}),/chiusa/);
 });
 test('Roman calendar day is used across UTC midnight and DST',()=>{

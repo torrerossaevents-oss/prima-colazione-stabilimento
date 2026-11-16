@@ -65,8 +65,8 @@ log('consegna parziale senza motivo rifiutata dal server, dati del modulo conser
 await dialog().getByLabel('Motivo della differenza').fill('Residuo al prossimo giro');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 s = await api(); assert.equal(s.state.lots[0].quantity, 130);
-await page.getByRole('button', { name: 'Annulla residuo' }).click(); await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
-await page.getByRole('tab', { name: 'Completati e annullati' }).click().catch(() => page.getByRole('button', { name: 'Completati e annullati' }).click());
+await page.getByText('Prossimo passo').first().waitFor(); await page.getByRole('button', { name: 'Annulla il residuo' }).click(); await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
+await page.getByRole('group', { name: 'Fasi degli ordini' }).getByRole('button', { name: /Completati/ }).click();
 await page.getByRole('button', { name: 'Collega documento' }).click(); await dialog().getByLabel('Riferimento del documento').fill('Fattura fittizia 9');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 s = await api(); assert.equal(s.state.lots[0].quantity, 130);
@@ -124,6 +124,13 @@ s = await api(); assert.equal(s.state.lots[0].quantity, 126); assert.equal(s.sta
 await page.getByLabel('Cerca in magazzino').fill('LOT-PROVA'); await row.waitFor();
 log('scarto dalla quantità bloccata e ricerca per lotto');
 
+// Production loads stock only into an area chosen explicitly: without it the production page says so.
+await page.goto(base + '/#production'); await page.getByText('Scegli l’area di carico').first().waitFor();
+await page.goto(base + '/#settings'); await page.getByLabel('Area di carico della produzione').fill('Cella frigo');
+await page.getByRole('button', { name: 'Salva impostazioni' }).click(); await page.getByText('Impostazioni di produzione salvate').waitFor();
+assert.equal((await api()).state.settings.productionArea, 'Cella frigo');
+log('area di carico della produzione scelta in Configurazione');
+
 // Scenario 7 in the UI: A 200 closes, unknown code refused, B starts from zero.
 await page.goto(base + '/#production'); await page.getByRole('button', { name: 'Nuova lavorazione' }).first().click();
 await dialog().getByRole('button', { name: 'Usa fotocamera' }).click();
@@ -133,20 +140,36 @@ await dialog().getByPlaceholder('Codice dell’etichetta').fill('99999');
 await dialog().getByText('Codice non presente nel catalogo').waitFor();
 assert.equal(await dialog().getByRole('button', { name: 'Conferma e avvia' }).isDisabled(), true);
 await dialog().getByPlaceholder('Codice dell’etichetta').fill('00123');
-await dialog().getByText('Codice esatto 00123').waitFor();
-await dialog().getByLabel('Operatore').fill('Operatore prova'); await dialog().getByLabel('Lotto di produzione').fill('PROD-A'); await dialog().locator('input[name=expiry]').fill('2099-12-31');
+await dialog().getByText(/^Codice 00123/).waitFor();
+// Lot = production day AAMMGG, expiry = +12 months: shown before starting, nothing to type.
+const romeDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const autoLot = romeDay.slice(2).replaceAll('-', '');
+await dialog().locator('.auto-lot').getByText(autoLot).waitFor(); await dialog().locator('.carton-label').waitFor();
+assert.ok((await dialog().locator('.auto-lot').boundingBox()).height > 40, 'lot and expiry box fully visible inside the dialog');
+await dialog().getByLabel('Operatore').fill('Operatore prova');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
 await page.getByRole('button', { name: 'Aggiungi cartoni' }).click(); await dialog().getByLabel('Cartoni da aggiungere').fill('200');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 await page.getByRole('button', { name: 'Chiudi / salva lavorazione' }).click(); await dialog().getByRole('checkbox').check();
 await dialog().getByRole('button', { name: 'Salva lavorazione' }).click(); await dialog().waitFor({ state: 'detached' });
-await page.locator('tr', { hasText: 'PROD-A' }).first().waitFor();
+await page.locator('tr', { hasText: autoLot }).first().waitFor();
 const daySheet = page.locator('#produzione-del-giorno');
 await daySheet.getByText('Confermata alle').first().waitFor();
 const sheetText = await daySheet.innerText();
 assert.match(sheetText, /Cartoni confermati\s+200/); assert.match(sheetText, /Totale giorno\s+1\s+200/);
-s = await api(); assert.equal(s.state.sessions[0].cartons, 200); assert.equal(s.state.lots.length, 1, 'no stock created by production');
-log('lavorazione 200 cartoni chiusa: scheda «Produzione del giorno» con orario di conferma e totale del giorno, nessun carico di magazzino');
+s = await api(); assert.equal(s.state.sessions[0].cartons, 200); assert.equal(s.state.sessions[0].lotCode, autoLot);
+const produced = s.state.lots.find(l => l.id === s.state.sessions[0].loadedLotId); assert.equal(produced.code, autoLot); assert.equal(produced.quantity, 200, 'good cartons loaded at the close');
+log('lavorazione 200 cartoni: lotto automatico ' + autoLot + ', chiusura con carico di 200 a magazzino, scheda del giorno con totale');
+
+// Administration corrects the cartons with a mandatory reason: recorded, visible, stock follows.
+await daySheet.getByRole('button', { name: 'Correggi cartoni' }).first().click();
+await dialog().getByLabel('Cartoni da aggiungere o togliere').fill('-2'); await dialog().getByLabel('Responsabile').fill('Ufficio prova');
+await dialog().getByRole('checkbox').check(); await dialog().getByRole('button', { name: 'Registra la correzione' }).click();
+await dialog().getByLabel('Causale').evaluate(el => el.validity.valueMissing).then(missing => assert.ok(missing, 'reason required'));
+await dialog().getByLabel('Causale').fill('Due cartoni rotti trovati in cella'); await dialog().getByRole('button', { name: 'Registra la correzione' }).click(); await dialog().waitFor({ state: 'detached' });
+await page.locator('.corrections-panel').getByText('Due cartoni rotti trovati in cella').waitFor();
+s = await api(); assert.equal(s.state.sessions[0].cartons, 198); assert.equal(s.state.lots.find(l => l.id === s.state.sessions[0].loadedLotId).quantity, 198);
+log('correzione −2 cartoni con causale: registro correzioni, lavorazione e magazzino aggiornati');
 await page.screenshot({ path: `${out}/produzione-desktop.png`, fullPage: true });
 
 // Global search: Ctrl K, find the lot, open it in the stock list.

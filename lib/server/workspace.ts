@@ -57,7 +57,7 @@ export async function auditPage(db: D1Database, options: { before?: { at: string
   const { fromAt, toAt } = auditBounds(options);
   if (fromAt) { where.push('at >= ?'); binds.push(fromAt); }
   if (toAt) { where.push('at < ?'); binds.push(toAt); }
-  if (options.group) { where.push('action LIKE ?'); binds.push(AUDIT_GROUP_PREFIX[options.group] + '%'); }
+  if (options.group) { const prefixes = AUDIT_GROUP_PREFIX[options.group]; where.push('(' + prefixes.map(() => 'action LIKE ?').join(' OR ') + ')'); binds.push(...prefixes.map(p => p + '%')); }
   const { results } = await db.prepare(`SELECT id, at, action, detail, actor, moves FROM workspace_audit WHERE ${where.join(' AND ')} ORDER BY at DESC, id DESC LIMIT ?`).bind(...binds, limit + 1).all<Parameters<typeof auditFromRow>[0]>();
   let items = results.map(auditFromRow);
   if (options.legacy?.length) {
@@ -172,6 +172,9 @@ export async function commit(db: D1Database, input: CommitInput): Promise<Commit
     let working = rehydrate(stored, loaded);
     const orderLots = loaded.filter(r => r.kind === 'order').flatMap(r => (JSON.parse(r.payload) as State['orders'][number]).lines.map(l => l.lotId)).filter(id => !working.lots.some(l => l.id === id));
     if (orderLots.length) { const more = await loadArchived(db, 'lot', 'id', orderLots); loaded.push(...more); working = rehydrate(working, more); }
+    // An archived run being corrected brings back the lot its close loaded.
+    const sessionLots = loaded.filter(r => r.kind === 'session').map(r => (JSON.parse(r.payload) as State['sessions'][number]).loadedLotId).filter((id): id is string => !!id && !working.lots.some(l => l.id === id));
+    if (sessionLots.length) { const more = await loadArchived(db, 'lot', 'id', sessionLots); loaded.push(...more); working = rehydrate(working, more); }
 
     const next = applyAction(working, input.action, { now, actor: input.actor, device: input.device, devicesEnabled: input.devicesEnabled });
     const { hot, rows, audit } = partition(next, todayRome(now));

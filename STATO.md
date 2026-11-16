@@ -42,7 +42,7 @@ Riprendere da «Prossimo passo». Documento operativo: decisioni, comandi, risul
 | Operativo verificato (test + browser locale) | catalogo con ricerca/modifica/import/export; lotti, blocchi, trasferimenti, rettifiche, scarti, consumi, resi; ordini con preparazione, partenza parziale, annullamento, documento successivo; produzione manuale con riepilogo giornaliero; storico paginato; archivio; backup e ripristino in archivio vuoto; recupero richieste incerte |
 | Implementato da verificare | migrazione 0002 sul database pubblicato; endpoint dispositivi attraverso l'accesso della piattaforma; tempi CPU nel Worker ospitato; `.cmd` su Windows; fotocamera su dispositivi reali |
 | Simulato | ponte LOGO! (sensori, contatore, chiusura, coda, trasmissione), scenario A 200 + B 150 |
-| Non implementato | programma LOGO!; carico automatico a magazzino; utenti e ruoli distinti; TeamSystem; stampa etichette |
+| Non implementato | programma LOGO!; TeamSystem; stampa fisica delle etichette (c'è l'anteprima) |
 | Bloccato da hardware/accessi | collaudo linea (dati LOGO!, PC, rete); etichettatrici (modelli/driver) |
 
 ## Decisioni
@@ -50,7 +50,7 @@ Riprendere da «Prossimo passo». Documento operativo: decisioni, comandi, risul
 - Stack invariato. Archivio e storico in tabelle D1 indicizzate nella stessa transazione dello stato (`docs/ARCHITETTURA-ARCHIVIO.md`).
 - Chiusura dal ponte = operazione di dominio dedicata (`production.deviceClose`) consentita solo con credenziale di dispositivo; deduplica sulle ricevute permanenti esistenti.
 - Lavorazioni «da fotocellule» scelte all'avvio: niente conteggi manuali sulla stessa lavorazione; chiusura manuale solo con motivo, segnalata.
-- Nessun carico automatico a magazzino: cartoni letti, scarti e quantità buona sono distinti; la regola della quantità buona non è definita.
+- Carico alla chiusura: quantità buona = letti − scarti (regola del 14/11/2026), disattivabile; correzioni dell'amministrazione con causale.
 - KG: il dominio resta a quantità intere. Non introdotte frazioni senza un esempio reale (vedi domande).
 - `allowImportingTsExtensions` in `tsconfig.json`: i moduli server sono eseguibili e testabili direttamente da Node.
 
@@ -77,7 +77,7 @@ Vedi `docs/COLLAUDO.md` → «Verifica del 13 novembre 2026».
 
 1. **LOGO!** (collaudo ponte): modello/codice e firmware, versione Soft Comfort, mappa registri (contatore, richieste di chiusura, riscontro), ritenzione allo spegnimento, IP/unitId, sensori e loro distanza, pulsante.
 2. **PC di linea** (installazione servizio): sistema operativo, può restare acceso, utente Windows, percorso di installazione.
-3. **Quantità buona** (carico automatico): regola concordata tra cartoni letti, scarti e quantità da caricare.
+3. **Quantità buona**: concordata il 14/11/2026 (letti − scarti). Resta da collaudare il conteggio delle fotocellule sulla linea.
 4. **KG** (precisione): un esempio reale di articolo a peso con le quantità usate in ricezione e consegna.
 5. **Etichette** (stampa): modelli delle due stampanti, collegamento, driver/linguaggio (ZPL, EPL, …), file dei modelli attuali.
 6. **TeamSystem** (documenti): versione, formati esportabili, un documento d'esempio senza dati non necessari.
@@ -147,6 +147,17 @@ Richiesta di Teo: attivare una modalità prova per vedere produzione e storico, 
 - Storico filtrabile per giorno (giorni di Roma, anche nei cambi d'ora) e per tipo, lato server e sull'archivio; raggruppato per giorno.
 - Menu laterale nascondibile su desktop, preferenza ricordata.
 - Test: `tests/history-filter.test.ts`, `tests/trial.test.ts`, filtri nello storico in `tests/api.test.ts` (sqlite e D1), nuovi passaggi in `tests/ui/smoke.mjs`.
+
+## Etichette, carico automatico, correzioni, ordini (14/11/2026)
+
+Richiesta di Teo, con la foto dell'etichetta reale del Fagottino PF cioccolato 90 g (COD.024, 50 pezzi, 4500 g, lotto 261002, scadenza 02/10/2027, IDENT. 02/F, EAN 8000000004642).
+
+- Etichetta per prodotto: EAN verificato, pezzi per cartone, peso del pezzo (peso netto calcolato), durata in mesi, descrizione, ingredienti, conservazione; produttore e IDENT. comuni in Configurazione; anteprima con codice a barre EAN nella scheda prodotto, all'avvio e sulla postazione. Nessun collegamento all'etichettatrice.
+- Lotto AAMMGG e scadenza produzione + durata calcolati all'avvio; il lettore accetta codice o EAN; scadenza diversa per un lotto esistente rifiutata all'avvio.
+- Carico alla chiusura (manuale o dal contapezzi) dei cartoni buoni nel lotto della lavorazione, solo nell'area di carico scelta esplicitamente, movimento `produce`; disattivabile. Chiusura manuale di una lavorazione da fotocellule con i cartoni contati a mano. EAN unici e diversi da ogni codice. Testi dell'etichetta limitati (160/700/250 caratteri) per lo spazio dell'archivio.
+- Correzioni dei cartoni solo dell'amministrazione, con causale e responsabile: nella scheda del giorno, nel registro «Correzioni dei cartoni», nella scheda «Correzioni» dello storico; il lotto segue la correzione.
+- Ordini: fasi con conteggi, passaggi per ordine, prossimo passo con il pulsante giusto, righe richiesto/partito/da consegnare, consegne oggi/domani/in ritardo.
+- Da chiarire con Teo: significato di «IDENT. 02/F» (oggi è un testo unico per tutte le etichette); se la durata è sempre 12 mesi per tutti i prodotti.
 
 ## Prossimo passo
 
