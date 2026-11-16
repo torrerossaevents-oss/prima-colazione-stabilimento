@@ -91,7 +91,7 @@ test('Europe/Rome calendar: expiring lots within 7 days use calendar days, not U
 test('scenario 7: production A 200 and B 150, totals per article, history kept, no unknown code or second session',()=>{
  let state=act(initialState(),{type:'product.import',mode:'skip',products:[{code:'A1',name:'Articolo A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0},{code:'B1',name:'Articolo B',kind:'finished',unit:'confezioni',unitsPerBox:12,minStock:0}]});
  state=act(state,{type:'settings.update',settings:{productionArea:'Cella'}});
- const start=(code:string,lotCode:string)=>({type:'production.start' as const,code,operator:'Operatore prova',lotCode,expiry:'2026-12-31'});
+ const start=(code:string,lotCode:string)=>({type:'production.start' as const,ident:'IMP-1',code,operator:'Operatore prova',lotCode,expiry:'2026-12-31'});
  assert.throws(()=>act(state,start('ZZZ','L')),/Codice sconosciuto/);
  state=act(state,start('A1','PA'));assert.throws(()=>act(state,start('B1','PB')),/Chiudi e salva/);
  state=act(state,{type:'production.count',sessionId:state.sessions[0].id,cartons:200});state=act(state,{type:'production.close',sessionId:state.sessions[0].id});
@@ -109,18 +109,18 @@ test('scenario 7: production A 200 and B 150, totals per article, history kept, 
 
 test('scenario 8: session day comes from the Rome start, also across midnight and DST',()=>{
  let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
- state=applyAction(state,{type:'production.start',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31'},{...context,now:'2026-10-24T21:50:00.000Z'});
+ state=applyAction(state,{type:'production.start',ident:'IMP-1',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31'},{...context,now:'2026-10-24T21:50:00.000Z'});
  assert.equal(state.sessions[0].day,'2026-10-24');
  state=applyAction(state,{type:'production.close',sessionId:state.sessions[0].id},{...context,now:'2026-10-25T01:30:00.000Z'});
  assert.equal(state.sessions[0].day,'2026-10-24');assert.equal(productionSummary(state.sessions,'2026-10-25').length,0);
- state=applyAction(state,{type:'production.start',code:'A1',operator:'O',lotCode:'L2',expiry:'2026-12-31'},{...context,now:'2026-10-24T22:10:00.000Z'});
+ state=applyAction(state,{type:'production.start',ident:'IMP-1',code:'A1',operator:'O',lotCode:'L2',expiry:'2026-12-31'},{...context,now:'2026-10-24T22:10:00.000Z'});
  assert.equal(state.sessions[1].day,'2026-10-25');
 });
 
 test('device sessions: only the authenticated bridge closes them once; manual counts and silent closes refused',()=>{
  let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
  state=act(state,{type:'settings.update',settings:{productionArea:'Cella'}});
- const start={type:'production.start' as const,code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device' as const};
+ const start={type:'production.start' as const,ident:'IMP-1',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device' as const};
  assert.throws(()=>act(state,start),/Nessun ponte/);
  state=act(state,start,{devicesEnabled:true});const sessionId=state.sessions[0].id;assert.equal(state.sessions[0].source,'device');
  assert.throws(()=>act(state,{type:'production.count',sessionId,cartons:1}),/fotocellule/);
@@ -160,7 +160,7 @@ test('import update without kind/minStock columns keeps stored values; new rows 
 
 test('production summary flags manual closes of bridge sessions and bridge anomalies as to verify',()=>{
  let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
- state=act(state,{type:'production.start',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device'},{devicesEnabled:true});
+ state=act(state,{type:'production.start',ident:'IMP-1',code:'A1',operator:'O',lotCode:'L',expiry:'2026-12-31',counting:'device'},{devicesEnabled:true});
  state=act(state,{type:'production.close',sessionId:state.sessions[0].id,override:'Ponte guasto',cartons:10});
  assert.equal(productionSummary(state.sessions)[0].toVerify,1);
 });
@@ -168,7 +168,7 @@ test('production summary flags manual closes of bridge sessions and bridge anoma
 test('daily production sheet: chronological flow, repeated article counted per run, totals of the day',()=>{
  let state=act(initialState(),{type:'product.import',mode:'skip',products:[{code:'A1',name:'Articolo A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0},{code:'B1',name:'Articolo B',kind:'finished',unit:'confezioni',unitsPerBox:12,minStock:0}]});
  const run=(code:string,lot:string,cartons:number,start:string,end?:string)=>{
-  state=applyAction(state,{type:'production.start',code,operator:'Operatore prova',lotCode:lot,expiry:'2026-12-31'},{...context,now:start});
+  state=applyAction(state,{type:'production.start',ident:'IMP-1',code,operator:'Operatore prova',lotCode:lot,expiry:'2026-12-31'},{...context,now:start});
   const id=state.sessions.at(-1)!.id;
   if(cartons)state=applyAction(state,{type:'production.count',sessionId:id,cartons},{...context,now:start});
   if(end)state=applyAction(state,{type:'production.close',sessionId:id},{...context,now:end});

@@ -146,7 +146,7 @@ const romeDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year
 const autoLot = romeDay.slice(2).replaceAll('-', '');
 await dialog().locator('.auto-lot').getByText(autoLot).waitFor(); await dialog().locator('.carton-label').waitFor();
 assert.ok((await dialog().locator('.auto-lot').boundingBox()).height > 40, 'lot and expiry box fully visible inside the dialog');
-await dialog().getByLabel('Operatore').fill('Operatore prova');
+await dialog().getByLabel('Operatore').fill('Operatore prova'); await dialog().getByLabel('Impasto (IDENT.)').fill('02/F');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
 await page.getByRole('button', { name: 'Aggiungi cartoni' }).click(); await dialog().getByLabel('Cartoni da aggiungere').fill('200');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });

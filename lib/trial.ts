@@ -54,7 +54,7 @@ export function buildTrialState(now: Date = new Date()): State {
 
   const first = addDays(today, -6);
   run({ type: 'product.import', mode: 'skip', products }, at(first, 330));
-  run({ type: 'settings.update', settings: { labelProducer: 'Stabilimento PROVA · indirizzo di esempio', labelIdent: 'PROVA/1' } }, at(first, 331));
+  run({ type: 'settings.update', settings: { labelProducer: 'Stabilimento PROVA · indirizzo di esempio' } }, at(first, 331));
   run({ type: 'lot.receive', lot: { productId: pid('MP-FAR0'), code: 'F-PROVA-1', expiry: addDays(first, 120), area: 'Magazzino secco', quantity: 34 } }, at(first, 335));
   run({ type: 'lot.receive', lot: { productId: pid('MP-BUR'), code: 'B-PROVA-1', expiry: addDays(first, 30), area: 'Cella frigo', quantity: 12 } }, at(first, 336));
   run({ type: 'lot.receive', lot: { productId: pid('IM-CRT40'), code: 'C-PROVA-1', expiry: '', area: 'Area spedizioni', quantity: 1800 } }, at(first, 337));
@@ -62,7 +62,7 @@ export function buildTrialState(now: Date = new Date()): State {
 
   const produce = (day: string, [code, start, counts, end]: Run, index: number, closeIt: boolean, scrap = 0) => {
     // Lot and expiry come from the production day (AAMMGG, +12 months), as on the label.
-    run({ type: 'production.start', code, operator: operators[index % 2] }, at(day, start));
+    run({ type: 'production.start', code, operator: operators[index % 2], ident: `${day.slice(8)}/${String.fromCharCode(65 + index)}` }, at(day, start));
     const session = state.sessions.at(-1)!;
     const step = closeIt ? Math.max(1, Math.floor((end - start) / (counts.length + 1))) : 10;
     counts.forEach((cartons, k) => { const when = start + step * (k + 1); if (closeIt || day !== today || when <= nowMinutes) run({ type: 'production.count', sessionId: session.id, cartons }, at(day, when)); });

@@ -39,7 +39,7 @@ test('bridge transmitter ↔ /api/devices/production: close once, lost response 
     await post({ type: 'product.add', product: { code: '00123', name: 'Articolo fittizio', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } });
     await post({ type: 'settings.update', settings: { productionArea: 'Cella' } });
     const created = await (await devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { ...owner, origin }, body: '{"op":"create","name":"PC prova"}' }))).json() as { token: string; device: { id: string } };
-    const state = await post({ type: 'production.start', code: '00123', operator: 'Operatore prova', lotCode: 'LP1', expiry: '2099-12-31', counting: 'device' });
+    const state = await post({ type: 'production.start', ident: 'IMP-1', code: '00123', operator: 'Operatore prova', lotCode: 'LP1', expiry: '2099-12-31', counting: 'device' });
     const tx = new Transmitter({ store, baseUrl: origin, token: created.token, timeoutMs: 5000, retry: { baseMs: 10, maxMs: 50 } });
     const active = await tx.getActiveSession();
     assert.equal(active.ok, true); assert.equal(active.activeSession.id, state.sessions[0].id);

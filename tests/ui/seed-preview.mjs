@@ -47,11 +47,11 @@ state = await act({ type: 'order.create', order: { customer: 'Distributore Test 
 state = await act({ type: 'order.prepare', orderId: state.orders[2].id });
 state = await act({ type: 'order.dispatch', orderId: state.orders[2].id, documentRef: 'DDT 412/2026 (prova)', quantities: [{ lotId: lot('L2611G'), quantity: 40 }], note: 'Il resto al prossimo giro' });
 for (const [code, lotCode, cartons] of [['00123', 'P-2611-1', 200], ['00124', 'P-2611-2', 150], ['00123', 'P-2611-4', 54]]) {
-  state = await act({ type: 'production.start', code, operator: 'Operatore prova', lotCode, expiry: day(30) });
+  state = await act({ type: 'production.start', ident: 'IMP-1', code, operator: 'Operatore prova', lotCode, expiry: day(30) });
   const s = state.sessions.at(-1).id;
   state = await act({ type: 'production.count', sessionId: s, cartons });
   state = await act({ type: 'production.close', sessionId: s });
 }
-state = await act({ type: 'production.start', code: '00210', operator: 'Operatore prova', lotCode: 'P-2611-3', expiry: day(45) });
+state = await act({ type: 'production.start', ident: 'IMP-1', code: '00210', operator: 'Operatore prova', lotCode: 'P-2611-3', expiry: day(45) });
 state = await act({ type: 'production.count', sessionId: state.sessions.at(-1).id, cartons: 64 });
 console.log(`Anteprima popolata con dati fittizi: versione ${version}, ${state.products.length} articoli, ${state.lots.length} lotti, ${state.orders.length} ordini.`);
