@@ -43,10 +43,10 @@ for (const engine of ['sqlite', 'd1'] as const) {
       const repeated = await post(product('TEST-API'), 0, 'request-one'); assert.equal(repeated.status, 200); assert.equal(repeated.body.duplicate, true); assert.equal(repeated.body.state.products.length, 1);
       assert.equal((await post(product('DIFFERENT'), 1, 'request-one')).body.code, 'event-id-reused');
       const stale = await post(product('SECOND'), 0, 'request-two'); assert.equal(stale.status, 409); assert.equal(stale.body.version, 1, 'conflict returns fresh data to recover');
-      const started = await post({ type: 'production.start', code: 'TEST-API', operator: 'Test', lotCode: 'TEST', expiry: '2099-12-31' }, 1, 'request-start');
+      const started = await post({ type: 'production.start', ident: 'IMP-1', code: 'TEST-API', operator: 'Test', lotCode: 'TEST', expiry: '2099-12-31' }, 1, 'request-start');
       const sessionId = started.body.state.sessions[0].id;
       for (let n = 0; n < 205; n++) assert.equal((await post({ type: 'production.count', sessionId, cartons: 1 }, n + 2, `request-count-${n}`)).status, 200);
-      const old = await post({ type: 'production.start', code: 'TEST-API', operator: 'Test', lotCode: 'TEST', expiry: '2099-12-31' }, 1, 'request-start');
+      const old = await post({ type: 'production.start', ident: 'IMP-1', code: 'TEST-API', operator: 'Test', lotCode: 'TEST', expiry: '2099-12-31' }, 1, 'request-start');
       assert.equal(old.status, 200); assert.equal(old.body.duplicate, true); assert.equal(old.body.state.sessions.length, 1); assert.equal(old.body.state.sessions[0].cartons, 205); assert.equal(old.body.version, 207);
       assert.equal(await count(t, 'workspace_requests'), 207); assert.equal(await count(t, 'workspace_audit'), 207);
       // Even 207 saves in a burst get distinct, increasing times: the log order never depends on random ids.
@@ -160,13 +160,13 @@ for (const engine of ['sqlite', 'd1'] as const) {
       assert.equal((await r.devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin }, body: '{"op":"create","name":"PC linea"}' }))).status, 401);
       await post(product('A1'), 0, 'request-product');
       assert.equal((await post({ type: 'settings.update', settings: { productionArea: 'Cella' } }, 1, 'request-settings')).status, 200);
-      assert.equal((await post({ type: 'production.start', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 2, 'request-no-device')).status, 422);
+      assert.equal((await post({ type: 'production.start', ident: 'IMP-1', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 2, 'request-no-device')).status, 422);
       const created = await (await r.devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: owner, body: '{"op":"create","name":"PC linea"}' }))).json() as Body;
       const token = created.token!; assert.match(token, /^pcd_/);
       assert.equal(String((await t.raw('SELECT token_hash FROM devices'))[0].token_hash).includes(token), false, 'only the hash is stored');
       assert.equal((await deviceCall('GET', 'pcd_' + 'x'.repeat(43))).status, 401);
       assert.equal(((await (await deviceCall('GET', token)).json()) as { activeSession: unknown }).activeSession, null);
-      const started = await post({ type: 'production.start', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 2, 'request-device-start');
+      const started = await post({ type: 'production.start', ident: 'IMP-1', code: 'A1', operator: 'O', lotCode: 'L', expiry: '2099-12-31', counting: 'device' }, 2, 'request-device-start');
       assert.equal(started.status, 200, started.body.error); const sessionId = started.body.state.sessions[0].id;
       assert.equal(((await (await deviceCall('GET', token)).json()) as { activeSession: { id: string } }).activeSession.id, sessionId);
       assert.equal((await deviceCall('POST', token, { eventId: 'hb_0000001', type: 'heartbeat', at: '2026-11-13T08:00:00.000Z', plc: { reachable: true }, queueLength: 0, session: { id: sessionId, cartons: 57 }, extra: 'x'.repeat(100) })).status, 200);

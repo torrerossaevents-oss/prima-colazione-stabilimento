@@ -56,6 +56,8 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 
 const lot = today.slice(2).replaceAll('-', '');
 await page.locator('.ipad-facts').getByText(lot).waitFor();
 await page.getByLabel('Operatore').fill('Operatore prova');
+assert.equal(await page.getByRole('button', { name: 'Avvia produzione' }).isDisabled(), true, 'impasto required');
+await page.getByLabel('Impasto (IDENT.)').fill('02/F');
 await page.getByRole('button', { name: 'Avvia produzione' }).click();
 await page.locator('.ipad-count-n').waitFor();
 await page.getByRole('button', { name: '+5' }).click(); await page.getByText('+5 cartoni').waitFor();

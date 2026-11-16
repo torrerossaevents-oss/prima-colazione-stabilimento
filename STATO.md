@@ -169,6 +169,10 @@ App web installabile su `/linea` (`components/line-app.tsx`, guida in `docs/APP-
 
 Verificata sulla foto reale del Fagottino e con il test `tests/ui/linea.mjs` su vista iPad.
 
+## Impasto (IDENT.) per produzione (16/11/2026)
+
+Teo: l'IDENT. identifica l'impasto di ogni produzione. Ora è obbligatorio all'avvio (server e interfaccia, gestionale e iPad), salvato nella lavorazione e mostrato su etichetta, postazione, produzione del giorno, CSV e storico. Tolto il campo fisso da Configurazione. Durata confermata: 12 mesi per tutti.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.
