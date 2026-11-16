@@ -44,6 +44,7 @@ await dialog().locator('select[name=productId]').selectOption(pid);
 await dialog().getByLabel('Lotto').fill('LOT-PROVA-1'); await dialog().getByLabel('Scadenza').fill('2099-12-31');
 await dialog().getByLabel('Ubicazione').fill('Area A'); await dialog().getByLabel('Quantità effettiva').fill('150');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
+await page.getByRole('group', { name: 'Vista della giacenza' }).getByRole('button', { name: 'Per lotto' }).click(); // lot actions are in the per-lot view
 await page.getByRole('button', { name: 'Blocco' }).first().click();
 await dialog().getByLabel('Quantità totale da tenere bloccata').fill('2'); await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 log('entrata 150 e blocco 2 registrati');
@@ -52,6 +53,7 @@ log('entrata 150 e blocco 2 registrati');
 await page.goto(base + '/#orders'); await page.getByRole('button', { name: 'Nuovo ordine' }).first().click();
 await dialog().getByLabel('Cliente / destinatario').fill('Cliente fittizio'); await dialog().getByLabel('Destinazione').fill('Destinazione fittizia');
 await dialog().locator('select').first().selectOption({ index: 1 }); await dialog().getByLabel('Quantità da prenotare').fill('30');
+await dialog().locator('.fefo-plan').getByText(/Lotti assegnati in automatico/).waitFor(); // FEFO preview before confirming
 await dialog().getByRole('button', { name: 'Conferma e prenota' }).click(); await dialog().waitFor({ state: 'detached' });
 s = await api(); const lotId = s.state.lots[0].id;
 await page.getByRole('button', { name: 'Segna pronto' }).click(); await page.getByRole('button', { name: 'Registra partenza' }).waitFor();
@@ -71,6 +73,12 @@ await page.getByRole('button', { name: 'Collega documento' }).click(); await dia
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 s = await api(); assert.equal(s.state.lots[0].quantity, 130);
 await page.goto(base + '/#inventory'); await page.getByRole('tab', { name: /Giacenze e lotti/ }).click();
+// Stock opens per product: one total, the lots on click (FEFO order).
+await page.getByRole('group', { name: 'Vista della giacenza' }).getByRole('button', { name: 'Per prodotto' }).click();
+const stockRow = page.locator('tr.stock-row', { hasText: '00123' }); await stockRow.waitFor();
+assert.match((await stockRow.locator('td').allInnerTexts())[1], /130/);
+await stockRow.getByRole('button').click(); await page.locator('.stock-lot-list li', { hasText: 'LOT-PROVA-1' }).waitFor();
+await page.getByRole('group', { name: 'Vista della giacenza' }).getByRole('button', { name: 'Per lotto' }).click();
 const row = page.locator('tr', { hasText: 'LOT-PROVA-1' }); await row.waitFor();
 const cells = await row.locator('td').allInnerTexts();
 assert.match(cells[3], /130/); assert.match(cells[6], /^128/);
@@ -117,6 +125,7 @@ log('risposta persa dopo il salvataggio: dopo ricarica la ricevuta del server co
 
 // Scrap from blocked stock.
 await page.goto(base + '/#inventory'); await page.getByRole('tab', { name: /Giacenze e lotti/ }).click();
+await page.getByRole('group', { name: 'Vista della giacenza' }).getByRole('button', { name: 'Per lotto' }).click();
 await page.locator('summary[aria-label^="Altre operazioni sul lotto"]').first().click(); await page.getByRole('button', { name: 'Scarto' }).first().click();
 await dialog().getByLabel('Quantità scartata').fill('2'); await dialog().getByLabel('Responsabile').fill('Responsabile prova'); await dialog().getByLabel('Motivo').fill('Cartoni danneggiati');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
@@ -198,6 +207,24 @@ assert.equal(await page.locator('#menu-laterale').isVisible(), false);
 await page.reload(); await page.getByRole('button', { name: 'Mostra il menu laterale' }).click(); await page.waitForTimeout(300);
 assert.equal(await page.locator('#menu-laterale').isVisible(), true);
 log('menu laterale a tendina: nascosto, ricordato dopo la ricarica, riaperto');
+
+// The line's button closes the run: a device (fake bridge) closes it, the open page shows it by itself.
+const deviceRes = await fetch(base + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ op: 'create', name: 'PC linea prova' }) });
+const device = await deviceRes.json(); assert.ok(device.token, 'device created');
+await page.goto(base + '/#production'); await page.reload();
+await page.getByRole('button', { name: 'Nuova lavorazione' }).first().click();
+await dialog().getByPlaceholder('Codice dell’etichetta').fill('00123'); await dialog().getByText(/^Codice 00123/).waitFor();
+await dialog().getByLabel('Operatore').fill('Operatore prova'); await dialog().getByLabel('Impasto (IDENT.)').fill('03/A');
+assert.equal(await dialog().locator('input[name=counting][value=device]').isChecked(), true, 'with a bridge the counting comes from the line by default');
+await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
+const runId = (await api()).state.sessions.find(x => x.status === 'active').id;
+const lineClose = await fetch(base + '/api/devices/production', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + device.token }, body: JSON.stringify({ eventId: 'evt_smoke_1', type: 'session.close', sessionId: runId, closeRequestId: 'req_smoke_1', counterStart: 0, counterEnd: 54, cartons: 54, closedAt: new Date().toISOString() }) });
+assert.equal(lineClose.status, 200, await lineClose.text());
+await page.getByText(/chiusa dal contapezzi: 54 cartoni/).waitFor({ timeout: 40_000 }); // nobody clicked anything on the page
+s = await api(); const lineRun = s.state.sessions.find(x => x.id === runId);
+assert.equal(lineRun.status, 'closed'); assert.equal(lineRun.ident, '03/A'); assert.equal(s.state.lots.find(l => l.id === lineRun.loadedLotId).quantity >= 54, true);
+await fetch(base + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ op: 'revoke', id: device.device.id }) });
+log('pulsante della linea: lavorazione chiusa dal contapezzi, carico automatico, avviso nella pagina senza clic');
 
 // Trial mode: sample week, simulated counter, close without stock change, nothing sent to the server.
 const versionBefore = (await api()).version; let trialPosts = 0;

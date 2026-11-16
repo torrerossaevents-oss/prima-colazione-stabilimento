@@ -173,6 +173,16 @@ Verificata sulla foto reale del Fagottino e con il test `tests/ui/linea.mjs` su 
 
 Teo: l'IDENT. identifica l'impasto di ogni produzione. Ora è obbligatorio all'avvio (server e interfaccia, gestionale e iPad), salvato nella lavorazione e mostrato su etichetta, postazione, produzione del giorno, CSV e storico. Tolto il campo fisso da Configurazione. Durata confermata: 12 mesi per tutti.
 
+## Di manuale solo l'avvio (16/11/2026)
+
+Richiesta di Teo.
+
+- Con un ponte attivo la lavorazione parte con il conteggio del contapezzi, sia dal gestionale sia dall'iPad. Il pulsante della linea la chiude e il carico è automatico; il gestionale si aggiorna da solo ogni 15 secondi e lo segnala con un avviso. Verificato nello smoke con un finto contapezzi.
+- La stessa produzione nello stesso giorno si somma nello stesso lotto.
+- Giacenza per prodotto con i lotti al clic, in ordine di scadenza.
+- Ordini per prodotto con assegnazione automatica dei lotti a scadenza più vicina (FEFO), anteprima prima della conferma e storico.
+- Resta da collegare e collaudare il LOGO! sulla linea.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.
