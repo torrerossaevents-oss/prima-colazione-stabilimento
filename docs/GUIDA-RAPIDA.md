@@ -11,6 +11,10 @@
 5. **Storico attività**: le operazioni sono raggruppate per giorno, dalla più recente. Scegli un giorno con il calendario o con le frecce (◀ ▶), oppure «Oggi» o «Tutti i giorni»; filtra per tipo (Produzione, Magazzino, Ordini, Catalogo) e cerca un codice, un lotto o un cliente. Clic sul titolo di un giorno per vedere solo quel giorno.
 6. **Configurazione**: backup completo, dispositivi del conta-cartoni, pacchetto per il PC di linea, modalità prova.
 
+### App Linea sull'iPad
+
+Sull'iPad della linea: Safari → indirizzo del gestionale + `/linea` → Condividi → **Aggiungi alla schermata Home**. Dall'icona **Linea** si fotografa l'etichetta (o si carica la foto), l'app riconosce l'articolo e calcola lotto e scadenza, poi «Avvia produzione», si contano i cartoni con i pulsanti grandi e si chiude caricando il magazzino. Dettagli in `APP-LINEA-IPAD.md`.
+
 ### Menu laterale
 
 Il pulsante in alto a sinistra (accanto a «Stabilimento») nasconde o mostra il menu: con il menu nascosto le schermate usano tutta la larghezza. La scelta resta salvata su quel computer. Si apre anche dalla ricerca (Ctrl K → «menu laterale»). Sul telefono il menu si apre con ☰.
