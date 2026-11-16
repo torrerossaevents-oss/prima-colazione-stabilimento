@@ -45,7 +45,8 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 ## Limiti
 
 - La lettura dipende dalla foto: serve buona luce, etichetta intera e niente riflessi. I campi non letti restano vuoti con un avviso; niente viene inventato.
-- Sulla foto reale del Fagottino (14/11/2026) l'app legge codice, nome, EAN, pezzi, peso, lotto, scadenza e durata; non legge l'IDENT. (impostato comunque in Configurazione); la descrizione ha piccoli errori di lettura da correggere nella scheda.
+- Come legge: immagine portata a 3000 px sul lato lungo, prima lettura in grigio con contrasto aumentato, seconda lettura a colori solo se manca qualche dato; i dati si uniscono campo per campo. Le parole tipiche delle etichette sbagliate di una lettera vengono corrette («orudo» → «crudo») e una dicitura già presente nel catalogo viene ripresa identica.
+- Sulla foto reale del Fagottino (16/11/2026), sia ridotta sia originale, l'app legge codice, descrizione articolo, dicitura in etichetta, EAN, pezzi, peso, lotto, scadenza e durata senza errori; non legge l'IDENT. (impostato comunque in Configurazione).
 - I PDF non vengono letti: si carica una foto o un'immagine.
 - Non comanda la linea e non stampa etichette.
 

@@ -1183,3 +1183,4 @@ fieldset.field > span { margin-bottom: 2px; }
 .ipad-detected > div { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .ipad-detected b { font-size: 22px; }
 .ipad-card { scroll-margin-top: 92px; }
+.ipad-grid .span3 { grid-column: 1 / -1; }

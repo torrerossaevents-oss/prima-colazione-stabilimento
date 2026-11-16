@@ -3,11 +3,11 @@
  * model). Both run on the device; their files are served from /ocr on our own domain. The photo is
  * never uploaded. Browser-only module (canvas, workers): import it dynamically from the client.
  */
-import { parseLabel, type LabelReading } from './label-parse.ts';
+import { parseLabel, type LabelReading, type ParseOptions } from './label-parse.ts';
 
 export type LabelScan = { text: string; barcode?: string; reading: LabelReading; preview: string };
 type Progress = (step: string, fraction?: number) => void;
-type OcrWorker = { recognize: (image: HTMLCanvasElement) => Promise<{ data: { text: string } }>; terminate: () => Promise<unknown> };
+type OcrWorker = { recognize: (image: HTMLCanvasElement) => Promise<{ data: { text: string } }>; setParameters: (p: Record<string, string>) => Promise<unknown>; terminate: () => Promise<unknown> };
 
 let worker: Promise<OcrWorker> | null = null;
 async function ocrWorker(progress: Progress): Promise<OcrWorker> {
@@ -27,8 +27,8 @@ async function loadImage(file: Blob): Promise<HTMLCanvasElement> {
   try {
     const img = new Image(); img.decoding = 'async'; img.src = url;
     await img.decode();
-    // Big enough for small label text, small enough for an iPad's memory and a fast read.
-    const scale = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+    // Loaded at most at 4032 px (an iPad photo); the reading size is set in scanCanvas.
+    const scale = Math.min(1, 4032 / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(img.naturalWidth * scale); canvas.height = Math.round(img.naturalHeight * scale);
     canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -71,19 +71,51 @@ export async function decodeFrame(canvas: HTMLCanvasElement): Promise<string | u
   return (await frameReader)(canvas);
 }
 
-export async function scanLabel(file: File, progress: Progress = () => {}): Promise<LabelScan> {
+export async function scanLabel(file: File, progress: Progress = () => {}, options: ParseOptions = {}): Promise<LabelScan> {
   if (!file.type.startsWith('image/')) throw new Error('Carica una foto dell’etichetta (JPG, PNG o foto dell’iPad). I PDF non sono letti.');
   progress('Apertura della foto…');
-  return scanCanvas(await loadImage(file), progress);
+  return scanCanvas(await loadImage(file), progress, undefined, options);
+}
+
+/** Reading size: 3000 px on the long side, enlarging small photos too (tested on the real label: below this the
+ * wording and the lot were misread). */
+function fit(canvas: HTMLCanvasElement, side = 3000): HTMLCanvasElement {
+  const scale = side / Math.max(canvas.width, canvas.height); if (Math.abs(scale - 1) < 0.02) return canvas;
+  const out = document.createElement('canvas'); out.width = Math.round(canvas.width * scale); out.height = Math.round(canvas.height * scale);
+  const ctx = out.getContext('2d')!; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(canvas, 0, 0, out.width, out.height); return out;
+}
+/** Grey copy with the contrast stretched (1 % of the darkest and lightest pixels clipped): small label text reads much better. */
+function enhance(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height;
+  const ctx = out.getContext('2d')!; ctx.drawImage(canvas, 0, 0);
+  const img = ctx.getImageData(0, 0, out.width, out.height); const d = img.data; const n = d.length / 4;
+  const grey = new Uint8ClampedArray(n); const hist = new Uint32Array(256);
+  for (let i = 0; i < n; i++) { const g = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000; grey[i] = g; hist[grey[i]]++; }
+  let lo = 0, hi = 255, acc = 0; const cut = n * 0.01;
+  while (lo < 255 && (acc += hist[lo]) < cut) lo++;
+  acc = 0; while (hi > 0 && (acc += hist[hi]) < cut) hi--;
+  const span = Math.max(1, hi - lo);
+  for (let i = 0; i < n; i++) { const v = Math.min(255, Math.max(0, ((grey[i] - lo) * 255) / span)); d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; }
+  ctx.putImageData(img, 0, 0); return out;
 }
 
 /** Full reading of an image already on a canvas (photo or camera frame); a barcode already decoded is reused. */
-export async function scanCanvas(canvas: HTMLCanvasElement, progress: Progress = () => {}, knownBarcode?: string): Promise<LabelScan> {
+export async function scanCanvas(source: HTMLCanvasElement, progress: Progress = () => {}, knownBarcode?: string, options: ParseOptions = {}): Promise<LabelScan> {
   progress('Lettura del codice a barre…');
-  const barcode = knownBarcode ?? await readBarcode(canvas);
+  const barcode = knownBarcode ?? await readBarcode(source);
+  const canvas = fit(source);
   const ocr = await ocrWorker(progress);
+  // Pass 1: grey + contrast, block layout (best for the wording and the content line on the real label).
   progress('Lettura del testo…', 0);
-  const { data } = await ocr.recognize(canvas);
-  const preview = canvas.toDataURL('image/jpeg', 0.6);
-  return { text: data.text, barcode, reading: parseLabel(data.text, barcode), preview };
+  await ocr.setParameters({ tessedit_pageseg_mode: '4', user_defined_dpi: '300', preserve_interword_spaces: '1' });
+  const texts = [(await ocr.recognize(enhance(canvas))).data.text];
+  let reading = parseLabel(texts, barcode, options);
+  // Pass 2 only when something is missing (on the real label the lot line next to the barcode reads better in colour).
+  if (!reading.code || !reading.name || !reading.description || !reading.piecesPerCarton || !reading.expiry || !reading.lot) {
+    progress('Seconda lettura per i dati mancanti…', 0);
+    await ocr.setParameters({ tessedit_pageseg_mode: '3', user_defined_dpi: '0' });
+    texts.push((await ocr.recognize(canvas)).data.text);
+    reading = parseLabel(texts, barcode, options);
+  }
+  return { text: texts.join('\n\n'), barcode, reading, preview: source.toDataURL('image/jpeg', 0.6) };
 }

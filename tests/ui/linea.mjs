@@ -81,8 +81,9 @@ const report = await page.evaluate(() => {
   return { bad: bad.slice(0, 6), small };
 });
 assert.deepEqual(report, { bad: [], small: [] }, 'typography and 44 px touch targets on the iPad screen');
-// tesseract logs a missing optional word list («ita.special-words») it does not need: not an error of the app.
-assert.deepEqual(errors.filter(e => !/Failed to load resource|net::|special-words/.test(e)), [], 'no runtime errors');
+// tesseract logs informational lines on the error console (a missing optional word list it does not need,
+// «Estimating resolution as …»): not errors of the app.
+assert.deepEqual(errors.filter(e => !/Failed to load resource|net::|special-words|Estimating resolution/.test(e)), [], 'no runtime errors');
 log('tipografia (nero/bianco, peso 400) e pulsanti ≥ 44 px sull’iPad');
 await browser.close();
 

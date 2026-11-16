@@ -164,17 +164,19 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
   useEffect(() => { try { const saved = localStorage.getItem(OPERATOR_KEY); if (saved) queueMicrotask(() => setOperator(saved)); } catch { /* not remembered */ } }, []);
 
   const r = scan?.reading;
+  // Wording already in the catalog: a close reading is replaced by the exact text.
+  const known = [...new Set(state.products.map(p => p.labelDescription).filter((d): d is string => !!d))];
   const found: Product | undefined = chosen ? state.products.find(p => p.id === chosen) : (r && ((r.ean && productByScan(state, r.ean)) || (r.code && productByScan(state, r.code)))) || undefined;
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
     setScan(null); setChosen(null); setScanError(''); setProgress({ step: 'Apertura della foto…' });
-    try { const { scanLabel } = await import('../lib/label-reader'); setScan(await scanLabel(file, (step, fraction) => setProgress({ step, fraction }))); }
+    try { const { scanLabel } = await import('../lib/label-reader'); setScan(await scanLabel(file, (step, fraction) => setProgress({ step, fraction }), { known })); }
     catch (err) { setScanError(describeError(err, 'Etichetta non letta. Riprova con più luce, inquadrando tutta l’etichetta, oppure scrivi il codice.')); }
     finally { setProgress(null); }
   }
   async function readFrame(frame: HTMLCanvasElement, barcode?: string) {
     setScan(null); setChosen(null); setDetected(null); setScanError(''); setProgress({ step: 'Lettura del testo dell’etichetta…' });
-    try { const { scanCanvas } = await import('../lib/label-reader'); setScan(await scanCanvas(frame, (step, fraction) => setProgress({ step, fraction }), barcode)); }
+    try { const { scanCanvas } = await import('../lib/label-reader'); setScan(await scanCanvas(frame, (step, fraction) => setProgress({ step, fraction }), barcode, { known })); }
     catch (err) { setScanError(describeError(err, 'Etichetta non letta. Riprova con più luce, inquadrando tutta l’etichetta, oppure scrivi il codice.')); }
     finally { setProgress(null); }
   }
@@ -193,6 +195,7 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
   const diffs: [string, string, string][] = found && r ? ([
     ['EAN', found.ean ?? '—', r.ean ?? ''], ['Pezzi per cartone', found.piecesPerCarton ? String(found.piecesPerCarton) : '—', r.piecesPerCarton ? String(r.piecesPerCarton) : ''],
     ['Peso del pezzo (g)', found.pieceWeightG ? String(found.pieceWeightG) : '—', r.pieceWeightG ? String(r.pieceWeightG) : ''], ['Durata (mesi)', String(found.shelfLifeMonths ?? `${DEFAULT_SHELF_LIFE_MONTHS} (predefinita)`), r.shelfLifeMonths ? String(r.shelfLifeMonths) : ''],
+    ['Dicitura in etichetta', found.labelDescription ?? '—', r.description ?? ''],
   ] as [string, string, string][]).filter(([, a, b]) => b && a !== b) : [];
   const fromLabel = () => ({ ...(r?.ean ? { ean: r.ean } : {}), ...(r?.piecesPerCarton ? { piecesPerCarton: r.piecesPerCarton } : {}), ...(r?.pieceWeightG ? { pieceWeightG: r.pieceWeightG } : {}), ...(r?.shelfLifeMonths ? { shelfLifeMonths: r.shelfLifeMonths } : {}), ...(r?.description ? { labelDescription: r.description.slice(0, 160) } : {}), ...(r?.ingredients ? { ingredients: r.ingredients } : {}), ...(r?.storage ? { storage: r.storage } : {}) });
 
@@ -227,7 +230,7 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={scan.preview} alt="Foto dell’etichetta letta"/>
         <dl className="ipad-read">
-          {([['Codice', r.code], ['Nome', r.name], ['Descrizione', r.description], ['EAN', r.ean ? r.ean + (scan.barcode ? ' (codice a barre)' : ' (cifre)') : undefined], ['Contenuto', r.piecesPerCarton ? `${r.piecesPerCarton} pezzi${r.pieceWeightG ? ` × ${r.pieceWeightG} g = ${n(r.netWeightG ?? 0)} g` : ''}` : undefined], ['Lotto stampato', r.lot ? `${r.lot}${r.productionDay ? ` (prodotto il ${itDate(r.productionDay)})` : ''}` : undefined], ['Scadenza stampata', r.expiry ? itDate(r.expiry) : undefined], ['Durata', r.shelfLifeMonths ? `${r.shelfLifeMonths} mesi (calcolata)` : undefined], ['IDENT.', r.ident]] as [string, string | undefined][]).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v ?? <span className="ipad-missing">non letto</span>}</dd></div>)}
+          {([['Codice', r.code], ['Descrizione articolo', r.name], ['Dicitura in etichetta', r.description], ['EAN', r.ean ? r.ean + (scan.barcode ? ' (codice a barre)' : ' (cifre)') : undefined], ['Contenuto', r.piecesPerCarton ? `${r.piecesPerCarton} pezzi${r.pieceWeightG ? ` × ${r.pieceWeightG} g = ${n(r.netWeightG ?? 0)} g` : ''}` : undefined], ['Lotto stampato', r.lot ? `${r.lot}${r.productionDay ? ` (prodotto il ${itDate(r.productionDay)})` : ''}` : undefined], ['Scadenza stampata', r.expiry ? itDate(r.expiry) : undefined], ['Durata', r.shelfLifeMonths ? `${r.shelfLifeMonths} mesi (calcolata)` : undefined], ['IDENT.', r.ident]] as [string, string | undefined][]).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v ?? <span className="ipad-missing">non letto</span>}</dd></div>)}
         </dl>
         {r.warnings.length > 0 && <ul className="ipad-warnings">{r.warnings.map(w => <li key={w}>{w}</li>)}</ul>}
       </div>}
@@ -250,11 +253,11 @@ function StartView({ state, busy, can, send, today }: ViewProps & { today: strin
 }
 
 function NewProduct({ reading: r, can, busy, send }: Omit<ViewProps, 'state'> & { reading: LabelScan['reading'] }) {
-  const [code, setCode] = useState(r.code ?? ''); const [name, setName] = useState(r.name ?? ''); const [ean, setEan] = useState(r.ean ?? '');
+  const [code, setCode] = useState(r.code ?? ''); const [name, setName] = useState(r.name ?? ''); const [ean, setEan] = useState(r.ean ?? ''); const [wording, setWording] = useState(r.description ?? '');
   const [pieces, setPieces] = useState(r.piecesPerCarton ? String(r.piecesPerCarton) : ''); const [weight, setWeight] = useState(r.pieceWeightG ? String(r.pieceWeightG) : ''); const [months, setMonths] = useState(String(r.shelfLifeMonths ?? DEFAULT_SHELF_LIFE_MONTHS));
   if (!can('product.add')) return <div className="ipad-alert amber"><CircleAlert size={22}/><span>L’articolo {r.code ? `«${r.code}»` : ''} non è nel catalogo. Chiedi all’amministrazione di crearlo (anche da qui, con la stessa foto).</span></div>;
   async function create() {
-    const product = { code: code.trim(), name: name.trim(), kind: 'finished' as const, unit: 'CRT', unitsPerBox: 1, minStock: 0, ...(ean.trim() ? { ean: ean.trim() } : {}), ...(Number(pieces) > 0 ? { piecesPerCarton: Number(pieces) } : {}), ...(Number(weight) > 0 ? { pieceWeightG: Number(weight) } : {}), ...(Number(months) > 0 ? { shelfLifeMonths: Number(months) } : {}), ...(r.description ? { labelDescription: r.description.slice(0, 160) } : {}), ...(r.ingredients ? { ingredients: r.ingredients } : {}), ...(r.storage ? { storage: r.storage } : {}) };
+    const product = { code: code.trim(), name: name.trim(), kind: 'finished' as const, unit: 'CRT', unitsPerBox: 1, minStock: 0, ...(ean.trim() ? { ean: ean.trim() } : {}), ...(Number(pieces) > 0 ? { piecesPerCarton: Number(pieces) } : {}), ...(Number(weight) > 0 ? { pieceWeightG: Number(weight) } : {}), ...(Number(months) > 0 ? { shelfLifeMonths: Number(months) } : {}), ...(wording.trim() ? { labelDescription: wording.trim().slice(0, 160) } : {}), ...(r.ingredients ? { ingredients: r.ingredients } : {}), ...(r.storage ? { storage: r.storage } : {}) };
     // Once saved, the parent recognises the new article from the same reading (code or EAN).
     await send({ type: 'product.add', product }, `Articolo ${product.code} creato dall’etichetta`);
   }
@@ -262,7 +265,8 @@ function NewProduct({ reading: r, can, busy, send }: Omit<ViewProps, 'state'> & 
     <div className="ipad-grid">
       <label className="ipad-field"><span>Codice</span><input value={code} onChange={e => setCode(e.target.value)}/></label>
       <label className="ipad-field"><span>EAN</span><input value={ean} inputMode="numeric" onChange={e => setEan(e.target.value)}/></label>
-      <label className="ipad-field span2"><span>Descrizione</span><input value={name} onChange={e => setName(e.target.value)}/></label>
+      <label className="ipad-field span2"><span>Descrizione articolo (nome nel catalogo)</span><input value={name} onChange={e => setName(e.target.value)}/></label>
+      <label className="ipad-field span3"><span>Dicitura in etichetta</span><input value={wording} maxLength={160} onChange={e => setWording(e.target.value)} placeholder="Es. Prodotto da forno crudo congelato"/></label>
       <label className="ipad-field"><span>Pezzi per cartone</span><input type="number" inputMode="numeric" value={pieces} onChange={e => setPieces(e.target.value)}/></label>
       <label className="ipad-field"><span>Peso del pezzo (g)</span><input type="number" inputMode="numeric" value={weight} onChange={e => setWeight(e.target.value)}/></label>
       <label className="ipad-field"><span>Durata (mesi)</span><input type="number" inputMode="numeric" value={months} onChange={e => setMonths(e.target.value)}/></label>
