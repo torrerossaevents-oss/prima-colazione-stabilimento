@@ -136,7 +136,7 @@ function RunView({ state, sessionId, busy, can, send, now }: ViewProps & { sessi
   return <section className="ipad-run" aria-label="Lavorazione in corso">
     <div className="ipad-card ipad-run-head">
       <div><span className="ipad-code">Codice {s.productCode}</span><h1>{s.productName}</h1></div>
-      <dl className="ipad-facts"><div><dt>Lotto</dt><dd>{s.lotCode}</dd></div><div><dt>Scadenza</dt><dd>{itDate(s.expiry)}</dd></div><div><dt>Operatore</dt><dd>{s.operator}</dd></div><div><dt>Impasto</dt><dd>{s.ident ?? '—'}</dd></div><div><dt>Avviata</dt><dd>{time(s.startedAt)}</dd></div></dl>
+      <dl className="ipad-facts"><div><dt>Lotto</dt><dd>{s.lotCode}</dd></div><div><dt>Scadenza</dt><dd>{itDate(s.expiry)}</dd></div><div><dt>Operatore</dt><dd>{s.operator}</dd></div><div><dt>Avviata</dt><dd>{time(s.startedAt)}</dd></div></dl>
     </div>
     <div className="ipad-card ipad-counter">
       <div className="ipad-count" aria-live="polite"><span className="ipad-count-n">{n(s.cartons)}</span><span>cartoni{hours >= 0.05 && s.cartons > 0 ? ` · ${n(Math.round(s.cartons / hours))} all’ora` : ''}</span></div>
@@ -153,7 +153,7 @@ function RunView({ state, sessionId, busy, can, send, now }: ViewProps & { sessi
         <div className="ipad-row"><button className="ipad-btn" onClick={() => setClosing(false)} disabled={busy}>Indietro</button><button className="ipad-btn primary" disabled={busy || !ok || (Number(scrap) > 0 && !note.trim()) || (device && (!reason.trim() || counted === ''))} onClick={() => void close()}><Check size={22}/>Conferma chiusura</button></div>
       </div>}
     </div>
-    {p && <div className="ipad-card"><LabelPreview product={{ ...p, piecesPerCarton: s.piecesPerCarton ?? p.piecesPerCarton, pieceWeightG: s.pieceWeightG ?? p.pieceWeightG }} lotCode={s.lotCode} expiry={s.expiry} settings={state.settings} ident={s.ident}/></div>}
+    {p && <div className="ipad-card"><LabelPreview product={{ ...p, piecesPerCarton: s.piecesPerCarton ?? p.piecesPerCarton, pieceWeightG: s.pieceWeightG ?? p.pieceWeightG }} lotCode={s.lotCode} expiry={s.expiry} settings={state.settings}/></div>}
   </section>;
 }
 
@@ -164,7 +164,6 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
   const [typed, setTyped] = useState('');
   const [chosen, setChosen] = useState<string | null>(null);
   const [operator, setOperator] = useState('');
-  const [ident, setIdent] = useState('');
   const upload = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   // Article recognised from the barcode alone (no text reading needed); the frame is kept to read the text on request.
@@ -215,7 +214,7 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
   async function start() {
     if (!found) return;
     try { localStorage.setItem(OPERATOR_KEY, operator.trim()); } catch { /* not remembered */ }
-    if (await send({ type: 'production.start', code: found.code, operator: operator.trim(), ident: ident.trim().toUpperCase(), counting: devicesEnabled ? 'device' : 'manual' }, `Produzione avviata: ${found.code}, lotto ${lot}, impasto ${ident.trim().toUpperCase()}`)) { setScan(null); setChosen(null); setIdent(''); }
+    if (await send({ type: 'production.start', code: found.code, operator: operator.trim(), counting: devicesEnabled ? 'device' : 'manual' }, `Produzione avviata: ${found.code}, lotto ${lot}`)) { setScan(null); setChosen(null); }
   }
   return <section className="ipad-start" aria-label="Avvio della produzione">
     <div className="ipad-card">
@@ -239,7 +238,7 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={scan.preview} alt="Foto dell’etichetta letta"/>
         <dl className="ipad-read">
-          {([['Codice', r.code], ['Descrizione articolo', r.name], ['Dicitura in etichetta', r.description], ['EAN', r.ean ? r.ean + (scan.barcode ? ' (codice a barre)' : ' (cifre)') : undefined], ['Contenuto', r.piecesPerCarton ? `${r.piecesPerCarton} pezzi${r.pieceWeightG ? ` × ${r.pieceWeightG} g = ${n(r.netWeightG ?? 0)} g` : ''}` : undefined], ['Lotto stampato', r.lot ? `${r.lot}${r.productionDay ? ` (prodotto il ${itDate(r.productionDay)})` : ''}` : undefined], ['Scadenza stampata', r.expiry ? itDate(r.expiry) : undefined], ['Durata', r.shelfLifeMonths ? `${r.shelfLifeMonths} mesi (calcolata)` : undefined], ['Impasto stampato (IDENT.)', r.ident]] as [string, string | undefined][]).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v ?? <span className="ipad-missing">non letto</span>}</dd></div>)}
+          {([['Codice', r.code], ['Descrizione articolo', r.name], ['Dicitura in etichetta', r.description], ['EAN', r.ean ? r.ean + (scan.barcode ? ' (codice a barre)' : ' (cifre)') : undefined], ['Contenuto', r.piecesPerCarton ? `${r.piecesPerCarton} pezzi${r.pieceWeightG ? ` × ${r.pieceWeightG} g = ${n(r.netWeightG ?? 0)} g` : ''}` : undefined], ['Lotto stampato', r.lot ? `${r.lot}${r.productionDay ? ` (prodotto il ${itDate(r.productionDay)})` : ''}` : undefined], ['Scadenza stampata', r.expiry ? itDate(r.expiry) : undefined], ['Durata', r.shelfLifeMonths ? `${r.shelfLifeMonths} mesi (calcolata)` : undefined]] as [string, string | undefined][]).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v ?? <span className="ipad-missing">non letto</span>}</dd></div>)}
         </dl>
         {r.warnings.length > 0 && <ul className="ipad-warnings">{r.warnings.map(w => <li key={w}>{w}</li>)}</ul>}
       </div>}
@@ -254,11 +253,9 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
       <div className="ipad-found"><span className="ipad-code">Codice {found.code}{found.ean ? ` · EAN ${found.ean}` : ''}</span><h2>{found.name}</h2></div>
       <dl className="ipad-facts big"><div><dt>Lotto</dt><dd>{lot}</dd></div><div><dt>Scadenza</dt><dd>{itDate(expiry)}</dd></div><div><dt>Cartone</dt><dd>{found.piecesPerCarton ? `${found.piecesPerCarton} pezzi` : '—'}</dd></div></dl>
       <p className="ipad-help">{devicesEnabled ? 'Conteggio dal contapezzi: a fine produzione basta il pulsante sulla linea, la chiusura e il carico avvengono da soli. ' : 'Contapezzi non collegato: conterete i cartoni qui e chiuderete dall’iPad. '}Lotto = data di oggi (AAMMGG); scadenza = oggi + {months} mesi. {productionArea(state) ? `Alla chiusura i cartoni entrano in ${productionArea(state)}.` : 'Area di carico non impostata: la chiusura non caricherà il magazzino.'}</p>
-      <div className="ipad-grid two"><label className="ipad-field"><span>Operatore</span><input value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nome di chi lavora sulla linea" autoComplete="name"/></label>
-      <label className="ipad-field"><span>Impasto (IDENT.)</span><input value={ident} maxLength={20} onChange={e => setIdent(e.target.value)} placeholder="Es. 02/F" autoCapitalize="characters" autoComplete="off"/></label></div>
-      <button className="ipad-btn primary wide" disabled={busy || !operator.trim() || !ident.trim() || !can('production.start')} onClick={() => void start()}><Play size={24}/>Avvia produzione</button>
-      {!ident.trim() && <p className="ipad-help">Indica l’impasto di questa produzione: è obbligatorio e va sull’etichetta.</p>}
-      <LabelPreview product={found} lotCode={lot} expiry={expiry} settings={state.settings} ident={ident.trim().toUpperCase() || undefined}/>
+      <label className="ipad-field"><span>Operatore</span><input value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nome di chi lavora sulla linea" autoComplete="name"/></label>
+      <button className="ipad-btn primary wide" disabled={busy || !operator.trim() || !can('production.start')} onClick={() => void start()}><Play size={24}/>Avvia produzione</button>
+      <LabelPreview product={found} lotCode={lot} expiry={expiry} settings={state.settings}/>
     </div>}
   </section>;
 }

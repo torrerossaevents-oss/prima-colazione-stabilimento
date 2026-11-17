@@ -183,6 +183,10 @@ Richiesta di Teo.
 - Ordini per prodotto con assegnazione automatica dei lotti a scadenza più vicina (FEFO), anteprima prima della conferma e storico.
 - Resta da collegare e collaudare il LOGO! sulla linea.
 
+## IDENT. messo da parte (17/11/2026)
+
+Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. Niente campo all'avvio (gestionale e iPad), niente sull'etichetta, nella produzione del giorno, nel CSV e nello storico; la lettura dell'etichetta ignora l'«IDENT.» stampato. I dati già salvati con un impasto restano invariati ma non vengono più mostrati.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.

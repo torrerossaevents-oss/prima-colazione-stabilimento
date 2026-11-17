@@ -3,7 +3,7 @@
  * Regole ricavate dall'etichetta reale (14/11/2026): «NOME … COD.024», «Prodotto da forno crudo
  * congelato Da consumarsi previa idonea cottura», «Contiene n 50 pezzi peso netto 4500g»,
  * «Da consumarsi preferibilmente entro il 02/10/2027», «Lotto: 261002» (= data di produzione
- * AAMMGG), «IDENT. 02/F», EAN-13 sotto il codice a barre.
+ * AAMMGG), EAN-13 sotto il codice a barre. L'«IDENT.» stampato non viene letto (decisione di Teo, 17/11/2026).
  *
  * Più letture della stessa etichetta (es. in grigio con contrasto e a colori) si combinano: ogni
  * dato viene dalla prima lettura che lo riporta in modo valido; la dicitura dalla lettura più pulita.
@@ -16,7 +16,7 @@ export type LabelReading = {
   code?: string; name?: string; description?: string; ean?: string;
   piecesPerCarton?: number; netWeightG?: number; pieceWeightG?: number;
   lot?: string; productionDay?: string; expiry?: string; shelfLifeMonths?: number;
-  ident?: string; ingredients?: string; storage?: string;
+  ingredients?: string; storage?: string;
   warnings: string[];
 };
 export type ParseOptions = { /** Diciture già nel catalogo: una lettura simile viene sostituita dal testo esatto. */ known?: string[] };
@@ -99,7 +99,6 @@ function expiry(t: One) {
   return candidates.map(m => day(Number(m[3]), Number(m[2]), Number(m[1]))).filter((d): d is string => !!d).sort().at(-1);
 }
 const lotOf = (t: One) => t.flat.match(/\bLott[o0]\s*[:.]?\s*(\d{6})\b/i)?.[1];
-const identOf = (t: One) => t.flat.match(/\bIDENT\s*[.:]?\s*([A-Z0-9]{1,6}\/[A-Z0-9]{1,6}|[A-Z0-9/-]{1,12})\b/i)?.[1].toUpperCase();
 const printedEan = (t: One) => [...t.raw.matchAll(/(?<!\d)(\d(?:\s?\d){12})(?!\d)/g)].map(m => m[1].replace(/\s/g, '')).find(eanValid);
 const ingredientsOf = (t: One) => t.flat.match(/\b\w{0,4}REDIENTI\s*:?\s*(.+?)(?=\w?rod\w{0,4}\s+in\s+uno\s+stabilimento|Conservare|\w?ontiene\s*n|$)/i)?.[1];
 const storageOf = (t: One) => t.flat.match(/((?:Prodotto in uno stabilimento|Conservare).+?)(?=\w?ontiene\s*n|$)/i)?.[1];
@@ -150,7 +149,6 @@ export function parseLabel(input: string | string[], barcode?: string, options: 
     if (months >= 1 && months <= 120 && productionExpiry(out.productionDay, months) === out.expiry) out.shelfLifeMonths = months;
     else warnings.push('Durata non in mesi interi tra lotto e scadenza: indicala a mano.');
   }
-  out.ident = first(identOf);
 
   // EAN: the barcode read from the image wins; otherwise the 13 digits printed under it.
   if (barcode && eanValid(barcode)) out.ean = barcode;

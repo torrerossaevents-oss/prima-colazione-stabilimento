@@ -32,8 +32,7 @@ function Barcode({ code }: { code: string }) {
 
 const itDate = (day: string) => day ? day.split('-').reverse().join('/') : '';
 
-/** ident = IDENT. of the dough (impasto) of this production; absent on a catalog preview. */
-export default function LabelPreview({ product, lotCode, expiry, settings, ident, note = true }: { product: Partial<Product> & { code: string; name: string }; lotCode: string; expiry: string; settings?: Settings; ident?: string; note?: boolean }) {
+export default function LabelPreview({ product, lotCode, expiry, settings, note = true }: { product: Partial<Product> & { code: string; name: string }; lotCode: string; expiry: string; settings?: Settings; note?: boolean }) {
   const net = product.piecesPerCarton && product.pieceWeightG ? product.piecesPerCarton * product.pieceWeightG : null;
   return <figure className="label-preview">
     <div className="carton-label" aria-label={`Anteprima etichetta ${product.name}`}>
@@ -48,7 +47,6 @@ export default function LabelPreview({ product, lotCode, expiry, settings, ident
           <span className="carton-label-tiny">Da consumarsi preferibilmente entro il</span>
           <span className="carton-label-date">{itDate(expiry)}</span>
           <span className="carton-label-lot">Lotto: {lotCode}</span>
-          <span className="carton-label-small">IDENT. {ident || 'impasto indicato all’avvio'}</span>
         </div>
         {product.ean ? <Barcode code={product.ean}/> : <span className="carton-label-missing">EAN da indicare nella scheda prodotto</span>}
       </div>

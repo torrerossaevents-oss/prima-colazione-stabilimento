@@ -155,7 +155,7 @@ const romeDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year
 const autoLot = romeDay.slice(2).replaceAll('-', '');
 await dialog().locator('.auto-lot').getByText(autoLot).waitFor(); await dialog().locator('.carton-label').waitFor();
 assert.ok((await dialog().locator('.auto-lot').boundingBox()).height > 40, 'lot and expiry box fully visible inside the dialog');
-await dialog().getByLabel('Operatore').fill('Operatore prova'); await dialog().getByLabel('Impasto (IDENT.)').fill('02/F');
+await dialog().getByLabel('Operatore').fill('Operatore prova');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
 await page.getByRole('button', { name: 'Aggiungi cartoni' }).click(); await dialog().getByLabel('Cartoni da aggiungere').fill('200');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
@@ -214,7 +214,7 @@ const device = await deviceRes.json(); assert.ok(device.token, 'device created')
 await page.goto(base + '/#production'); await page.reload();
 await page.getByRole('button', { name: 'Nuova lavorazione' }).first().click();
 await dialog().getByPlaceholder('Codice dell’etichetta').fill('00123'); await dialog().getByText(/^Codice 00123/).waitFor();
-await dialog().getByLabel('Operatore').fill('Operatore prova'); await dialog().getByLabel('Impasto (IDENT.)').fill('03/A');
+await dialog().getByLabel('Operatore').fill('Operatore prova');
 assert.equal(await dialog().locator('input[name=counting][value=device]').isChecked(), true, 'with a bridge the counting comes from the line by default');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
 const runId = (await api()).state.sessions.find(x => x.status === 'active').id;
@@ -222,7 +222,7 @@ const lineClose = await fetch(base + '/api/devices/production', { method: 'POST'
 assert.equal(lineClose.status, 200, await lineClose.text());
 await page.getByText(/chiusa dal contapezzi: 54 cartoni/).waitFor({ timeout: 40_000 }); // nobody clicked anything on the page
 s = await api(); const lineRun = s.state.sessions.find(x => x.id === runId);
-assert.equal(lineRun.status, 'closed'); assert.equal(lineRun.ident, '03/A'); assert.equal(s.state.lots.find(l => l.id === lineRun.loadedLotId).quantity >= 54, true);
+assert.equal(lineRun.status, 'closed'); assert.equal(s.state.lots.find(l => l.id === lineRun.loadedLotId).quantity >= 54, true);
 await fetch(base + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ op: 'revoke', id: device.device.id }) });
 log('pulsante della linea: lavorazione chiusa dal contapezzi, carico automatico, avviso nella pagina senza clic');
 
