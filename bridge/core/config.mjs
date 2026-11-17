@@ -37,11 +37,12 @@ function text(value, field, pattern = /^[A-Za-z0-9_.:-]{1,64}$/) {
   return value;
 }
 
-function register(section, field, { read = true } = {}) {
+function register(section, field, { read = true, inputs = false } = {}) {
   if (!section || typeof section !== 'object') fail(field);
   const out = { address: int(section.address, 0, 65535, `${field}.address`) };
   if (read) {
-    if (section.functionCode !== 3 && section.functionCode !== 4) fail(`${field}.functionCode`, '3 oppure 4 secondo la mappa');
+    const allowed = inputs ? [2, 3, 4] : [3, 4];
+    if (!allowed.includes(section.functionCode)) fail(`${field}.functionCode`, `${allowed.join(', ')} secondo la mappa`);
     out.functionCode = section.functionCode;
   } else {
     if (section.functionCode !== 6 && section.functionCode !== 16) fail(`${field}.functionCode`, '6 oppure 16 secondo la mappa');
@@ -93,7 +94,7 @@ export function validateServiceConfig(input, { allowLoopback = false } = {}) {
       pollIntervalMs: int(plc.pollIntervalMs, 100, 60_000, 'plc.pollIntervalMs'),
       writesEnabled: plc.writesEnabled,
       counter,
-      sensors: register(plc.sensors, 'plc.sensors'),
+      sensors: register(plc.sensors, 'plc.sensors', { inputs: true }),
       closeRequest: register(plc.closeRequest, 'plc.closeRequest'),
       closeAck: register(plc.closeAck, 'plc.closeAck', { read: false }),
     },

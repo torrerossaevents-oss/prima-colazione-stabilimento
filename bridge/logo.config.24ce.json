@@ -1,0 +1,13 @@
+{
+  "_nota": "Lettura diagnostica LEGGI-LOGO per il LOGO! 24CE del progetto: legge le due parole del contatore cartoni (VD0). Copiare in logo.config.local.json, scrivere l'IP del LOGO! in host e mettere mapConfirmed a true dopo aver caricato il programma.",
+  "schemaVersion": 1,
+  "mapConfirmed": false,
+  "host": null,
+  "port": 502,
+  "unitId": 1,
+  "functionCode": 3,
+  "address": 0,
+  "wordCount": 2,
+  "wordOrder": "BE",
+  "timeoutMs": 2000
+}

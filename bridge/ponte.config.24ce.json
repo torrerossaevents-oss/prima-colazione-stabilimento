@@ -1,0 +1,54 @@
+{
+  "_nota": "MODELLO per il LOGO! 24CE 8.4 del progetto PC-CC01, con il programma di docs/PROGRAMMA-LOGO-24CE.md. Copiare in ponte.local.json (escluso da Git). La mappa segue quel programma; i null vanno misurati o letti sul posto. mapConfirmed diventa true solo dopo PROVA-INGRESSI e LEGGI-LOGO superate.",
+  "schemaVersion": 1,
+  "mode": "impianto",
+  "mapConfirmed": false,
+  "line": null,
+  "_line": "Identificativo della linea come registrato nel gestionale (Configurazione → dispositivo).",
+  "server": {
+    "baseUrl": null,
+    "_baseUrl": "Indirizzo https del gestionale pubblicato. Il token va in token.local.json, MAI in questo file.",
+    "timeoutMs": 10000
+  },
+  "plc": {
+    "_nota": "Indirizzi zero-based del PDU Modbus. VD0 = cartoni (parola bassa = registro 1), VD4 = richieste di chiusura (parola bassa = registro 3), I3/I4 = ingressi 2 e 3.",
+    "host": null,
+    "_host": "IPv4 del LOGO! sulla LAN (lo mostra LOGO!Soft Comfort nella Vista di rete).",
+    "port": 502,
+    "unitId": 1,
+    "_unitId": "Da confermare con LEGGI-LOGO: se il LOGO! non risponde, provare 255.",
+    "timeoutMs": 2000,
+    "pollIntervalMs": 250,
+    "writesEnabled": false,
+    "counter": {
+      "functionCode": 3,
+      "address": 1,
+      "wordOrder": "BE",
+      "modulo": 65536,
+      "_modulo": "Si legge la parola bassa del contatore: il programma riparte da 0 a 983040 (multiplo di 65536), quindi il conteggio prosegue senza salti.",
+      "maxStepPerSecond": null,
+      "_maxStepPerSecond": "Massimo di cartoni al secondo fisicamente possibile sulla linea, misurato. Oltre, la lettura è scartata."
+    },
+    "sensors": {
+      "functionCode": 2,
+      "address": 2,
+      "_nota": "Funzione 02: I3 (fotocellula A) e I4 (fotocellula B). 1 = cartone sul fascio (modalità DARK)."
+    },
+    "closeRequest": {
+      "functionCode": 3,
+      "address": 3
+    },
+    "closeAck": {
+      "functionCode": 6,
+      "address": 10,
+      "_nota": "VW20, riservato al riscontro. Non usato finché writesEnabled è false."
+    }
+  },
+  "close": {
+    "sensorsFreeStableMs": null,
+    "_sensorsFreeStableMs": "Per quanto i sensori devono restare liberi prima di accettare la chiusura (proposta di partenza 2000), da confermare sulla linea."
+  },
+  "intervals": { "syncMs": 10000, "heartbeatMs": 30000 },
+  "retry": { "baseMs": 5000, "maxMs": 300000 },
+  "log": { "maxBytes": 1048576, "files": 5 }
+}

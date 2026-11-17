@@ -1,7 +1,8 @@
 /**
  * Client Modbus TCP minimo, senza dipendenze esterne.
  * Riferimenti: https://www.modbus.org/modbus-specifications
- * Funzioni: 03 (holding registers), 04 (input registers), 06 e 16 (scritture).
+ * Funzioni: 02 (ingressi digitali, per le fotocellule), 03 (holding registers), 04 (input registers),
+ * 06 e 16 (scritture).
  * Gli indirizzi sono quelli del PDU (base zero), non etichette 40001/30001.
  *
  * Le scritture (06/16) sono rifiutate se il chiamante non passa `writesEnabled: true`,
@@ -173,6 +174,22 @@ export async function readRegisters(connection, { unitId, functionCode, address,
   const byteCount = count * 2;
   if (pdu.length !== 2 + byteCount || pdu[1] !== byteCount) throw new Error('Numero di byte o registri Modbus non corrispondente.');
   return Array.from({ length: count }, (_, i) => pdu.readUInt16BE(2 + i * 2));
+}
+
+/** Funzione 02: `count` ingressi digitali consecutivi (0/1), dal primo indicato (base zero: I1 = 0). */
+export async function readDiscreteInputs(connection, { unitId, address, count }) {
+  integer(address, 0, 65535, 'address (base zero)');
+  integer(count, 1, 2000, 'count');
+  if (address + count > 65536) throw new Error('La lettura supera l’ultimo ingresso Modbus.');
+  const request = Buffer.alloc(5);
+  request[0] = 2;
+  request.writeUInt16BE(address, 1);
+  request.writeUInt16BE(count, 3);
+  const pdu = await connection.request(unitId, request);
+  checkFunction(pdu, 2, 'lettura');
+  const byteCount = Math.ceil(count / 8);
+  if (pdu.length !== 2 + byteCount || pdu[1] !== byteCount) throw new Error('Numero di byte degli ingressi Modbus non corrispondente.');
+  return Array.from({ length: count }, (_, i) => (pdu[2 + (i >> 3)] >> (i & 7)) & 1);
 }
 
 function requireWrites(options) {
