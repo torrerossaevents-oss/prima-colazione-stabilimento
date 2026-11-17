@@ -9,6 +9,7 @@ export class FakeModbusServer {
   constructor({ unitId = 1 } = {}) {
     this.unitId = unitId;
     this.registers = new Map();
+    this.inputs = new Map();   // ingressi digitali (funzione 02)
     this.online = true;
     this.requests = [];      // { fn, address, count, values }
     this.beforeReply = null; // hook facoltativo (request) => void, per alterare i registri
@@ -26,6 +27,7 @@ export class FakeModbusServer {
 
   get(address) { return this.registers.get(address) ?? 0; }
   set(address, value) { this.registers.set(address, value & 0xffff); }
+  setInput(address, value) { this.inputs.set(address, value ? 1 : 0); }
 
   async close() {
     for (const socket of this.#sockets) socket.destroy();
@@ -57,6 +59,17 @@ export class FakeModbusServer {
     const address = adu.readUInt16BE(8);
     const exception = code => frame(header, Buffer.from([fn | 0x80, code]));
     if (adu[6] !== this.unitId) return exception(11);
+    if (fn === 2) {
+      const count = adu.readUInt16BE(10);
+      const request = { fn, address, count };
+      this.requests.push(request);
+      this.beforeReply?.(request);
+      const bytes = Math.ceil(count / 8);
+      const data = Buffer.alloc(2 + bytes);
+      data[0] = 2; data[1] = bytes;
+      for (let i = 0; i < count; i++) if (this.inputs.get(address + i)) data[2 + (i >> 3)] |= 1 << (i & 7);
+      return frame(header, data);
+    }
     if (fn === 3 || fn === 4) {
       const count = adu.readUInt16BE(10);
       const request = { fn, address, count };

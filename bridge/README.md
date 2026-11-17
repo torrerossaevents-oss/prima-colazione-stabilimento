@@ -1,15 +1,15 @@
 # Ponte LOGO! ↔ gestionale — pacchetto per il PC dello stabilimento
 
-Versione del 13 novembre 2026. Il ponte è un programma che gira sul PC vicino alla linea: legge il contatore del LOGO! sulla rete locale e manda le chiusure delle lavorazioni al gestionale. **Finora è stato provato solo in simulazione**, con un LOGO! finto e un gestionale finto. Nessun impianto reale è stato collegato.
+Versione del 17 novembre 2026, per il LOGO! 24CE 8.4 del progetto PC-CC01 (fotocellule su I3 e I4, pulsante su I1). Il ponte è un programma che gira sul PC vicino alla linea: legge il contatore del LOGO! sulla rete locale e manda le chiusure delle lavorazioni al gestionale. **Finora è stato provato solo in simulazione**, con un LOGO! finto e un gestionale finto. Nessun impianto reale è stato collegato.
 
-Il conteggio dei cartoni lo fa il **LOGO!** (programma ancora da realizzare). Il ponte non conta i sensori: legge il numero totale del LOGO! e fa le differenze. Il conteggio non sostituisce arresti o sicurezze della macchina, e il pulsante di chiusura non è un arresto.
+Il conteggio dei cartoni lo fa il **LOGO!**, con il programma di `docs/PROGRAMMA-LOGO-24CE.md` (scritto, da caricare e collaudare). Il ponte non conta i sensori: legge il numero totale del LOGO! e fa le differenze. Il conteggio non sostituisce arresti o sicurezze della macchina, e il pulsante di chiusura non è un arresto.
 
 ## Stato, in tre colonne
 
 | Simulato e testato (su PC, senza hardware) | Implementato, da verificare sull'impianto | Non implementato |
 | --- | --- | --- |
-| Logica dei sensori `00→10→11→01→00`, soste, arretramenti, salti, rimbalzi (`core/sensors.mjs`, riferimento per il programma LOGO!) | Lettura Modbus TCP del LOGO! reale (funzioni 03/04) | Programma LOGO! conta-cartoni |
-| Contatore cumulativo, baseline, superamento del limite, contatore diminuito, letture corrotte (`core/counter.mjs`) | Lettura del contatore a 32 bit «doppia» durante il moto | Carico automatico a magazzino |
+| Logica dei sensori `00→10→11→01→00`, soste, arretramenti, salti, rimbalzi (`core/sensors.mjs`, riferimento per il programma LOGO!) | Lettura Modbus TCP del LOGO! reale (funzioni 02/03/04); programma LOGO! conta-cartoni (`docs/PROGRAMMA-LOGO-24CE.md`) | |
+| Contatore cumulativo, baseline, superamento del limite, contatore diminuito, letture corrotte (`core/counter.mjs`) | Lettura del contatore a 32 bit «doppia» durante il moto | |
 | Chiusura con pulsante: attesa sensori liberi, salvataggio unico in SQLite, riscontro, nuova baseline, pressione ripetuta ignorata | Scrittura del riscontro sul LOGO! (funzioni 06/16), **spenta per default** | Registrazione come servizio di Windows (si usa l'Utilità di pianificazione) |
 | Coda eventi con ritentativi, stesso `eventId`, tabella delle risposte del contratto (`core/transmitter.mjs`) | Collegamento al gestionale reale (`/api/devices/production`, token del dispositivo) e accesso attraverso la piattaforma | Apertura di lavorazioni dal PC (non prevista: si aprono nel gestionale) |
 | Internet assente, PLC non raggiungibile, PLC riavviato, PC riavviato (simulati) | File `.cmd` per Windows: **non provati su Windows** (scritti e controllati su Linux) | |
@@ -42,14 +42,15 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 | `STATO-PONTE.cmd` | Mostra l'ultimo stato (PLC, Internet, lavorazione, coda). |
 | `BACKUP-ARCHIVIO.cmd` | Copia coerente dell'archivio dell'impianto (`VACUUM INTO`), anche a servizio acceso. |
 | `RIPRISTINA-ARCHIVIO.cmd` | Ripristino da un backup (servizio fermo). Si può trascinare il file di backup sopra il `.cmd`. |
-| `LEGGI-LOGO.cmd` | Lettura diagnostica del solo contatore, a linea ferma (usa `logo.config.local.json`). |
+| `LEGGI-LOGO.cmd` | Lettura diagnostica del solo contatore, a linea ferma (usa `logo.config.local.json`; modello `logo.config.24ce.json`). |
+| `PROVA-INGRESSI.cmd` | Mostra dal vivo pulsante (I1) e fotocellule A (I3) e B (I4). Sola lettura, funzione Modbus 02. |
 
 **Importante:** questi `.cmd` sono stati scritti e controllati in un ambiente Linux. Non sono stati eseguiti su Windows in questa sessione: provarli prima sul PC dello stabilimento.
 
 ## Messa in servizio sull'impianto (con il tecnico)
 
-1. Il tecnico realizza e trasferisce il programma LOGO! e definisce la mappa dei registri (vedi `docs/COLLEGAMENTO-LOGO.md`).
-2. Copiare `ponte.config.example.json` in `ponte.local.json` e compilare **tutti** i campi `null` con i valori verificati. Mettere `mapConfirmed` a `true` solo dopo la verifica. Lasciare `writesEnabled` a `false` finché il riscontro non è collaudato.
+1. Si ricopia il programma di `docs/PROGRAMMA-LOGO-24CE.md`, lo si prova nella simulazione di LOGO!Soft Comfort e lo si trasferisce; `PROVA-INGRESSI.cmd` verifica I1, I3 e I4.
+2. Copiare `ponte.config.24ce.json` (mappa del programma del progetto) in `ponte.local.json` e compilare **tutti** i campi `null` con i valori verificati. Per un altro impianto si parte da `ponte.config.example.json`. Mettere `mapConfirmed` a `true` solo dopo la verifica. Lasciare `writesEnabled` a `false` finché il riscontro non è collaudato.
 3. In Configurazione del gestionale creare il dispositivo: il token `pcd_…` compare **una sola volta**. Copiare `token.example.json` in `token.local.json` e incollarlo lì. Non mandarlo via chat o e-mail.
 4. Prima prova a linea ferma con `LEGGI-LOGO.cmd`.
 5. Avviare `AVVIA-SERVIZIO-IMPIANTO.cmd`. Se manca anche un solo dato, il servizio elenca i campi mancanti e non parte.

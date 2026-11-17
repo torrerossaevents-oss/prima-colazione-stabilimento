@@ -42,7 +42,8 @@ Riprendere da «Prossimo passo». Documento operativo: decisioni, comandi, risul
 | Operativo verificato (test + browser locale) | catalogo con ricerca/modifica/import/export; lotti, blocchi, trasferimenti, rettifiche, scarti, consumi, resi; ordini con preparazione, partenza parziale, annullamento, documento successivo; produzione manuale con riepilogo giornaliero; storico paginato; archivio; backup e ripristino in archivio vuoto; recupero richieste incerte |
 | Implementato da verificare | migrazione 0002 sul database pubblicato; endpoint dispositivi attraverso l'accesso della piattaforma; tempi CPU nel Worker ospitato; `.cmd` su Windows; fotocamera su dispositivi reali |
 | Simulato | ponte LOGO! (sensori, contatore, chiusura, coda, trasmissione), scenario A 200 + B 150 |
-| Non implementato | programma LOGO!; TeamSystem; stampa fisica delle etichette (c'è l'anteprima) |
+| Scritto, da caricare e collaudare | programma LOGO! conta-cartoni per il LOGO! 24CE 8.4 (`docs/PROGRAMMA-LOGO-24CE.md`); ponte con lettura delle fotocellule I3/I4 (funzione 02) e `PROVA-INGRESSI.cmd` |
+| Non implementato | TeamSystem; stampa fisica delle etichette (c'è l'anteprima) |
 | Bloccato da hardware/accessi | collaudo linea (dati LOGO!, PC, rete); etichettatrici (modelli/driver) |
 
 ## Decisioni
@@ -182,6 +183,7 @@ Richiesta di Teo.
 - Giacenza per prodotto con i lotti al clic, in ordine di scadenza.
 - Ordini per prodotto con assegnazione automatica dei lotti a scadenza più vicina (FEFO), anteprima prima della conferma e storico.
 - Resta da collegare e collaudare il LOGO! sulla linea.
+- 17/11/2026: impianto montato e cablato secondo il progetto PC-CC01 Rev. 02 (LOGO! 24CE 8.4, fotocellule A su I3 e B su I4, pulsante su I1), LOGO! visto in rete da LOGO!Soft Comfort V9. Scritti il programma LOGO! (`docs/PROGRAMMA-LOGO-24CE.md`) e i modelli di configurazione `bridge/*.24ce.json`; il ponte legge le fotocellule come ingressi (funzione 02). Da fare: caricare il programma, PROVA-INGRESSI, LEGGI-LOGO, collaudo.
 
 ## IDENT. messo da parte (17/11/2026)
 

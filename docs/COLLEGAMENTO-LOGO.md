@@ -1,6 +1,6 @@
 # Collegamento LOGO! — guida semplice
 
-Aggiornata il 13 novembre 2026. Accompagna il pacchetto `bridge` (vedi `bridge/README.md`). Contratto con il gestionale: `docs/CONTRATTO-PONTE.md` nel repository del progetto. Questa guida **non** certifica un impianto collegato: finora il ponte è stato provato solo in simulazione.
+Aggiornata il 17 novembre 2026. Accompagna il pacchetto `bridge` (vedi `bridge/README.md`). Contratto con il gestionale: `docs/CONTRATTO-PONTE.md` nel repository del progetto. Questa guida **non** certifica un impianto collegato: finora il ponte è stato provato solo in simulazione.
 
 ## In due righe
 
@@ -12,7 +12,8 @@ Il **LOGO!** conta i cartoni dalle due fotocellule e tiene un totale che non si 
 | --- | --- |
 | **Simulato e testato** (PC, senza hardware) | Logica dei sensori; contatore e baseline; chiusura con pulsante; archivio SQLite; coda e invio con ritentativi; Internet assente; PLC non raggiungibile o riavviato; PC riavviato; backup e ripristino. |
 | **Implementato, da verificare sull'impianto** | Lettura Modbus del LOGO! reale; lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); collegamento al gestionale con token del dispositivo; file `.cmd` su Windows (non provati su Windows); avvio automatico. |
-| **Non implementato** | Programma LOGO! conta-cartoni; apertura di lavorazioni dal PC. Il carico a magazzino alla chiusura è fatto dal server (regola del 14/11/2026). |
+| **Scritto, da caricare e collaudare** | Programma LOGO! conta-cartoni per il LOGO! 24CE 8.4: `docs/PROGRAMMA-LOGO-24CE.md`. |
+| **Non implementato** | Apertura di lavorazioni dal PC. Il carico a magazzino alla chiusura è fatto dal server (regola del 14/11/2026). |
 
 ## Oggi, senza hardware (Teo)
 
@@ -27,17 +28,17 @@ Nessun valore è assegnato da questo documento: ogni riga va rilevata sull'impia
 
 | Dato | Valore |
 | --- | --- |
-| Modello e codice articolo del LOGO!, firmware | Da compilare |
-| Versione di LOGO! Soft Comfort | Da compilare |
-| Sensori: modello, tipo (barriera/riflessione), distanza tra i due fasci, posizione sul nastro | Da compilare |
-| Pulsante di chiusura: modello, ingresso del LOGO!, cablaggio | Da compilare |
+| Modello e codice articolo del LOGO!, firmware | LOGO! 24CE 8.4, `6ED1052-1CC08-0BA2` (progetto PC-CC01); firmware da leggere con LOGO!Soft Comfort |
+| Versione di LOGO! Soft Comfort | V9.0 |
+| Sensori: modello, tipo (barriera/riflessione), distanza tra i due fasci, posizione sul nastro | Datasensing S100-PR-2-B10-PK a riflessione, PNP, DARK; A su I3, B su I4. Distanza e posizione da misurare |
+| Pulsante di chiusura: modello, ingresso del LOGO!, cablaggio | Schneider XB5AA21, NO, su I1 (pressione prolungata 1 s) |
 | Rete: IPv4 del LOGO!, IPv4 del PC, porta TCP, `unitId` Modbus | Da compilare |
 | PC: nome, versione di Windows, versione di Node.js, utente che avvia il ponte | Da compilare |
 | Avvio del ponte: all'accesso dell'utente oppure all'accensione | Da decidere |
-| Registro contatore cumulativo: funzione 03/04, indirizzo zero-based, 1 o 2 registri, ordine parole BE/LE | Da compilare |
+| Registro contatore cumulativo: funzione 03/04, indirizzo zero-based, 1 o 2 registri, ordine parole BE/LE | Con il programma del progetto: VD0, funzione 03, parola bassa = registro 1, modulo 65536. Da confermare con LEGGI-LOGO |
 | Limite del contatore (16 o 32 bit) e cosa succede al superamento | Da verificare |
-| Registro stato sensori (proposta: bit 0 = A, bit 1 = B, 1 = fascio interrotto) | Da confermare |
-| Registro contatore richieste di chiusura (cresce di 1 a ogni pressione) | Da compilare |
+| Registro stato sensori (proposta: bit 0 = A, bit 1 = B, 1 = fascio interrotto) | Ingressi I3 e I4 con la funzione 02, indirizzi 2 e 3. Da confermare con PROVA-INGRESSI |
+| Registro contatore richieste di chiusura (cresce di 1 a ogni pressione) | VD4, parola bassa = registro 3 |
 | Registro di riscontro scritto dal PC (funzione 06 o 16) e cosa fa il LOGO! quando lo riceve | Da compilare |
 | Ritenzione: i contatori restano dopo spegnimento e riavvio del LOGO!? | Da verificare |
 | Tempo minimo del filtro sensori (rimbalzi) nel programma LOGO! | Da misurare |
@@ -46,9 +47,11 @@ Nessun valore è assegnato da questo documento: ogni riga va rilevata sull'impia
 | Intervallo di lettura del ponte | Da concordare |
 | Responsabile e data delle verifiche | Da compilare |
 
-Questi dati vanno in `bridge\ponte.local.json` (copia di `ponte.config.example.json`). Se ne manca uno, il servizio in modalità impianto si rifiuta di partire ed elenca i campi mancanti.
+Questi dati vanno in `bridge\ponte.local.json` (copia di `ponte.config.24ce.json`). Se ne manca uno, il servizio in modalità impianto si rifiuta di partire ed elenca i campi mancanti.
 
 ## Cosa deve fare il programma LOGO!
+
+Il programma per il LOGO! 24CE dell'impianto, blocco per blocco, è in `docs/PROGRAMMA-LOGO-24CE.md`.
 
 La logica di riferimento è in `bridge/core/sensors.mjs` ed è provata dai test: il programma LOGO! deve comportarsi allo stesso modo.
 
