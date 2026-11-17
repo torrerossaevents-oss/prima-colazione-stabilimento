@@ -43,10 +43,10 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
 
   const sessionById = useMemo(() => new Map([...archived, ...sessions].map(x => [x.id, x])), [sessions, archived]);
   function exportCsv() {
-    const head = ['Giorno (avvio, Europe/Rome)', 'Avvio', 'Chiusura', 'Codice', 'Articolo', 'Lavorazione dell’articolo', 'Lotto', 'Impasto (IDENT.)', 'Operatore', 'Stato', 'Cartoni', 'Cartoni scartati', 'Unità per cartone', 'Unità', 'Unità di misura'];
-    const rows = flow.map(r => [day, time(r.startedAt), r.closedAt ? time(r.closedAt) : '', r.productCode, r.productName, `${r.runOfProduct} di ${r.runsOfProduct}`, r.lotCode, sessionById.get(r.id)?.ident ?? '', r.operator, r.status === 'closed' ? 'Confermata' : 'In corso', r.cartons, r.scrapCartons, r.unitsPerBox, r.cartons * r.unitsPerBox, r.unit]);
-    const sums = byProduct.map(p => ['Totale articolo', '', '', p.productCode, p.productName, `${p.runs} lavorazioni`, p.lots.join(' '), '', '', '', p.confirmedCartons, p.scrapCartons, p.unitsPerBox, p.confirmedCartons * p.unitsPerBox, p.unit]);
-    const total = [['Totale giorno (cartoni confermati)', '', '', '', '', `${totals.runs} lavorazioni`, '', '', '', '', totals.confirmedCartons, totals.scrapCartons, '', '', 'cartoni']];
+    const head = ['Giorno (avvio, Europe/Rome)', 'Avvio', 'Chiusura', 'Codice', 'Articolo', 'Lavorazione dell’articolo', 'Lotto', 'Operatore', 'Stato', 'Cartoni', 'Cartoni scartati', 'Unità per cartone', 'Unità', 'Unità di misura'];
+    const rows = flow.map(r => [day, time(r.startedAt), r.closedAt ? time(r.closedAt) : '', r.productCode, r.productName, `${r.runOfProduct} di ${r.runsOfProduct}`, r.lotCode, r.operator, r.status === 'closed' ? 'Confermata' : 'In corso', r.cartons, r.scrapCartons, r.unitsPerBox, r.cartons * r.unitsPerBox, r.unit]);
+    const sums = byProduct.map(p => ['Totale articolo', '', '', p.productCode, p.productName, `${p.runs} lavorazioni`, p.lots.join(' '), '', '', p.confirmedCartons, p.scrapCartons, p.unitsPerBox, p.confirmedCartons * p.unitsPerBox, p.unit]);
+    const total = [['Totale giorno (cartoni confermati)', '', '', '', '', `${totals.runs} lavorazioni`, '', '', '', totals.confirmedCartons, totals.scrapCartons, '', '', 'cartoni']];
     onExport(`prima-colazione-produzione-${day}.csv`, '﻿' + [head, ...rows, [], ...sums, ...total].map(r => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
   }
   function print() {
@@ -86,7 +86,7 @@ export default function ProductionDay({ sessions, today, archivedCount, onExport
             <span className="flow-dot" aria-hidden="true"/>
             <span className="flow-main">
               <b><span className="flow-code">{r.productCode}</span>{r.productName}</b>
-              <small>Lotto {r.lotCode}{sessionById.get(r.id)?.ident ? `, impasto ${sessionById.get(r.id)!.ident}` : ''}, operatore {r.operator}{r.source === 'device' ? ', conteggio da fotocellule' : ''}</small>
+              <small>Lotto {r.lotCode}, operatore {r.operator}{r.source === 'device' ? ', conteggio da fotocellule' : ''}</small>
               <span className="flow-tags">
                 {r.status === 'closed' ? <span className="chip green">{r.closedAt ? `Confermata alle ${time(r.closedAt)}` : 'Confermata'}</span> : <span className="chip blue">In corso</span>}
                 {r.runsOfProduct > 1 && <span className="chip amber">{ordinal(r.runOfProduct)} lavorazione di {r.runsOfProduct} dello stesso articolo</span>}

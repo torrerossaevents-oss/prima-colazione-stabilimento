@@ -10,14 +10,14 @@ export type Order = { id:string; customer:string; destination:string; date:strin
 export const PRODUCTION_LINE='linea-1';
 export type DeviceClose = {eventId:string;deviceId:string;counterStart:number;counterEnd:number;counterModulo?:number;deviceClosedAt:string;anomalies:string[]};
 /** cartons = cartoni letti; scrapCartons = scarti dichiarati alla chiusura. La quantità buona non viene caricata a magazzino. */
-export type Session = { id:string; productId:string; productCode:string; productName:string; unitsPerBox:number; unit?:string; line?:string; day:string; operator:string; ident?:string; lotCode:string; expiry:string; status:'active'|'closed'; cartons:number; startedAt:string; closedAt?:string; source:'manual'|'device'; stockLoaded:boolean; autoLoad?:boolean; loadedLotId?:string; loadedQuantity?:number; piecesPerCarton?:number; pieceWeightG?:number; corrections?:SessionCorrection[]; scrapCartons?:number; closeNote?:string; closedBy?:'manual'|'device'|'manual-override'; device?:DeviceClose };
+export type Session = { id:string; productId:string; productCode:string; productName:string; unitsPerBox:number; unit?:string; line?:string; day:string; operator:string; lotCode:string; expiry:string; status:'active'|'closed'; cartons:number; startedAt:string; closedAt?:string; source:'manual'|'device'; stockLoaded:boolean; autoLoad?:boolean; loadedLotId?:string; loadedQuantity?:number; piecesPerCarton?:number; pieceWeightG?:number; corrections?:SessionCorrection[]; scrapCartons?:number; closeNote?:string; closedBy?:'manual'|'device'|'manual-override'; device?:DeviceClose };
 /** Rettifica dei cartoni di una lavorazione (solo amministrazione): causale e responsabile obbligatori. */
 export type SessionCorrection = {id:string;at:string;delta:number;before:number;after:number;reason:string;responsible:string;actor?:string;stockDelta:number};
 /** Variazione esplicita del fisico di un lotto, registrata nell'evento che la causa. */
 export type Move = {lotId:string;delta:number;kind:'receive'|'return'|'dispatch'|'transfer'|'adjust'|'scrap'|'consume'|'produce'|'production-adjust'};
 export type Audit = {id:string;at:string;action:string;detail:string;actor?:string;moves?:Move[]};
 /** Impostazioni di produzione ed etichetta. autoLoad: carico automatico alla chiusura (predefinito sì). */
-export type Settings = {productionArea?:string;autoLoad?:boolean;labelProducer?:string;labelIdent?:string};
+export type Settings = {productionArea?:string;autoLoad?:boolean;labelProducer?:string};
 export type State = {products:Product[];lots:Lot[];orders:Order[];sessions:Session[];audit:Audit[];areas?:string[];settings?:Settings};
 export type Action =
  | {type:'product.add';product:Omit<Product,'id'>}
@@ -34,7 +34,7 @@ export type Action =
  | {type:'order.prepare'|'order.cancel';orderId:string}
  | {type:'order.dispatch';orderId:string;documentRef:string;quantities?:{lotId:string;quantity:number}[];note?:string}
  | {type:'order.document';orderId:string;documentRef:string}
- | {type:'production.start';code:string;operator:string;ident:string;lotCode?:string;expiry?:string;counting?:'manual'|'device'}
+ | {type:'production.start';code:string;operator:string;lotCode?:string;expiry?:string;counting?:'manual'|'device'}
  | {type:'production.adjust';sessionId:string;delta:number;reason:string;responsible:string}
  | {type:'settings.update';settings:Settings}
  | {type:'production.count';sessionId:string;cartons:number}
@@ -441,8 +441,8 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   const sameLot=state.lots.find(l=>l.productId===p.id&&l.code===lotCode&&l.expiry!==expiry);if(sameLot)fail(`Il lotto ${lotCode} è già in magazzino con scadenza ${sameLot.expiry}: usa la stessa scadenza o un altro lotto.`);
   const counting=action.counting??'manual';if(counting!=='manual'&&counting!=='device')fail('Modalità di conteggio non valida.');
   if(counting==='device'&&!context.devicesEnabled)fail('Nessun ponte conta-cartoni attivo: avvia la lavorazione con conteggio manuale.');
-  const session:Session={id:id(),productId:p.id,productCode:p.code,productName:p.name,unitsPerBox:p.unitsPerBox,unit:p.unit,line:PRODUCTION_LINE,day:today,operator:text(action.operator,'Operatore',100),ident:text(action.ident,'Impasto (IDENT.)',20).toUpperCase(),lotCode,expiry,status:'active',cartons:0,startedAt:now,source:counting,stockLoaded:false,...(p.piecesPerCarton?{piecesPerCarton:p.piecesPerCarton}:{}),...(p.pieceWeightG?{pieceWeightG:p.pieceWeightG}:{})};state.sessions.push(session);p.inUse=true;
-  detail=`Lavorazione ${counting==='device'?'con conteggio fotocellule':'manuale'} avviata: ${p.code} · ${p.name} · lotto ${session.lotCode}, scadenza ${session.expiry}, impasto ${session.ident} · ${session.operator}.`;break;
+  const session:Session={id:id(),productId:p.id,productCode:p.code,productName:p.name,unitsPerBox:p.unitsPerBox,unit:p.unit,line:PRODUCTION_LINE,day:today,operator:text(action.operator,'Operatore',100),lotCode,expiry,status:'active',cartons:0,startedAt:now,source:counting,stockLoaded:false,...(p.piecesPerCarton?{piecesPerCarton:p.piecesPerCarton}:{}),...(p.pieceWeightG?{pieceWeightG:p.pieceWeightG}:{})};state.sessions.push(session);p.inUse=true;
+  detail=`Lavorazione ${counting==='device'?'con conteggio fotocellule':'manuale'} avviata: ${p.code} · ${p.name} · lotto ${session.lotCode}, scadenza ${session.expiry} · ${session.operator}.`;break;
  }
  case 'production.count':{const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.');if(session.status!=='active')fail('La lavorazione è chiusa.');if(session.source==='device')fail('Questa lavorazione è contata dalle fotocellule: non aggiungere cartoni a mano.');const cartons=number(action.cartons,'Cartoni da aggiungere',1);number(session.cartons+cartons,'Totale cartoni');session.cartons+=cartons;detail=`Conteggio manuale ${session.productCode}: +${cartons} cartoni, parziale ${session.cartons}.`;break;}
  case 'production.close':{
@@ -497,7 +497,6 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   if(input.productionArea!==undefined)next.productionArea=ensureArea(state,text(input.productionArea,'Area di carico della produzione',60));
   if(input.autoLoad!==undefined){if(typeof input.autoLoad!=='boolean')fail('Carico automatico: valore non valido.');next.autoLoad=input.autoLoad;}
   if(input.labelProducer!==undefined)next.labelProducer=optionalText(input.labelProducer,'Produttore in etichetta',300);
-  if(input.labelIdent!==undefined)next.labelIdent=optionalText(input.labelIdent,'Identificativo in etichetta',40);
   state.settings=next;
   detail=`Impostazioni di produzione aggiornate: carico automatico ${next.autoLoad===false?'disattivato':'attivo'}, area ${productionArea(state)}.`;break;
  }

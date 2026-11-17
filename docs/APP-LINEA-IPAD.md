@@ -21,7 +21,7 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 
    Se il codice a barre non si legge: avvicina l'iPad, accendi la «Luce» se disponibile, oppure «Scatta adesso» e l'app legge il testo. In alternativa «Carica foto o file» o scrivi codice o EAN. Dalla foto o dal fotogramma l'iPad legge:
    - il **codice a barre EAN**;
-   - il **testo**: codice (COD.), nome, descrizione, pezzi e peso netto, lotto stampato, scadenza, IDENT., ingredienti e conservazione.
+   - il **testo**: codice (COD.), nome, descrizione, pezzi e peso netto, lotto stampato, scadenza, ingredienti e conservazione (l'IDENT. stampato viene ignorato).
 2. **Calcolati in automatico**:
    - peso del pezzo e peso netto: il peso nel nome («90g») vince sul testo letto male;
    - durata in mesi, dalla differenza tra il lotto stampato (data di produzione AAMMGG) e la scadenza stampata;
@@ -30,7 +30,7 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
    - se c'è già nel catalogo (riconosciuto da EAN o codice), compare con l'anteprima dell'etichetta;
    - se l'etichetta è diversa dalla scheda (EAN, pezzi, peso, durata), l'amministrazione la aggiorna con un tocco;
    - se manca, l'amministrazione lo crea dai dati letti (unità CRT); il laboratorio vede un avviso.
-4. **Avvio**: operatore (ricordato sull'iPad), **impasto (IDENT.)** obbligatorio (cambia a ogni produzione e va sull'etichetta), lotto e scadenza mostrati, «Avvia produzione».
+4. **Avvio**: operatore (ricordato sull'iPad), lotto e scadenza mostrati, «Avvia produzione».
 5. **In lavorazione**:
    - contatore grande con +1, +5, +10 o un numero libero;
    - con il contapezzi collegato il conteggio arriva dalla linea.
@@ -46,7 +46,7 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 
 - La lettura dipende dalla foto: serve buona luce, etichetta intera e niente riflessi. I campi non letti restano vuoti con un avviso; niente viene inventato.
 - Come legge: immagine portata a 3000 px sul lato lungo, prima lettura in grigio con contrasto aumentato, seconda lettura a colori solo se manca qualche dato; i dati si uniscono campo per campo. Le parole tipiche delle etichette sbagliate di una lettera vengono corrette («orudo» → «crudo») e una dicitura già presente nel catalogo viene ripresa identica.
-- Sulla foto reale del Fagottino (16/11/2026), sia ridotta sia originale, l'app legge codice, descrizione articolo, dicitura in etichetta, EAN, pezzi, peso, lotto, scadenza e durata senza errori; l'IDENT. stampato non serve: è l'impasto della produzione di quell'etichetta e si indica a ogni avvio.
+- Sulla foto reale del Fagottino (16/11/2026), sia ridotta sia originale, l'app legge codice, descrizione articolo, dicitura in etichetta, EAN, pezzi, peso, lotto, scadenza e durata senza errori. L'IDENT. stampato viene ignorato.
 - I PDF non vengono letti: si carica una foto o un'immagine.
 - Non comanda la linea e non stampa etichette.
 

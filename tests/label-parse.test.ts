@@ -32,7 +32,7 @@ test('etichetta del Fagottino: codice, nome, descrizione, contenuto, lotto, scad
   assert.equal(r.piecesPerCarton, 50); assert.equal(r.netWeightG, 4500); assert.equal(r.pieceWeightG, 90);
   assert.equal(r.lot, '261002'); assert.equal(r.productionDay, '2026-10-02'); assert.equal(r.expiry, '2027-10-02');
   assert.equal(r.shelfLifeMonths, 12, 'calcolata da lotto e scadenza');
-  assert.equal(r.ident, '02/F');
+  assert.equal('ident' in r, false, 'IDENT. stampato ignorato (decisione di Teo, 17/11/2026)');
   assert.equal(r.ean, '8000000004642', 'dalle cifre sotto il codice a barre, verificate');
   assert.match(r.ingredients!, /^Farina di FRUMENTO/); assert.match(r.ingredients!, /Farcitura: Crema NOCCIOLA/);
   assert.ok(r.ingredients!.length <= 700);
@@ -50,7 +50,7 @@ test('testo sporco tipico dell’OCR: C0D, Lott0, spazi e virgole', () => {
   const noisy = `FAGOTTINO PF CIOCCOLATO 90g C0D. 024\nContiene n. 50 pezzi peso netto 4.500 g\nentro il 02.10.2027\nLott0 261002\nIDENT 02/F`;
   const r = parseLabel(noisy);
   assert.equal(r.code, '024'); assert.equal(r.piecesPerCarton, 50); assert.equal(r.netWeightG, 4500); assert.equal(r.pieceWeightG, 90);
-  assert.equal(r.expiry, '2027-10-02'); assert.equal(r.lot, '261002'); assert.equal(r.shelfLifeMonths, 12); assert.equal(r.ident, '02/F');
+  assert.equal(r.expiry, '2027-10-02'); assert.equal(r.lot, '261002'); assert.equal(r.shelfLifeMonths, 12);
 });
 
 test('dati mancanti o incoerenti producono avvisi, non valori inventati', () => {
@@ -113,6 +113,6 @@ test('due letture della stessa etichetta: ogni dato preso dalla lettura che lo r
   const r = parseLabel([gray, color], '8000000004642');
   assert.equal(r.description, 'Prodotto da forno crudo congelato. Da consumarsi previa idonea cottura', 'la dicitura più pulita');
   assert.equal(r.lot, '261002'); assert.equal(r.expiry, '2027-10-02'); assert.equal(r.shelfLifeMonths, 12);
-  assert.equal(r.netWeightG, 4500); assert.equal(r.ident, '02/F');
+  assert.equal(r.netWeightG, 4500);
   assert.ok(!r.warnings.some(w => /Lotto non letto|Scadenza non letta/.test(w)));
 });
