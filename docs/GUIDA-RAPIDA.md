@@ -40,9 +40,9 @@ Serve per vedere come funzionano produzione e storico senza toccare i dati veri.
 
 Configurazione → **Scarica backup completo** e conservalo in un posto riservato. Procedura completa: `BACKUP-RIPRISTINO.md`.
 
-## Il ponte sul PC di linea (quando arrivano i dati del LOGO!)
+## Il ponte sul PC di linea
 
-Oggi il ponte è provato **solo in simulazione**. Per provarlo senza hardware:
+Dal 20/11/2026 il ponte è collegato al LOGO! dell'impianto e al gestionale; il collaudo è in corso. Per provarlo senza hardware:
 
 1. Installa Node.js 22.13 o successivo sul PC.
 2. Configurazione → scarica il pacchetto, estrailo in una cartella (anche con spazi nel nome).
@@ -51,7 +51,7 @@ Oggi il ponte è provato **solo in simulazione**. Per provarlo senza hardware:
 Per il collegamento vero, insieme al tecnico (dettagli in `bridge/README.md`, sezione «Messa in servizio»):
 
 1. Gestionale → Configurazione → Dispositivi → «Crea credenziale». Il token si vede **una sola volta**: copialo in `bridge\token.local.json` sul PC di linea. Non mandarlo per chat o e-mail e non includere quel file in copie o zip.
-2. Copia `bridge\ponte.config.example.json` in `bridge\ponte.local.json` e compila **con il tecnico** IP, registri e tempi del LOGO!. Il servizio non parte se manca un dato.
+2. Copia `bridge\ponte.config.24ce.json` in `bridge\ponte.local.json` e compila **con il tecnico** IP, porta Modbus, registri e tempi del LOGO! (`docs/PROGRAMMA-LOGO-24CE.md`). Il servizio non parte se manca un dato.
 3. Prova a linea ferma con `bridge\STATO-PONTE.cmd`, poi `bridge\AVVIA-SERVIZIO-IMPIANTO.cmd`.
 4. In Produzione avvia una lavorazione scegliendo «Fotocellule»: avvia la linea solo quando compare «ponte agganciato a questa lavorazione».
 5. Collaudo: almeno 100 cartoni contati anche a mano, formati e velocità diversi, sosta, arretramento, riavvio di PLC e PC. Registra l'esito in `COLLAUDO.md`.

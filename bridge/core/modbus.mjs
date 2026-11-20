@@ -58,7 +58,10 @@ export function decodeUnsignedCounter(registers, wordOrder) {
   return words[0] * 65536 + words[1];
 }
 
-const TIMEOUT_MESSAGE = 'Timeout Modbus: nessuna risposta completa entro il tempo previsto.';
+/** Timeout del collegamento TCP: il LOGO! non accetta connessioni su quella porta. */
+export const CONNECT_TIMEOUT_MESSAGE = 'Timeout del collegamento Modbus: il LOGO! non accetta connessioni su questa porta. Verificare che l’accesso Modbus sia abilitato e provare le porte da 502 a 510.';
+/** Timeout della risposta: collegamento riuscito, ma nessuna risposta completa alla richiesta. */
+export const RESPONSE_TIMEOUT_MESSAGE = 'Timeout della risposta Modbus: collegato, ma il LOGO! non ha risposto entro il tempo previsto. Verificare unitId (1 o 255).';
 
 function connectionError(error) {
   const code = ['ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNRESET', 'ETIMEDOUT'].includes(error?.code) ? ` (${error.code})` : '';
@@ -86,7 +89,7 @@ export class ModbusConnection {
   static open({ host, port, timeoutMs }) {
     return new Promise((resolve, reject) => {
       const socket = new net.Socket();
-      const timer = setTimeout(() => { socket.destroy(); reject(Object.assign(new Error(TIMEOUT_MESSAGE), { code: 'PLC_UNREACHABLE' })); }, timeoutMs);
+      const timer = setTimeout(() => { socket.destroy(); reject(Object.assign(new Error(CONNECT_TIMEOUT_MESSAGE), { code: 'PLC_UNREACHABLE' })); }, timeoutMs);
       const onError = error => { clearTimeout(timer); socket.destroy(); reject(connectionError(error)); };
       socket.once('error', onError);
       socket.once('connect', () => {
@@ -110,7 +113,7 @@ export class ModbusConnection {
     adu[6] = unitId;
     pdu.copy(adu, 7);
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => this.#fail(new Error(TIMEOUT_MESSAGE)), this.#timeoutMs);
+      const timer = setTimeout(() => this.#fail(new Error(RESPONSE_TIMEOUT_MESSAGE)), this.#timeoutMs);
       this.#pending = { transactionId, unitId, resolve, reject, timer };
       this.#buffer = Buffer.alloc(0);
       this.#socket.write(adu);

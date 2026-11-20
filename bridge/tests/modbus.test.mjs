@@ -4,7 +4,7 @@ import net from 'node:net';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { validateConfig, isPrivateIPv4, decodeUnsignedCounter, readCounterOnce, readStableCounter } from '../core/modbus.mjs';
+import { validateConfig, isPrivateIPv4, decodeUnsignedCounter, readCounterOnce, readStableCounter, ModbusConnection } from '../core/modbus.mjs';
 
 const base = { schemaVersion: 1, mapConfirmed: true, host: '192.168.10.15', port: 502, unitId: 1, functionCode: 3, address: 100, wordCount: 2, wordOrder: 'BE', timeoutMs: 500 };
 const testing = { allowLoopbackForTests: true };
@@ -129,11 +129,24 @@ test('partial replies and stalled sockets have bounded failures', async () => {
     await assert.rejects(readCounterOnce(config,testing), /prima della risposta completa/);
   });
   await withServer(()=>{},async config=>{
-    const before=Date.now();await assert.rejects(readCounterOnce(config,testing),/Timeout/);assert.ok(Date.now()-before<2000);
+    const before=Date.now();await assert.rejects(readCounterOnce(config,testing),error=>/^Timeout della risposta Modbus: collegato/.test(error.message)&&/unitId/.test(error.message));assert.ok(Date.now()-before<2000);
   },{timeoutMs:100});
   await withServer(socket=>socket.end(Buffer.alloc(261)),async config=>{
     await assert.rejects(readCounterOnce(config,testing),/troppo lunga/);
   });
+});
+
+test('connect timeout is distinct from response timeout', async () => {
+  // Deterministic: the socket never connects, as when the LOGO! ignores that port.
+  const original = net.Socket.prototype.connect;
+  net.Socket.prototype.connect = function () { return this; };
+  try {
+    const before = Date.now();
+    await assert.rejects(ModbusConnection.open({ host: '192.168.10.15', port: 502, timeoutMs: 100 }), error =>
+      error.code === 'PLC_UNREACHABLE' && /^Timeout del collegamento Modbus: il LOGO! non accetta connessioni/.test(error.message)
+      && /502 a 510/.test(error.message) && !/collegato, ma/.test(error.message));
+    assert.ok(Date.now() - before < 2000);
+  } finally { net.Socket.prototype.connect = original; }
 });
 
 test('CLI refuses unacknowledged pause, absent config and disabled example without touching PLC', () => {

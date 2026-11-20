@@ -111,14 +111,16 @@ test('prova ingressi: argomenti e descrizione leggibile', async () => {
   const { parseArguments, describe } = await import('../prova-ingressi.mjs');
   assert.throws(() => parseArguments([]), /--host/);
   assert.throws(() => parseArguments(['--host', '8.8.8.8']), /privato/);
-  assert.deepEqual(parseArguments(['--host', '192.168.0.3']), { host: '192.168.0.3', unitId: 1, port: 502, times: Infinity });
+  assert.deepEqual(parseArguments(['--host', '192.168.10.15']), { host: '192.168.10.15', unitId: 1, port: 502, times: Infinity });
+  assert.equal(parseArguments(['--host', '192.168.10.15', '--port', '510']).port, 510);
+  assert.throws(() => parseArguments(['--host', '192.168.10.15', '--port', '70000']), /porta/);
   assert.equal(describe([1, 0, 1, 0, 0, 0, 0, 0]), 'I1 pulsante CHIUDI: PREMUTO   I3 fotocellula A: COPERTA (1)   I4 fotocellula B: libera (0)');
 });
 
 test('configurazione: la funzione 02 è ammessa solo per le fotocellule', async () => {
   const { validateServiceConfig } = await import('../core/config.mjs');
   const base = { schemaVersion: 1, mode: 'impianto', mapConfirmed: true, line: 'linea-1', server: { baseUrl: 'https://gestionale.example' },
-    plc: { host: '192.168.0.3', port: 502, unitId: 1, timeoutMs: 2000, pollIntervalMs: 250, writesEnabled: false,
+    plc: { host: '192.168.10.15', port: 502, unitId: 1, timeoutMs: 2000, pollIntervalMs: 250, writesEnabled: false,
       counter: { functionCode: 3, address: 1, wordOrder: 'BE', modulo: 65536, maxStepPerSecond: 5 },
       sensors: { functionCode: 2, address: 2 }, closeRequest: { functionCode: 3, address: 3 }, closeAck: { functionCode: 6, address: 10 } },
     close: { sensorsFreeStableMs: 2000 } };
@@ -136,9 +138,9 @@ test('modello per il LOGO! 24CE: senza i dati del posto non parte, completato è
   assert.deepEqual(missingPlantFields(model).map(f => f.split(' ')[0]).sort(),
     ['close.sensorsFreeStableMs', 'line', 'mapConfirmed', 'plc.counter.maxStepPerSecond', 'plc.host', 'server.baseUrl']);
   const done = { ...model, mapConfirmed: true, line: 'linea-1', server: { baseUrl: 'https://gestionale.example' },
-    plc: { ...model.plc, host: '192.168.0.3', counter: { ...model.plc.counter, maxStepPerSecond: 5 } }, close: { sensorsFreeStableMs: 2000 } };
+    plc: { ...model.plc, host: '192.168.10.15', counter: { ...model.plc.counter, maxStepPerSecond: 5 } }, close: { sensorsFreeStableMs: 2000 } };
   assert.deepEqual(validateServiceConfig(done).plc.sensors, { address: 2, functionCode: 2 });
   const read = JSON.parse(readFileSync(new URL('../logo.config.24ce.json', import.meta.url), 'utf8'));
   assert.throws(() => validateConfig(read), /non confermata/);
-  assert.equal(validateConfig({ ...read, mapConfirmed: true, host: '192.168.0.3' }).wordCount, 2);
+  assert.equal(validateConfig({ ...read, mapConfirmed: true, host: '192.168.10.15' }).wordCount, 2);
 });

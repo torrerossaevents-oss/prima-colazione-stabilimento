@@ -22,7 +22,7 @@ export function parseArguments(args) {
     else if (args[i] === '--test-loopback') out.loopback = true;
     else throw new Error('Uso: node bridge/prova-ingressi.mjs --host 192.168.x.y [--unit 1] [--port 502]');
   }
-  if (!isPrivateIPv4(out.host) && !(out.loopback && out.host === '127.0.0.1')) throw new Error('Indicare con --host l’indirizzo IPv4 privato del LOGO! (es. 192.168.0.3).');
+  if (!isPrivateIPv4(out.host) && !(out.loopback && out.host === '127.0.0.1')) throw new Error('Indicare con --host l’indirizzo IPv4 privato del LOGO! (es. 192.168.x.y, quello assegnato al LOGO!).');
   if (out.unitId > 255 || out.port < 1 || out.port > 65535) throw new Error('unit tra 0 e 255, porta tra 1 e 65535.');
   return out;
 }

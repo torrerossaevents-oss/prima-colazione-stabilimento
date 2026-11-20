@@ -1,30 +1,40 @@
 # Collegamento LOGO! — guida semplice
 
-Aggiornata il 17 novembre 2026. Accompagna il pacchetto `bridge` (vedi `bridge/README.md`). Contratto con il gestionale: `docs/CONTRATTO-PONTE.md` nel repository del progetto. Questa guida **non** certifica un impianto collegato: finora il ponte è stato provato solo in simulazione.
+Aggiornata il 20 novembre 2026. Accompagna il pacchetto `bridge` (vedi `bridge/README.md`). Contratto con il gestionale: `docs/CONTRATTO-PONTE.md` nel repository del progetto. Questa guida **non** certifica l'impianto: il ponte è collegato e ha fatto una prima chiusura corretta, ma il collaudo è in corso.
+
+## Stato al 20 novembre 2026
+
+- Programma conta-cartoni caricato sul LOGO! 24CE (`docs/PROGRAMMA-LOGO-24CE.md`).
+- Ingressi I1, I3 e I4 verificati; un filo allentato su I3 è stato trovato e sistemato.
+- Lettura Modbus verificata: i registri coincidono con TOT, CHIUS e ANOM del display.
+- Ponte collegato al gestionale con il token del dispositivo e il token di servizio di Cloudflare Access.
+- Prima chiusura dal pulsante della linea: **6 cartoni**, uguali al conteggio a mano; evento confermato dal gestionale.
+- **In corso:** il collaudo con almeno 100 cartoni e i casi particolari (tabella in fondo).
 
 ## In due righe
 
-Il **LOGO!** conta i cartoni dalle due fotocellule e tiene un totale che non si azzera. Il **ponte** sul PC legge quel totale sulla rete locale, segue la lavorazione aperta nel gestionale e, alla pressione del pulsante di chiusura, salva e invia il numero di cartoni. Fino al collaudo completo il gestionale continua con i conteggi manuali.
+Il **LOGO!** conta i cartoni dalle due fotocellule e tiene un totale che non si azzera. Il **ponte** sul PC legge quel totale sulla rete locale, segue la lavorazione aperta nel gestionale e, alla pressione del pulsante di chiusura, salva e invia il numero di cartoni. Fino al collaudo completo ogni chiusura del ponte va confrontata con un conteggio a mano.
 
 ## Cosa è pronto e cosa no
 
 | Stato | Parti |
 | --- | --- |
 | **Simulato e testato** (PC, senza hardware) | Logica dei sensori; contatore e baseline; chiusura con pulsante; archivio SQLite; coda e invio con ritentativi; Internet assente; PLC non raggiungibile o riavviato; PC riavviato; backup e ripristino. |
-| **Implementato, da verificare sull'impianto** | Lettura Modbus del LOGO! reale; lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); collegamento al gestionale con token del dispositivo; file `.cmd` su Windows (non provati su Windows); avvio automatico. |
-| **Scritto, da caricare e collaudare** | Programma LOGO! conta-cartoni per il LOGO! 24CE 8.4: `docs/PROGRAMMA-LOGO-24CE.md`. |
+| **Verificato sull'impianto (20/11/2026)** | Ingressi I1, I3, I4; lettura Modbus del LOGO! reale; collegamento al gestionale con token del dispositivo e token di servizio di Access; una chiusura dal pulsante (6 cartoni). |
+| **Implementato, da verificare sull'impianto** | Lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); Internet assente e ritentativi sull'impianto; tutti i file `.cmd` su Windows; avvio automatico. |
+| **Caricato, collaudo in corso** | Programma LOGO! conta-cartoni per il LOGO! 24CE 8.4 (`docs/PROGRAMMA-LOGO-24CE.md`): soste, arretramenti, salti, ritenzione. |
 | **Non implementato** | Apertura di lavorazioni dal PC. Il carico a magazzino alla chiusura è fatto dal server (regola del 14/11/2026). |
 
 ## Oggi, senza hardware (Teo)
 
-1. Installare Node.js 22.13 o superiore sul PC della linea.
+1. Installare Node.js 22.13 o superiore sul PC della linea. Con Node.js portatile (senza installazione): Windows → **Modifica le variabili d'ambiente relative al tuo account** → variabile **Path** dell'utente → **Nuovo** → la cartella che contiene `node.exe`. In un nuovo prompt, `node --version` deve rispondere.
 2. Estrarre tutto lo ZIP in una cartella.
 3. Doppio clic su `bridge\AVVIA-PROVA.cmd`. Atteso: `SIMULAZIONE SUPERATA`, A 200 cartoni, B 150, totale 350.
 4. Annotare l'esito. Sono dati simulati: non vanno inseriti nel gestionale o nel magazzino.
 
 ## Dati da raccogliere (con il tecnico)
 
-Nessun valore è assegnato da questo documento: ogni riga va rilevata sull'impianto e confermata.
+Ogni riga va rilevata sull'impianto e confermata. Indirizzi IP, MAC e token non si scrivono qui: restano nei file locali del PC (`*.local.json`).
 
 | Dato | Valore |
 | --- | --- |
@@ -32,16 +42,16 @@ Nessun valore è assegnato da questo documento: ogni riga va rilevata sull'impia
 | Versione di LOGO! Soft Comfort | V9.0 |
 | Sensori: modello, tipo (barriera/riflessione), distanza tra i due fasci, posizione sul nastro | Datasensing S100-PR-2-B10-PK a riflessione, PNP, DARK; A su I3, B su I4. Distanza e posizione da misurare |
 | Pulsante di chiusura: modello, ingresso del LOGO!, cablaggio | Schneider XB5AA21, NO, su I1 (pressione prolungata 1 s) |
-| Rete: IPv4 del LOGO!, IPv4 del PC, porta TCP, `unitId` Modbus | Da compilare |
+| Rete: IPv4 del LOGO!, IPv4 del PC, porta TCP, `unitId` Modbus | LOGO! con indirizzo statico nella subnet del PC, fuori dall'intervallo DHCP: **riserva nel router da fare**, poi controllo con `arp -a` (`docs/PROGRAMMA-LOGO-24CE.md`, passo 1). Porta trovata provando le porte da 502 a 510: sull'impianto non era la 502. `unitId` 1. Valori solo nei file locali |
 | PC: nome, versione di Windows, versione di Node.js, utente che avvia il ponte | Da compilare |
 | Avvio del ponte: all'accesso dell'utente oppure all'accensione | Da decidere |
-| Registro contatore cumulativo: funzione 03/04, indirizzo zero-based, 1 o 2 registri, ordine parole BE/LE | Con il programma del progetto: VD0, funzione 03, parola bassa = registro 1, modulo 65536. Da confermare con LEGGI-LOGO |
+| Registro contatore cumulativo: funzione 03/04, indirizzo zero-based, 1 o 2 registri, ordine parole BE/LE | VD0, funzione 03, parola bassa = registro 1, modulo 65536. Confermato il 20/11/2026: registri 0–5 = `[0, TOT, 0, CHIUS, 0, ANOM]` |
 | Limite del contatore (16 o 32 bit) e cosa succede al superamento | Da verificare |
-| Registro stato sensori (proposta: bit 0 = A, bit 1 = B, 1 = fascio interrotto) | Ingressi I3 e I4 con la funzione 02, indirizzi 2 e 3. Da confermare con PROVA-INGRESSI |
-| Registro contatore richieste di chiusura (cresce di 1 a ogni pressione) | VD4, parola bassa = registro 3 |
+| Registro stato sensori (proposta: bit 0 = A, bit 1 = B, 1 = fascio interrotto) | Ingressi I3 e I4 con la funzione 02, indirizzi 2 e 3. Verificati il 20/11/2026 |
+| Registro contatore richieste di chiusura (cresce di 1 a ogni pressione) | VD4, parola bassa = registro 3. Verificato con la prima chiusura dal pulsante |
 | Registro di riscontro scritto dal PC (funzione 06 o 16) e cosa fa il LOGO! quando lo riceve | Da compilare |
 | Ritenzione: i contatori restano dopo spegnimento e riavvio del LOGO!? | Da verificare |
-| Tempo minimo del filtro sensori (rimbalzi) nel programma LOGO! | Da misurare |
+| Tempo minimo del filtro sensori (rimbalzi) nel programma LOGO! | 0,05 s nel programma; da confermare alla velocità massima |
 | Tempo con sensori liberi prima di accettare la chiusura | Da misurare |
 | Cartoni al secondo massimi possibili sulla linea | Da misurare |
 | Intervallo di lettura del ponte | Da concordare |
@@ -66,7 +76,7 @@ La logica di riferimento è in `bridge/core/sensors.mjs` ed è provata dai test:
 ## Chiusura di una lavorazione
 
 1. Fermare gli arrivi secondo la procedura della linea e far uscire l'ultimo cartone.
-2. Premere il pulsante di chiusura **una volta**. Pressioni ripetute della stessa richiesta non creano una seconda chiusura.
+2. Premere il pulsante di chiusura **una volta**, tenendolo premuto **almeno 2 secondi**. Il ponte deve essere in funzione: reagisce solo a una richiesta fatta mentre è acceso. Pressioni ripetute della stessa richiesta non creano una seconda chiusura.
 3. Il ponte aspetta i sensori liberi e stabili, poi salva tutto sul PC in un'unica operazione.
 4. Solo dopo il salvataggio, se le scritture sono abilitate, manda il riscontro al LOGO!.
 5. Il parziale riparte da zero; il totale del LOGO! non viene azzerato.
@@ -77,7 +87,7 @@ La logica di riferimento è in `bridge/core/sensors.mjs` ed è provata dai test:
 
 | Prova | Esito da registrare |
 | --- | --- |
-| Almeno 100 cartoni contati anche a mano | Conteggio a mano = LOGO! = ponte = gestionale. |
+| Almeno 100 cartoni contati anche a mano | Conteggio a mano = LOGO! = ponte = gestionale. In corso; prima chiusura di 6 cartoni corretta il 20/11/2026. |
 | Più formati e velocità previsti | Ripetere la prova per ogni formato e velocità. |
 | Cartone fermo tra i sensori (sosta) | Nessun conteggio in più. |
 | Cartone che arretra o passa a metà | Anomalia visibile, nessun conteggio. |

@@ -7,9 +7,12 @@ echo PROVA INGRESSI - sola lettura: non modifica il LOGO! e non invia dati al ge
 echo Serve il programma conta-cartoni caricato nel LOGO! con l'accesso Modbus attivo.
 echo.
 set "LOGOIP="
-set /p "LOGOIP=Indirizzo del LOGO! (es. 192.168.0.3), poi Invio: "
+set /p "LOGOIP=Indirizzo IP del LOGO!, poi Invio: "
 if "%LOGOIP%"=="" goto :cancelled
-node bridge/prova-ingressi.mjs --host "%LOGOIP%"
+set "LOGOPORT="
+set /p "LOGOPORT=Porta Modbus del LOGO! (Invio = 502): "
+if "%LOGOPORT%"=="" set "LOGOPORT=502"
+node bridge/prova-ingressi.mjs --host "%LOGOIP%" --port "%LOGOPORT%"
 
 set "bridgeExit=%ERRORLEVEL%"
 echo.

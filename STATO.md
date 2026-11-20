@@ -1,6 +1,6 @@
 # Stato di avanzamento
 
-Ultimo aggiornamento: 13 novembre 2026 · branch `claude/ottimizzazione-stabilimento-20261113` · base `main` 31ecaf5.
+Ultimo aggiornamento: 20 novembre 2026 (messa in servizio del LOGO!). Prima stesura: 13 novembre 2026 · branch `claude/ottimizzazione-stabilimento-20261113` · base `main` 31ecaf5.
 Riprendere da «Prossimo passo». Documento operativo: decisioni, comandi, risultati, problemi aperti.
 
 ## Baseline registrata prima delle modifiche (31ecaf5, Linux, Node 22.23.4, npm 10.9.9)
@@ -182,15 +182,24 @@ Richiesta di Teo.
 - La stessa produzione nello stesso giorno si somma nello stesso lotto.
 - Giacenza per prodotto con i lotti al clic, in ordine di scadenza.
 - Ordini per prodotto con assegnazione automatica dei lotti a scadenza più vicina (FEFO), anteprima prima della conferma e storico.
-- Resta da collegare e collaudare il LOGO! sulla linea.
+- Collegamento del LOGO! alla linea: vedi «Messa in servizio del LOGO! (18–20/11/2026)».
 - 17/11/2026: impianto montato e cablato secondo il progetto PC-CC01 Rev. 02 (LOGO! 24CE 8.4, fotocellule A su I3 e B su I4, pulsante su I1), LOGO! visto in rete da LOGO!Soft Comfort V9. Scritti il programma LOGO! (`docs/PROGRAMMA-LOGO-24CE.md`) e i modelli di configurazione `bridge/*.24ce.json`; il ponte legge le fotocellule come ingressi (funzione 02). Da fare: caricare il programma, PROVA-INGRESSI, LEGGI-LOGO, collaudo.
 
 ## IDENT. messo da parte (17/11/2026)
 
 Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. Niente campo all'avvio (gestionale e iPad), niente sull'etichetta, nella produzione del giorno, nel CSV e nello storico; la lettura dell'etichetta ignora l'«IDENT.» stampato. I dati già salvati con un impasto restano invariati ma non vengono più mostrati.
 
+## Messa in servizio del LOGO! (18–20/11/2026)
+
+- Programma conta-cartoni caricato sul LOGO! 24CE 8.4. Correzioni emerse e riportate in `docs/PROGRAMMA-LOGO-24CE.md`: nomi reali dei blocchi di LOGO!Soft Comfort V9, Morsetto aperto sulle uscite di B035/B036/B037, opzioni del trasferimento, verifica dell'accesso Modbus sul dispositivo.
+- Rete: il LOGO! va su un indirizzo statico fuori dall'intervallo DHCP del router; un conflitto di indirizzo faceva rispondere al ping un altro apparecchio. Controllo con `arp -a`. Riserva nel router ancora da fare. Nessun indirizzo o MAC nel repository.
+- Porta Modbus: sull'impianto il LOGO! non rispondeva sulla 502; si trova provando 502–510. `PROVA-INGRESSI.cmd` ora chiede anche la porta; i modelli `bridge/*.24ce.json` lo spiegano in `_port`. Il ponte distingue «Timeout del collegamento» (porta chiusa o accesso Modbus spento) da «Timeout della risposta» (collegato, nessuna risposta: `unitId`).
+- 20/11/2026: ingressi I1, I3, I4 verificati (filo allentato su I3 trovato e sistemato); lettura Modbus verificata (registri 0–5 = `[0, TOT, 0, CHIUS, 0, ANOM]`); ponte collegato al gestionale con token del dispositivo e token di servizio di Access; prima chiusura dal pulsante della linea: 6 cartoni, uguali al conteggio a mano, evento confermato dal gestionale.
+- Nota d'uso: CHIUDI va tenuto almeno 2 s; il ponte reagisce solo a richieste fatte mentre è in funzione.
+- In corso: collaudo con almeno 100 cartoni contati anche a mano e casi particolari (`docs/COLLEGAMENTO-LOGO.md`). Pacchetto PC 1.2.0.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.
 2. Nuove pubblicazioni: Actions → «Pubblica su Cloudflare» → Run workflow, dopo un backup.
-3. Con i dati LOGO!: configurazione `bridge/ponte.local.json`, prova a linea ferma, poi collaudo con almeno 100 cartoni contati anche a mano.
+3. LOGO!: finire il collaudo con almeno 100 cartoni contati anche a mano e i casi particolari; riservare nel router l'indirizzo del LOGO!.
