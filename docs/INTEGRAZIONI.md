@@ -10,8 +10,8 @@ Il sito registra dati manuali in un database centrale. Il lettore barcode che si
 | Database centrale | D1, separato dal codice Git |
 | Accesso riservato | Gestito dalla piattaforma ospitante |
 | Ruoli distinti e inviti agli operatori | Da implementare prima dell'uso con più ruoli |
-| Fotocellule e programma LOGO! | Da sviluppare/configurare e collaudare sull'impianto |
-| Ponte locale | Servizio, coda persistente, trasmettitore autenticato, simulatore di protocollo e test in `bridge/`; endpoint `/api/devices/production` e credenziali di dispositivo nel gestionale. **Provato solo in simulazione** (13/11/2026); collaudo su impianto da fare |
+| Fotocellule e programma LOGO! | Programma caricato sul LOGO! 24CE dell'impianto; ingressi I1, I3, I4 verificati il 20/11/2026; collaudo in corso (`docs/PROGRAMMA-LOGO-24CE.md`) |
+| Ponte locale | Servizio, coda persistente, trasmettitore autenticato, simulatore di protocollo e test in `bridge/`; endpoint `/api/devices/production` e credenziali di dispositivo nel gestionale. Provato in simulazione (13/11/2026); collegato all'impianto il 20/11/2026, prima chiusura dal pulsante corretta (6 cartoni); collaudo in corso |
 | TeamSystem | Da verificare versione, accessi e formati disponibili |
 | Etichettatrice | Da verificare interfaccia e caratteristiche del dispositivo |
 | Consumo ingredienti tramite ricette | Da definire e collaudare |

@@ -1,23 +1,34 @@
 # Ponte LOGO! ↔ gestionale — pacchetto per il PC dello stabilimento
 
-Versione del 17 novembre 2026, per il LOGO! 24CE 8.4 del progetto PC-CC01 (fotocellule su I3 e I4, pulsante su I1). Il ponte è un programma che gira sul PC vicino alla linea: legge il contatore del LOGO! sulla rete locale e manda le chiusure delle lavorazioni al gestionale. **Finora è stato provato solo in simulazione**, con un LOGO! finto e un gestionale finto. Nessun impianto reale è stato collegato.
+Versione del 20 novembre 2026, per il LOGO! 24CE 8.4 del progetto PC-CC01 (fotocellule su I3 e I4, pulsante su I1). Il ponte è un programma che gira sul PC vicino alla linea: legge il contatore del LOGO! sulla rete locale e manda le chiusure delle lavorazioni al gestionale.
 
-Il conteggio dei cartoni lo fa il **LOGO!**, con il programma di `docs/PROGRAMMA-LOGO-24CE.md` (scritto, da caricare e collaudare). Il ponte non conta i sensori: legge il numero totale del LOGO! e fa le differenze. Il conteggio non sostituisce arresti o sicurezze della macchina, e il pulsante di chiusura non è un arresto.
+## Stato sull'impianto al 20 novembre 2026
+
+- Programma conta-cartoni caricato sul LOGO! (`docs/PROGRAMMA-LOGO-24CE.md`).
+- Ingressi **I1, I3 e I4 verificati**. Un filo allentato su I3 è stato trovato e sistemato.
+- **Lettura Modbus verificata**: i registri letti coincidono con TOT, CHIUS e ANOM del display. La porta Modbus si trova provando le porte da 502 a 510 (sull'impianto non era la 502).
+- **Ponte collegato al gestionale** con il token del dispositivo e il token di servizio di Cloudflare Access.
+- **Prima chiusura dal pulsante della linea: 6 cartoni**, uguali al conteggio a mano; evento confermato dal gestionale.
+- **Collaudo in corso**: almeno 100 cartoni contati anche a mano e i casi particolari di `docs/COLLEGAMENTO-LOGO.md`. Fino al suo esito non ci si fida del conteggio.
+
+Il conteggio dei cartoni lo fa il **LOGO!**, con il programma di `docs/PROGRAMMA-LOGO-24CE.md`. Il ponte non conta i sensori: legge il numero totale del LOGO! e fa le differenze. Il conteggio non sostituisce arresti o sicurezze della macchina, e il pulsante di chiusura non è un arresto.
 
 ## Stato, in tre colonne
 
 | Simulato e testato (su PC, senza hardware) | Implementato, da verificare sull'impianto | Non implementato |
 | --- | --- | --- |
-| Logica dei sensori `00→10→11→01→00`, soste, arretramenti, salti, rimbalzi (`core/sensors.mjs`, riferimento per il programma LOGO!) | Lettura Modbus TCP del LOGO! reale (funzioni 02/03/04); programma LOGO! conta-cartoni (`docs/PROGRAMMA-LOGO-24CE.md`) | |
+| Logica dei sensori `00→10→11→01→00`, soste, arretramenti, salti, rimbalzi (`core/sensors.mjs`, riferimento per il programma LOGO!) | Programma LOGO! conta-cartoni: ingressi e prima chiusura verificati il 20/11/2026, soste, arretramenti e salti da collaudare. Lettura Modbus del LOGO! reale: verificata il 20/11/2026 | |
 | Contatore cumulativo, baseline, superamento del limite, contatore diminuito, letture corrotte (`core/counter.mjs`) | Lettura del contatore a 32 bit «doppia» durante il moto | |
 | Chiusura con pulsante: attesa sensori liberi, salvataggio unico in SQLite, riscontro, nuova baseline, pressione ripetuta ignorata | Scrittura del riscontro sul LOGO! (funzioni 06/16), **spenta per default** | Registrazione come servizio di Windows (si usa l'Utilità di pianificazione) |
-| Coda eventi con ritentativi, stesso `eventId`, tabella delle risposte del contratto (`core/transmitter.mjs`) | Collegamento al gestionale reale (`/api/devices/production`, token del dispositivo) e accesso attraverso la piattaforma | Apertura di lavorazioni dal PC (non prevista: si aprono nel gestionale) |
-| Internet assente, PLC non raggiungibile, PLC riavviato, PC riavviato (simulati) | File `.cmd` per Windows: **non provati su Windows** (scritti e controllati su Linux) | |
+| Coda eventi con ritentativi, stesso `eventId`, tabella delle risposte del contratto (`core/transmitter.mjs`) | Collegamento al gestionale reale (`/api/devices/production`, token del dispositivo, token di servizio di Access): prima chiusura confermata il 20/11/2026; Internet assente e ritentativi da provare sull'impianto | Apertura di lavorazioni dal PC (non prevista: si aprono nel gestionale) |
+| Internet assente, PLC non raggiungibile, PLC riavviato, PC riavviato (simulati) | File `.cmd` per Windows: scritti e controllati su Linux, da confermare uno per uno sul PC della linea durante il collaudo | |
 | Backup e ripristino dell'archivio (`backup.mjs`) | Avvio automatico con l'Utilità di pianificazione (istruzioni sotto, non eseguite) | |
 
 ## Prova di oggi: simulazione (nessun hardware)
 
 Serve Node.js 22.13 o superiore. Estrarre tutto lo ZIP in una cartella (vanno bene anche percorsi con spazi).
+
+**Node.js portatile** (cartella estratta, senza installazione): cercare in Windows «variabili d'ambiente» → **Modifica le variabili d'ambiente relative al tuo account** → variabile **Path** dell'utente → **Modifica** → **Nuovo** → la cartella di Node (quella che contiene `node.exe`). Aprire un **nuovo** prompt dei comandi e controllare con `node --version`.
 
 1. Doppio clic su `bridge\AVVIA-PROVA.cmd`. È la simulazione di protocollo completa: lavorazione A da 200 cartoni, B da 150, con sosta, arretramenti, rimbalzi, Internet perso a metà, riavvio del programma, riavvio del PLC. Alla fine deve comparire `SIMULAZIONE SUPERATA` e il totale **350**. Il rapporto `RISULTATO-SIMULAZIONE.json` è marcato `"tipo": "SIMULAZIONE"`.
 2. (Facoltativo) Doppio clic su `bridge\AVVIA-SERVIZIO-SIMULAZIONE.cmd`: il servizio gira «dal vivo» con un PLC finto che produce un cartone ogni 0,3 secondi e chiude ogni 20. Si ferma con Ctrl+C. Con `STATO-PONTE.cmd` → `S` si vede lo stato.
@@ -45,13 +56,13 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 | `LEGGI-LOGO.cmd` | Lettura diagnostica del solo contatore, a linea ferma (usa `logo.config.local.json`; modello `logo.config.24ce.json`). |
 | `PROVA-INGRESSI.cmd` | Mostra dal vivo pulsante (I1) e fotocellule A (I3) e B (I4). Sola lettura, funzione Modbus 02. |
 
-**Importante:** questi `.cmd` sono stati scritti e controllati in un ambiente Linux. Non sono stati eseguiti su Windows in questa sessione: provarli prima sul PC dello stabilimento.
+**Importante:** questi `.cmd` sono stati scritti e controllati in un ambiente Linux. Ogni file va confermato sul PC dello stabilimento prima di affidarsi a esso.
 
 ## Messa in servizio sull'impianto (con il tecnico)
 
-1. Si ricopia il programma di `docs/PROGRAMMA-LOGO-24CE.md`, lo si prova nella simulazione di LOGO!Soft Comfort e lo si trasferisce; `PROVA-INGRESSI.cmd` verifica I1, I3 e I4.
-2. Copiare `ponte.config.24ce.json` (mappa del programma del progetto) in `ponte.local.json` e compilare **tutti** i campi `null` con i valori verificati. Per un altro impianto si parte da `ponte.config.example.json`. Mettere `mapConfirmed` a `true` solo dopo la verifica. Lasciare `writesEnabled` a `false` finché il riscontro non è collaudato.
-3. In Configurazione del gestionale creare il dispositivo: il token `pcd_…` compare **una sola volta**. Copiare `token.example.json` in `token.local.json` e incollarlo lì. Non mandarlo via chat o e-mail.
+1. Si ricopia il programma di `docs/PROGRAMMA-LOGO-24CE.md`, lo si prova nella simulazione di LOGO!Soft Comfort e lo si trasferisce; si trova la porta Modbus (prova delle porte 502–510, passo 5 del programma); `PROVA-INGRESSI.cmd` (chiede indirizzo e porta) verifica I1, I3 e I4.
+2. Copiare `ponte.config.24ce.json` (mappa del programma del progetto) in `ponte.local.json` e compilare **tutti** i campi `null` con i valori verificati, e `plc.port` con la porta che risponde. Per un altro impianto si parte da `ponte.config.example.json`. Mettere `mapConfirmed` a `true` solo dopo la verifica. Lasciare `writesEnabled` a `false` finché il riscontro non è collaudato.
+3. In Configurazione del gestionale creare il dispositivo: il token `pcd_…` compare **una sola volta**. Copiare `token.example.json` in `token.local.json` e incollarlo lì, insieme a Client ID e Client Secret del token di servizio di Cloudflare Access (`docs/CLOUDFLARE.md`). Non mandarli via chat o e-mail.
 4. Prima prova a linea ferma con `LEGGI-LOGO.cmd`.
 5. Avviare `AVVIA-SERVIZIO-IMPIANTO.cmd`. Se manca anche un solo dato, il servizio elenca i campi mancanti e non parte.
 
@@ -69,6 +80,9 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 - **Contatore a 32 bit su due registri:** il ponte legge due volte e accetta solo letture uguali, oppure con la stessa parola alta e valore non diminuito. È una **mitigazione**, non una prova che la lettura sia atomica: va verificata sull'impianto. Meglio ancora se il programma LOGO! offre una copia congelata del contatore.
 
 ## Diagnosi
+
+- **«Timeout del collegamento Modbus»**: il LOGO! non accetta connessioni su quella porta. Controllare che l'accesso Modbus sia abilitato sul dispositivo e provare le porte da 502 a 510. **«Timeout della risposta Modbus»**: il collegamento c'è, ma il LOGO! non risponde alla richiesta: provare `unitId` 255.
+- Il pulsante CHIUDI va tenuto premuto almeno 2 secondi. Il ponte reagisce solo a una richiesta fatta mentre è in funzione.
 
 - `bridge\data\impianto\stato.json`: ultimo ciclo, ultima lettura PLC, ultimo contatto e heartbeat, lavorazione, coda. `STATO-PONTE.cmd` lo mostra in chiaro e avvisa se è vecchio di oltre 90 secondi.
 - `bridge\data\impianto\log\ponte.log`: righe leggibili con data UTC e livello (`INFO`, `AVVISO`, `ALLARME`). Rotazione automatica: 5 file da 1 MB al massimo.
@@ -98,7 +112,7 @@ schtasks /Delete /TN "Prima Colazione Ponte"
 
 ## Dati ancora necessari
 
-Modello/codice e firmware del LOGO!, versione di LOGO! Soft Comfort, sensori e loro disposizione (distanza, tipo), pulsante di chiusura e cablaggio, rete (IP del LOGO! e del PC, porta, `unitId`), PC e versione di Windows, modalità di avvio (all'accesso o all'accensione), mappa dei registri (contatore, sensori, richieste, riscontro, ordine delle parole, limite del contatore) e comportamento con ritenzione allo spegnimento, tempi misurati (filtro sensori, sensori liberi prima della chiusura, intervallo di lettura) e cartoni al secondo massimi. L'elenco da compilare è in `docs/COLLEGAMENTO-LOGO.md`.
+Firmware del LOGO!, distanza e posizione delle fotocellule, riserva dell'indirizzo del LOGO! nel router, PC e versione di Windows, modalità di avvio (all'accesso o all'accensione), registro di riscontro, comportamento con ritenzione allo spegnimento, tempi misurati (sensori liberi prima della chiusura, intervallo di lettura) e cartoni al secondo massimi. L'elenco aggiornato è in `docs/COLLEGAMENTO-LOGO.md`. Indirizzi di rete, MAC e token restano solo nei file locali del PC.
 
 ## Nota sui file interni
 

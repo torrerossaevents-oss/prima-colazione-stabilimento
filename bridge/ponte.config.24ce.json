@@ -15,6 +15,7 @@
     "host": null,
     "_host": "IPv4 del LOGO! sulla LAN (lo mostra LOGO!Soft Comfort nella Vista di rete).",
     "port": 502,
+    "_port": "Di norma 502. Verificare le porte da 502 a 510 (comando in docs/PROGRAMMA-LOGO-24CE.md, passo 5) e usare quella che risponde: su un impianto il LOGO! rispondeva su un'altra porta.",
     "unitId": 1,
     "_unitId": "Da confermare con LEGGI-LOGO: se il LOGO! non risponde, provare 255.",
     "timeoutMs": 2000,

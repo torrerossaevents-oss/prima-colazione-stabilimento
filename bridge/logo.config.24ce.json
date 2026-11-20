@@ -4,6 +4,7 @@
   "mapConfirmed": false,
   "host": null,
   "port": 502,
+  "_port": "Di norma 502. Verificare le porte da 502 a 510 (comando in docs/PROGRAMMA-LOGO-24CE.md, passo 5) e usare quella che risponde: su un impianto il LOGO! rispondeva su un'altra porta.",
   "unitId": 1,
   "functionCode": 3,
   "address": 0,
