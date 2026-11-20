@@ -218,6 +218,12 @@ await dialog().getByLabel('Operatore').fill('Operatore prova');
 assert.equal(await dialog().locator('input[name=counting][value=device]').isChecked(), true, 'with a bridge the counting comes from the line by default');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
 const runId = (await api()).state.sessions.find(x => x.status === 'active').id;
+// Live count: the bridge heartbeat shows the cartons read so far, without any click.
+const beat = await fetch(base + '/api/devices/production', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + device.token }, body: JSON.stringify({ eventId: 'hb_' + crypto.randomUUID(), type: 'heartbeat', at: new Date().toISOString(), bridgeVersion: '1.0.0', queueLength: 0, plc: { reachable: true, lastReadAt: new Date().toISOString() }, session: { id: runId, cartons: 12 } }) });
+assert.equal(beat.status, 200, await beat.text());
+await page.locator('.counter-number', { hasText: /^12 cartoni letti dalle fotocellule/ }).waitFor({ timeout: 15_000 });
+await page.getByText(/Ponte agganciato · aggiornato \d+ s fa/).waitFor();
+log('conteggio dal vivo: 12 cartoni letti dal ponte mostrati da soli, ponte agganciato');
 const lineClose = await fetch(base + '/api/devices/production', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + device.token }, body: JSON.stringify({ eventId: 'evt_smoke_1', type: 'session.close', sessionId: runId, closeRequestId: 'req_smoke_1', counterStart: 0, counterEnd: 54, cartons: 54, closedAt: new Date().toISOString() }) });
 assert.equal(lineClose.status, 200, await lineClose.text());
 await page.getByText(/chiusa dal contapezzi: 54 cartoni/).waitFor({ timeout: 40_000 }); // nobody clicked anything on the page

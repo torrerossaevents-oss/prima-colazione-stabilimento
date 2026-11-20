@@ -198,6 +198,11 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 - Nota d'uso: CHIUDI va tenuto almeno 2 s; il ponte reagisce solo a richieste fatte mentre è in funzione.
 - In corso: collaudo con almeno 100 cartoni contati anche a mano e casi particolari (`docs/COLLEGAMENTO-LOGO.md`). Pacchetto PC 1.2.0.
 
+## Conteggio dal vivo (20/11/2026)
+
+- iPad e Produzione mostrano i cartoni letti dalle fotocellule durante la lavorazione, dall'ultimo heartbeat del ponte (`GET /api/workspace/live`, campi limitati, leggibile anche dal laboratorio), con lo stato «agganciato / non agganciato / fermo». Mai in modalità prova. Sul PC di linea: `intervals.heartbeatMs` = 6000 in `ponte.local.json`, poi riavvio del servizio.
+- Verificato: test dell'endpoint e della logica (`tests/live.test.ts`), smoke nel browser con un ponte finto, schermata iPad controllata.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.

@@ -60,6 +60,8 @@ Corpo JSON, massimo 16 kB. Ogni evento ha un `eventId` stabile (`[A-Za-z0-9_-]{8
 
 Il heartbeat **non** crea ricevute permanenti né versioni dello stato: il server aggiorna una sola riga per dispositivo (`device_status`). Il heartbeat non modifica lo stato operativo: aggiorna soltanto la riga di stato del dispositivo (ultimo contatto, PLC raggiungibile, coda, parziale in corso). Il sito mostra «dato non aggiornato» se l'ultimo contatto supera 90 secondi.
 
+**Conteggio dal vivo (20/11/2026).** Il parziale del heartbeat (`session.cartons`) è mostrato sull'iPad e in Produzione tramite `GET /api/workspace/live`, leggibile da amministrazione e laboratorio. La risposta contiene solo ultimo contatto, istante del heartbeat, PLC raggiungibile, lavorazione e cartoni: nessun identificativo, nome o token del dispositivo. Il numero è un conteggio in corso: entra in magazzino solo alla chiusura. Per vederlo quasi in tempo reale il ponte va configurato con `intervals.heartbeatMs` = 6000 (non 5000: il server conserva al massimo un heartbeat ogni 5 secondi). Il sito segnala il dato fermo dopo 20 secondi senza aggiornamenti. A 6 s sono circa 14 000 richieste e scritture al giorno con la linea sempre accesa, dentro i limiti gratuiti di Cloudflare.
+
 ### Risposte
 
 | Codice | Significato | Comportamento del ponte |

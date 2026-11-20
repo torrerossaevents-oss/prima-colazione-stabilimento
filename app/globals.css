@@ -963,6 +963,8 @@ fieldset.field > span { margin-bottom: 2px; }
 .trial-card-text { display: flex; align-items: flex-start; gap: 14px; flex: 1 1 420px; min-width: 0; }
 .trial-card-text h2 { margin-bottom: 4px; }
 .live-pill { display: inline-flex; letter-spacing: 0; line-height: 1.4; align-items: center; gap: 6px; margin-left: 12px; padding: 2px 10px; border: 1px solid #f0d79f; border-radius: 999px; background: #fff4d6; color: #000; font-size: 13px; vertical-align: middle; }
+.live-pill.off { border-color: #f3c3bc; background: #fde7e4; }
+.counter-number .live-pill { white-space: normal; max-width: 100%; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #d93f2b; animation: live-pulse 1s ease-in-out infinite; }
 @keyframes live-pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
@@ -1133,6 +1135,8 @@ fieldset.field > span { margin-bottom: 2px; }
 .ipad-check input { width: 26px; height: 26px; }
 .ipad-alert { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #f3c3bc; border-left: 5px solid #d93f2b; border-radius: 10px; background: #fde7e4; color: #000; }
 .ipad-alert.amber { border-color: #f0d79f; border-left-color: var(--warn); background: var(--warn-soft); }
+.ipad-alert.ok { border-color: #bfe3c8; border-left-color: #2e8b57; background: #e8f6ec; }
+.ipad-live { margin: 0; font-size: 16px; line-height: 1.45; }
 .ipad-alert span { flex: 1; }
 .ipad-loading, .ipad-progress { display: flex; align-items: center; gap: 12px; font-size: 18px; }
 .ipad-progress progress { flex: 1; height: 12px; }
