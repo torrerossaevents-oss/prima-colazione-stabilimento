@@ -2,7 +2,7 @@
 
 Versione del 20 novembre 2026, per il LOGO! 24CE 8.4 del progetto PC-CC01 (fotocellule su I3 e I4, pulsante su I1). Il ponte è un programma che gira sul PC vicino alla linea: legge il contatore del LOGO! sulla rete locale e manda le chiusure delle lavorazioni al gestionale.
 
-## Messa in servizio sull'impianto (18–20 novembre 2026)
+## Stato sull'impianto al 20 novembre 2026
 
 - Programma conta-cartoni caricato sul LOGO! (`docs/PROGRAMMA-LOGO-24CE.md`).
 - Ingressi **I1, I3 e I4 verificati**. Un filo allentato su I3 è stato trovato e sistemato.

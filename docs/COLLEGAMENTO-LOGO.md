@@ -42,7 +42,7 @@ Ogni riga va rilevata sull'impianto e confermata. Indirizzi IP, MAC e token non 
 | Versione di LOGO! Soft Comfort | V9.0 |
 | Sensori: modello, tipo (barriera/riflessione), distanza tra i due fasci, posizione sul nastro | Datasensing S100-PR-2-B10-PK a riflessione, PNP, DARK; A su I3, B su I4. Distanza e posizione da misurare |
 | Pulsante di chiusura: modello, ingresso del LOGO!, cablaggio | Schneider XB5AA21, NO, su I1 (pressione prolungata 1 s) |
-| Rete: IPv4 del LOGO!, IPv4 del PC, porta TCP, `unitId` Modbus | LOGO! con indirizzo statico nella subnet del PC, fuori dall'intervallo DHCP: **riserva nel router da fare**, poi controllo con `arp -a` (`docs/PROGRAMMA-LOGO-24CE.md`, passo 1). Porta trovata provando le porte da 502 a 510: sull'impianto non era la 502. `unitId` 1. Valori solo nei file locali |
+| Rete: IPv4 del LOGO!, IPv4 del PC, porta TCP, `unitId` Modbus | LOGO! con indirizzo statico nella subnet del PC, fuori dall'intervallo DHCP: **riserva nel router da fare**, poi controllo con `arp -a` (`docs/PROGRAMMA-LOGO-24CE.md`, passo 1). Porta trovata provando le porte da 502 a 510: sull'impianto non era la 502. `unitId` nei file locali (modello: 1). Valori solo nei file locali |
 | PC: nome, versione di Windows, versione di Node.js, utente che avvia il ponte | Da compilare |
 | Avvio del ponte: all'accesso dell'utente oppure all'accensione | Da decidere |
 | Registro contatore cumulativo: funzione 03/04, indirizzo zero-based, 1 o 2 registri, ordine parole BE/LE | VD0, funzione 03, parola bassa = registro 1, modulo 65536. Confermato il 20/11/2026: registri 0–5 = `[0, TOT, 0, CHIUS, 0, ANOM]` |
