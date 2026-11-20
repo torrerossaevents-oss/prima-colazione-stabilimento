@@ -16,6 +16,8 @@ import { describeError, listPending, readWorkspaceResponse, removePending, reque
 import type { LabelScan } from '../lib/label-reader';
 import LabelPreview from './label-preview';
 import LabelCamera from './label-camera';
+import { useLiveCount } from './live-count';
+import { liveMessage, liveView } from '../lib/live';
 
 type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean; devicesEnabled?: boolean };
 const OPERATOR_KEY = 'prima-colazione-linea-operatore';
@@ -128,6 +130,8 @@ function RunView({ state, sessionId, busy, can, send, now }: ViewProps & { sessi
   const area = productionArea(state); const autoLoad = state.settings?.autoLoad !== false;
   const add = (cartons: number) => { if (cartons > 0) void send({ type: 'production.count', sessionId, cartons }, `+${cartons} cartoni`); };
   const device = s.source === 'device';
+  const liveData = useLiveCount(device);
+  const live = liveView(liveData.live, liveData.serverTime, s.id);
   async function close() {
     const scrapN = Number(scrap) || 0;
     const done = await send({ type: 'production.close', sessionId, ...(scrapN > 0 ? { scrapCartons: scrapN, note } : {}), ...(device ? { override: reason, cartons: Number(counted) } : {}) }, autoLoad && area ? 'Lavorazione chiusa e caricata in magazzino' : 'Lavorazione chiusa');
@@ -139,8 +143,10 @@ function RunView({ state, sessionId, busy, can, send, now }: ViewProps & { sessi
       <dl className="ipad-facts"><div><dt>Lotto</dt><dd>{s.lotCode}</dd></div><div><dt>Scadenza</dt><dd>{itDate(s.expiry)}</dd></div><div><dt>Operatore</dt><dd>{s.operator}</dd></div><div><dt>Avviata</dt><dd>{time(s.startedAt)}</dd></div></dl>
     </div>
     <div className="ipad-card ipad-counter">
-      <div className="ipad-count" aria-live="polite"><span className="ipad-count-n">{n(s.cartons)}</span><span>cartoni{hours >= 0.05 && s.cartons > 0 ? ` · ${n(Math.round(s.cartons / hours))} all’ora` : ''}</span></div>
-      {device ? <p className="ipad-help">Conteggio dal contapezzi. A fine lavorazione premete il pulsante sulla linea: la lavorazione si chiude e carica il magazzino da sola.</p>
+      {device ? <div className="ipad-count" aria-live="polite"><span className="ipad-count-n">{live.cartons == null ? '—' : n(live.cartons)}</span><span>cartoni letti dalle fotocellule{live.state === 'live' && live.cartons && hours >= 0.05 ? ` · ${n(Math.round(live.cartons / hours))} all’ora` : ''}</span></div>
+        : <div className="ipad-count" aria-live="polite"><span className="ipad-count-n">{n(s.cartons)}</span><span>cartoni{hours >= 0.05 && s.cartons > 0 ? ` · ${n(Math.round(s.cartons / hours))} all’ora` : ''}</span></div>}
+      {device && <p className={'ipad-alert ipad-live ' + (live.state === 'live' ? 'ok' : live.state === 'waiting' || live.state === 'loading' ? 'amber' : '')} role="status">{liveMessage(live)}</p>}
+      {device ? <p className="ipad-help">Conteggio dal contapezzi, aggiornato ogni pochi secondi. A fine lavorazione tenete premuto per 2 secondi il pulsante sulla linea: la lavorazione si chiude e carica il magazzino da sola.</p>
         : can('production.count') && <div className="ipad-add">{[1, 5, 10].map(k => <button key={k} className="ipad-btn big" disabled={busy} onClick={() => add(k)}>+{k}</button>)}<div className="ipad-custom"><input type="number" inputMode="numeric" min="1" step="1" placeholder="Altro" aria-label="Cartoni da aggiungere" value={custom} onChange={e => setCustom(e.target.value)}/><button className="ipad-btn" disabled={busy || !(Number(custom) > 0)} onClick={() => { add(Math.floor(Number(custom))); setCustom(''); }}>Aggiungi</button></div></div>}
       {can('production.close') && !closing && <button className="ipad-btn primary wide" disabled={busy} onClick={() => setClosing(true)}><Save size={22}/>{autoLoad && area ? 'Chiudi e carica in magazzino' : 'Chiudi la lavorazione'}</button>}
       {closing && <div className="ipad-close">

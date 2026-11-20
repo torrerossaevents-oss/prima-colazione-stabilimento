@@ -155,7 +155,7 @@ export function DeviceStatusNotice({ devices, now, session }: { devices: DeviceI
   const hooked = Boolean(session && latest?.status?.session?.id === session.id);
   return <div className={'notice ' + (stale ? 'amber' : '')}><Activity size={21}/><div>
     <b>{!devices ? 'Ponte conta-cartoni: lettura dello stato…' : stale ? 'Ponte conta-cartoni: dato non aggiornato' : 'Ponte conta-cartoni collegato'}</b>
-    <p>{latest ? <>Ultimo contatto {age(latest.lastSeenAt, now)} · PLC {latest.status?.plc?.reachable ? 'raggiungibile' : 'non raggiungibile'} · eventi in coda {latest.status?.queueLength ?? '—'}{session?.source === 'device' ? (hooked ? ' · ponte agganciato a questa lavorazione' : ' · ponte non ancora agganciato: non avviare la linea') : ''}.</> : 'Nessun contatto ricevuto dal ponte.'} Collegamento in prova: nessun carico automatico a magazzino e nessun comando alla macchina.</p>
+    <p>{latest ? <>Ultimo contatto {age(latest.lastSeenAt, now)} · PLC {latest.status?.plc?.reachable ? 'raggiungibile' : 'non raggiungibile'} · eventi in coda {latest.status?.queueLength ?? '—'}{session?.source === 'device' ? (hooked ? ' · ponte agganciato a questa lavorazione' : ' · ponte non ancora agganciato: non avviare la linea') : ''}.</> : 'Nessun contatto ricevuto dal ponte.'} Il ponte non comanda la macchina; i cartoni entrano in magazzino alla chiusura, se il carico è attivo in Configurazione.</p>
   </div></div>;
 }
 

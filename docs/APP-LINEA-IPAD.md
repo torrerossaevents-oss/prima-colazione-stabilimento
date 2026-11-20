@@ -34,6 +34,7 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 5. **In lavorazione**:
    - contatore grande con +1, +5, +10 o un numero libero;
    - con il contapezzi collegato il conteggio arriva dalla linea.
+   - il numero grande mostra i **cartoni letti dalle fotocellule**, aggiornati ogni pochi secondi, con lo stato del ponte: «agganciato» (si può avviare la linea), «non ancora agganciato» (non avviare la linea) oppure «non si aggiorna da … s» (controllare il PC di linea). Il numero entra in magazzino solo alla chiusura.
 6. **Chiusura**: scarti con motivo, conferma. I cartoni buoni entrano in magazzino nell'area di carico scelta in Configurazione. Se il contapezzi è fermo si indicano i cartoni contati a mano.
 
 ## Dati e sicurezza

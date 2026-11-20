@@ -60,3 +60,21 @@ export async function recordHeartbeat(db: D1Database, deviceId: string, body: Re
   const result = await db.prepare('INSERT INTO device_status (device_id, last_seen_at, payload) VALUES (?, ?, ?) ON CONFLICT (device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, payload = excluded.payload WHERE device_status.last_seen_at <= ?').bind(deviceId, now.toISOString(), JSON.stringify(status), minPrevious).run();
   return { ...status, stored: result.meta.changes === 1 };
 }
+
+/** Lettura dal vivo per chi è dentro il gestionale (anche laboratorio): solo campi limitati dell'ultimo heartbeat,
+ * nessun identificativo o nome del dispositivo. Il numero è un conteggio in corso, non un carico di magazzino. */
+export type LiveStatus = { lastSeenAt: string; at: string | null; plcReachable: boolean; sessionId: string | null; cartons: number | null };
+export async function liveStatus(db: D1Database): Promise<LiveStatus | null> {
+  const row = await db.prepare('SELECT s.last_seen_at, s.payload FROM device_status s JOIN devices d ON d.id = s.device_id WHERE d.workspace_id = ? AND d.revoked_at IS NULL ORDER BY s.last_seen_at DESC LIMIT 1').bind(WORKSPACE_ID).first<{ last_seen_at: string; payload: string | null }>();
+  if (!row) return null;
+  let status: { at?: unknown; plc?: { reachable?: unknown }; session?: { id?: unknown; cartons?: unknown } | null } = {};
+  try { status = row.payload ? JSON.parse(row.payload) : {}; } catch { status = {}; }
+  const cartons = status.session?.cartons;
+  return {
+    lastSeenAt: row.last_seen_at,
+    at: typeof status.at === 'string' ? status.at : null,
+    plcReachable: status.plc?.reachable === true,
+    sessionId: typeof status.session?.id === 'string' ? status.session.id : null,
+    cartons: typeof cartons === 'number' && Number.isSafeInteger(cartons) && cartons >= 0 ? cartons : null,
+  };
+}
