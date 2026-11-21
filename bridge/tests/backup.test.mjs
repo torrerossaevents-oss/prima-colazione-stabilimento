@@ -85,3 +85,19 @@ test('interruzione brusca del processo dopo il commit: i dati restano (PC spento
     assert.equal(reopened.getState('counter').baseline, 1200);
   } finally { reopened.close(); }
 });
+
+test('backup automatico: restano gli ultimi N, le copie prima del ripristino non si toccano', async () => {
+  const { pruneBackups } = await import('../backup.mjs');
+  const { mkdtempSync, writeFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = mkdtempSync(join(tmpdir(), 'ponte-prune-'));
+  try {
+    const names = ['ponte-impianto-20261101-131000.sqlite', 'ponte-impianto-20261102-131000.sqlite', 'ponte-impianto-20261103-131000.sqlite', 'ponte-impianto-20261103-131000-1.sqlite', 'prima-del-ripristino-20261101-090000.sqlite', 'altro.txt'];
+    for (const n of names) writeFileSync(join(dir, n), 'x');
+    const removed = pruneBackups(dir, 2, 'ponte-impianto');
+    assert.deepEqual(removed, ['ponte-impianto-20261101-131000.sqlite', 'ponte-impianto-20261102-131000.sqlite']);
+    assert.deepEqual(readdirSync(dir).sort(), ['altro.txt', 'ponte-impianto-20261103-131000-1.sqlite', 'ponte-impianto-20261103-131000.sqlite', 'prima-del-ripristino-20261101-090000.sqlite']);
+    assert.throws(() => pruneBackups(dir, 0, 'ponte-impianto'), /mantieni/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

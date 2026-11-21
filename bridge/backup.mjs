@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Backup e ripristino LOCALE dell'archivio SQLite del ponte.
- *   node bridge/backup.mjs backup     [--impianto | --simulazione] [--dati cartella]
+ *   node bridge/backup.mjs backup     [--mantieni N] [--impianto | --simulazione] [--dati cartella]
  *   node bridge/backup.mjs elenco     [--impianto | --simulazione] [--dati cartella]
  *   node bridge/backup.mjs ripristina <file.sqlite> [--impianto | --simulazione] [--dati cartella]
  * Il backup usa `VACUUM INTO`: copia coerente anche con il servizio in funzione.
@@ -13,6 +13,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameS
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STORE_MARKER } from './core/store.mjs';
+import { lockHeldByLiveProcess } from './core/lock.mjs';
 
 function stamp(date = new Date()) {
   return date.toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
@@ -63,9 +64,17 @@ export function restoreArchive(backupFile, dbFile, backupDir) {
   return inspectArchive(dbFile);
 }
 
-function serviceRunning(dataDir) {
-  try { process.kill(Number(readFileSync(join(dataDir, 'ponte.lock'), 'utf8')), 0); return true; }
-  catch (error) { return error.code === 'EPERM'; }
+function serviceRunning(dataDir) { return lockHeldByLiveProcess(dataDir); }
+
+/** Conserva solo gli ultimi `keep` backup automatici («ponte-…»); le copie «prima-del-ripristino» restano. */
+export function pruneBackups(backupDir, keep, label = 'ponte') {
+  if (!Number.isSafeInteger(keep) || keep < 1) throw new Error('--mantieni: indicare un intero da 1 in su.');
+  if (!existsSync(backupDir)) return [];
+  const pattern = new RegExp(`^${label}-\\d{8}-\\d{6}(?:-\\d+)?\\.sqlite$`);
+  const files = readdirSync(backupDir).filter(name => pattern.test(name)).sort();
+  const removed = files.slice(0, Math.max(0, files.length - keep));
+  for (const name of removed) rmSync(join(backupDir, name), { force: true });
+  return removed;
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -73,13 +82,14 @@ if (isMain) {
   try {
     const args = process.argv.slice(2);
     const command = args.shift();
-    let mode = 'impianto'; let dataDir = null; let file = null;
+    let mode = 'impianto'; let dataDir = null; let file = null; let keep = null;
     while (args.length) {
       const arg = args.shift();
       if (arg === '--impianto' || arg === '--simulazione') mode = arg.slice(2);
       else if (arg === '--dati' && args.length) dataDir = resolve(args.shift());
+      else if (arg === '--mantieni' && command === 'backup' && /^\d+$/.test(args[0] ?? '')) keep = Number(args.shift());
       else if (command === 'ripristina' && !file) file = resolve(arg);
-      else throw new Error('Uso: node bridge/backup.mjs backup|elenco|ripristina <file> [--impianto|--simulazione] [--dati cartella]');
+      else throw new Error('Uso: node bridge/backup.mjs backup [--mantieni N]|elenco|ripristina <file> [--impianto|--simulazione] [--dati cartella]');
     }
     dataDir ??= fileURLToPath(new URL(`./data/${mode}`, import.meta.url));
     const dbFile = join(dataDir, 'ponte.sqlite');
@@ -87,6 +97,7 @@ if (isMain) {
     if (command === 'backup') {
       const target = backupArchive(dbFile, backupDir, `ponte-${mode}`);
       console.log(`Backup creato e verificato: ${target}`);
+      if (keep !== null) { const removed = pruneBackups(backupDir, keep, `ponte-${mode}`); if (removed.length) console.log(`Eliminati ${removed.length} backup più vecchi: restano gli ultimi ${keep}.`); }
       console.log('Copiare il file anche su un supporto esterno o in un archivio riservato.');
     } else if (command === 'elenco') {
       const files = existsSync(backupDir) ? readdirSync(backupDir).filter(f => f.endsWith('.sqlite')).sort() : [];
