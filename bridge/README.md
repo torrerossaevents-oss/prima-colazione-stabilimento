@@ -53,6 +53,8 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 | `STATO-PONTE.cmd` | Mostra l'ultimo stato (PLC, Internet, lavorazione, coda). |
 | `BACKUP-ARCHIVIO.cmd` | Copia coerente dell'archivio dell'impianto (`VACUUM INTO`), anche a servizio acceso. |
 | `RIPRISTINA-ARCHIVIO.cmd` | Ripristino da un backup (servizio fermo). Si può trascinare il file di backup sopra il `.cmd`. |
+| `INSTALLA-AVVIO-AUTOMATICO.cmd` | Avvio automatico del ponte all'accesso a Windows e backup giornaliero (Utilità di pianificazione). |
+| `RIMUOVI-AVVIO-AUTOMATICO.cmd` | Toglie l'avvio automatico e il backup giornaliero. |
 | `LEGGI-LOGO.cmd` | Lettura diagnostica del solo contatore, a linea ferma (usa `logo.config.local.json`; modello `logo.config.24ce.json`). |
 | `PROVA-INGRESSI.cmd` | Mostra dal vivo pulsante (I1) e fotocellule A (I3) e B (I4). Sola lettura, funzione Modbus 02. |
 
@@ -89,26 +91,46 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 - Messaggi distinti per: Internet/gestionale assente, LAN/PLC non raggiungibile, PLC riavviato (contatore diminuito), ripresa dopo riavvio del PC, token rifiutato.
 - Un solo servizio per archivio: un secondo avvio sulla stessa cartella viene rifiutato.
 
-## Avvio automatico con l'Utilità di pianificazione (da fare dopo il collaudo)
+## Avvio automatico (21/11/2026)
 
-Non eseguito in questa sessione. Esempio, da adattare al percorso reale (le virgolette servono per i percorsi con spazi):
+`INSTALLA-AVVIO-AUTOMATICO.cmd` registra con l'Utilità di pianificazione di Windows, per l'utente che lo lancia, due attività:
 
-```bat
-schtasks /Create /TN "Prima Colazione Ponte" /SC ONLOGON /RL LIMITED ^
-  /TR "\"C:\Prima Colazione\prima-colazione-logo\bridge\AVVIA-SERVIZIO-IMPIANTO.cmd\" /automatico"
-schtasks /Query /TN "Prima Colazione Ponte"
-schtasks /Run   /TN "Prima Colazione Ponte"
-schtasks /End   /TN "Prima Colazione Ponte"
-schtasks /Delete /TN "Prima Colazione Ponte"
-```
+| Attività | Quando | Cosa fa |
+| --- | --- | --- |
+| «Prima Colazione Ponte» | all'accesso a Windows di quell'utente | avvia `AVVIA-SERVIZIO-IMPIANTO.cmd /automatico` in una finestra ridotta a icona; se il servizio si ferma con errore riprova ogni 60 s |
+| «Prima Colazione Backup ponte» | ogni giorno alle 13:10, oppure appena possibile se il PC era spento | `BACKUP-ARCHIVIO.cmd /automatico`: copia verificata dell'archivio, restano gli ultimi 30 |
 
-- `ONLOGON` parte quando l'utente del PC accede. Per partire all'accensione senza accesso (`ONSTART`) serve un account dedicato con Node.js nel percorso: da decidere con chi gestisce il PC.
-- Nelle proprietà dell'attività: «Non avviare una nuova istanza» e nessun limite di durata. Con `/automatico` il file riparte da solo dopo 60 secondi se il servizio si ferma con errore.
-- `schtasks /End` interrompe il processo di colpo: i dati già salvati restano (SQLite), un'operazione a metà viene annullata. Per un arresto pulito usare Ctrl+C nella finestra.
+- Prima di installare chiudere la finestra del ponte aperta a mano (Ctrl+C, poi S): l'installatore si rifiuta se trova un ponte già in funzione.
+- In modalità automatica nulla viene scritto nella finestra (un clic non può metterla in pausa): ogni avvio, errore e nuovo tentativo è in `bridge\data\impianto\avvio-automatico.log`, il resto nel log del ponte. L'esito dei backup è in `backup-automatico.log`.
+- Il blocco «un solo servizio» (`ponte.lock`) registra anche l'istante di accensione del PC: dopo un'interruzione di corrente o un arresto forzato non impedisce il riavvio.
+- `RIMUOVI-AVVIO-AUTOMATICO.cmd` toglie le due attività; non ferma un ponte già in funzione. `powershell -NoProfile -ExecutionPolicy Bypass -File bridge\avvio-automatico.ps1 -Azione Stato` mostra lo stato delle attività.
+- **Limite:** l'avvio è all'accesso dell'utente. Se Windows si riavvia di notte (aggiornamenti), il ponte resta fermo finché qualcuno non accede. Impostare le «ore di attività» di Windows Update (vedi sotto). Accesso automatico o avvio senza accesso con un account dedicato sono scelte di sicurezza da decidere con chi gestisce il PC: non sono configurati.
+
+### Verifica dopo l'installazione
+
+1. Entro 30 secondi `STATO-PONTE.cmd` mostra il ponte aggiornato e nel gestionale (Configurazione → Dispositivi) il PC di linea è «Attivo».
+2. Riavviare il PC e accedere: entro un minuto di nuovo «Attivo», senza aprire nulla a mano.
+3. Da una finestra nera `taskkill /F /IM node.exe`: entro circa 60 secondi il ponte riparte da solo (riga «nuovo tentativo» nel log di avvio).
+4. Un doppio clic su `AVVIA-SERVIZIO-IMPIANTO.cmd` mentre il ponte automatico è attivo viene rifiutato con «Servizio già in esecuzione»: corretto.
+
+## PC della linea: impostazioni consigliate
+
+- **Sospensione:** Impostazioni → Sistema → Alimentazione e sospensione → Sospensione: **Mai**. Lo schermo può spegnersi.
+- **Windows Update:** Impostazioni → Aggiornamento e sicurezza → Windows Update → **Modifica orario di attività**, coprendo i turni della linea: Windows non si riavvia in quelle ore.
+- **Scheda di rete:** Gestione dispositivi → Schede di rete → scheda Ethernet → Proprietà → Risparmio energia → togliere «Consenti al computer di spegnere il dispositivo per risparmiare energia».
+- **Finestre nere:** clic destro sulla barra del titolo → Proprietà → Opzioni → togliere «Modalità Modifica rapida». Con la finestra manuale un clic dentro mette in pausa il programma.
+- **Non disconnettere l'utente** a fine turno: bloccare lo schermo (Windows + L) va bene, la disconnessione ferma il ponte.
 
 ## Backup
 
-`BACKUP-ARCHIVIO.cmd` crea in `bridge\data\impianto\backup` una copia verificata dell'archivio. Copiarla anche fuori dal PC, in un archivio riservato. `RIPRISTINA-ARCHIVIO.cmd` richiede il servizio fermo, controlla il file e salva prima una copia dell'archivio attuale (`prima-del-ripristino-…`).
+`BACKUP-ARCHIVIO.cmd` crea in `bridge\data\impianto\backup` una copia verificata dell'archivio (con l'avvio automatico installato succede ogni giorno da sola). `RIPRISTINA-ARCHIVIO.cmd` richiede il servizio fermo, controlla il file e salva prima una copia dell'archivio attuale (`prima-del-ripristino-…`).
+
+**Copia fuori dal PC (chiavetta o archivio riservato), dopo ogni modifica e almeno una volta al mese:**
+- il programma LOGO! (`.lsc` salvato da LOGO!Soft Comfort);
+- `bridge\ponte.local.json` e `bridge\logo.config.local.json`;
+- la cartella `bridge\data\impianto\backup`.
+
+`token.local.json` **non** va copiato: se il PC si guasta si revoca il dispositivo in Configurazione e se ne crea uno nuovo; il token di servizio di Cloudflare si rigenera nello stesso modo. La chiavetta contiene comunque indirizzi e configurazioni della rete interna: va conservata come documento riservato.
 
 ## Dati ancora necessari
 

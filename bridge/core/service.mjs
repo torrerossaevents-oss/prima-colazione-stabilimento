@@ -18,12 +18,9 @@ import { BridgeStore, newEventId } from './store.mjs';
 import { Transmitter } from './transmitter.mjs';
 import { createCounterState, observeCounter, partialOf } from './counter.mjs';
 import { RotatingLog } from './log.mjs';
+import { lockIsLive, lockText, parseLock } from './lock.mjs';
 
-export const BRIDGE_VERSION = '1.0.0';
-
-function processAlive(pid) {
-  try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; }
-}
+export const BRIDGE_VERSION = '1.3.0';
 
 const heldLocks = new Set();
 
@@ -32,14 +29,12 @@ export function acquireLock(dataDir) {
   const file = join(dataDir, 'ponte.lock');
   if (heldLocks.has(file)) throw new Error('Servizio già in esecuzione su questo archivio (stesso processo).');
   try {
-    writeFileSync(file, String(process.pid), { flag: 'wx' });
+    writeFileSync(file, lockText(), { flag: 'wx' });
   } catch (error) {
     if (error.code !== 'EEXIST') throw error;
-    const pid = Number(readFileSync(file, 'utf8'));
-    if (Number.isSafeInteger(pid) && pid !== process.pid && processAlive(pid)) {
-      throw new Error(`Servizio già in esecuzione su questo archivio (processo ${pid}).`);
-    }
-    writeFileSync(file, String(process.pid));
+    const lock = parseLock(readFileSync(file, 'utf8'));
+    if (lockIsLive(lock)) throw new Error(`Servizio già in esecuzione su questo archivio (processo ${lock.pid}).`);
+    writeFileSync(file, lockText());
   }
   heldLocks.add(file);
   return () => { heldLocks.delete(file); rmSync(file, { force: true }); };

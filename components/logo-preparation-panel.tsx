@@ -15,6 +15,7 @@ export default function LogoPreparationPanel() {
         <a className="button primary" href="/downloads/ponte-logo-preparazione.zip" download><Download size={16}/>Scarica pacchetto PC</a>
         <a className="button secondary" href="/downloads/guida-collegamento-logo.md" download><FileText size={16}/>Guida per il collegamento</a>
         <a className="button secondary" href="/downloads/programma-logo-24ce.md" download><FileText size={16}/>Programma LOGO! 24CE</a>
+        <a className="button secondary" href="/downloads/foglio-collaudo-linea.md" download><FileText size={16}/>Foglio di collaudo</a>
       </div>
       <p className="form-help">Richiede Node.js 22.13 o successivo. Avvio rapido per Windows; script utilizzabili anche su macOS e Linux. Nessuna installazione sul tuo PC è stata eseguita da qui.</p>
     </div>

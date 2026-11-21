@@ -203,6 +203,13 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 - iPad e Produzione mostrano i cartoni letti dalle fotocellule durante la lavorazione, dall'ultimo heartbeat del ponte (`GET /api/workspace/live`, campi limitati, leggibile anche dal laboratorio), con lo stato «agganciato / non agganciato / fermo». Mai in modalità prova. Sul PC di linea: `intervals.heartbeatMs` = 6000 in `ponte.local.json`, poi riavvio del servizio.
 - Verificato: test dell'endpoint e della logica (`tests/live.test.ts`), smoke nel browser con un ponte finto, schermata iPad controllata.
 
+## Avvio automatico e copie (21/11/2026)
+
+- `INSTALLA-AVVIO-AUTOMATICO.cmd` / `RIMUOVI-AVVIO-AUTOMATICO.cmd` (`bridge/avvio-automatico.ps1`): ponte all'accesso a Windows ridotto a icona, con nuovo tentativo ogni 60 s e ogni errore nel log di avvio; backup giornaliero alle 13:10 con gli ultimi 30 conservati (`backup.mjs --mantieni`).
+- Blocco «un solo servizio» con l'istante di accensione del PC (`bridge/core/lock.mjs`): dopo un'interruzione di corrente il riavvio non resta bloccato. Versione del ponte 1.3.0, pacchetto 1.3.0. La logica di conteggio e chiusura non è cambiata.
+- Guida: impostazioni del PC di linea (sospensione, ore di attività, scheda di rete, modifica rapida) e copia su chiavetta senza token. Foglio di collaudo stampabile (`docs/FOGLIO-COLLAUDO-LINEA.md`).
+- I file `.cmd`/`.ps1` sono controllati qui (ASCII, CRLF, revisione); vanno provati sul PC Windows con la verifica descritta in `bridge/README.md`.
+
 ## Prossimo passo
 
 1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.

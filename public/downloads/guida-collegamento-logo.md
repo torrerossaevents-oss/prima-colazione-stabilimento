@@ -21,7 +21,7 @@ Il **LOGO!** conta i cartoni dalle due fotocellule e tiene un totale che non si 
 | --- | --- |
 | **Simulato e testato** (PC, senza hardware) | Logica dei sensori; contatore e baseline; chiusura con pulsante; archivio SQLite; coda e invio con ritentativi; Internet assente; PLC non raggiungibile o riavviato; PC riavviato; backup e ripristino. |
 | **Verificato sull'impianto (20/11/2026)** | Ingressi I1, I3, I4; lettura Modbus del LOGO! reale; collegamento al gestionale con token del dispositivo e token di servizio di Access; una chiusura dal pulsante (6 cartoni). |
-| **Implementato, da verificare sull'impianto** | Lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); Internet assente e ritentativi sull'impianto; tutti i file `.cmd` su Windows; avvio automatico. |
+| **Implementato, da verificare sull'impianto** | Lettura del contatore a 32 bit durante il moto; riscontro scritto sul LOGO! (spento per default); Internet assente e ritentativi sull'impianto; tutti i file `.cmd` su Windows; avvio automatico all'accesso e backup giornaliero (`INSTALLA-AVVIO-AUTOMATICO.cmd`, vedi `bridge/README.md`). |
 | **Caricato, collaudo in corso** | Programma LOGO! conta-cartoni per il LOGO! 24CE 8.4 (`docs/PROGRAMMA-LOGO-24CE.md`): soste, arretramenti, salti, ritenzione. |
 | **Non implementato** | Apertura di lavorazioni dal PC. Il carico a magazzino alla chiusura è fatto dal server (regola del 14/11/2026). |
 

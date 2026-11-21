@@ -7,6 +7,7 @@
  *          --silenzioso (nessuna riga a schermo: usato dall'avvio automatico, il log su file resta)
  * Arresto pulito con Ctrl+C.
  */
+import { lockHeldByLiveProcess } from './core/lock.mjs';
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { STORE_MARKER } from './core/store.mjs';
@@ -36,13 +37,7 @@ function parse(args) {
   return options;
 }
 
-function lockedByLiveProcess(dataDir) {
-  try {
-    const pid = Number(readFileSync(resolve(dataDir, 'ponte.lock'), 'utf8'));
-    process.kill(pid, 0);
-    return true;
-  } catch (error) { return error.code === 'EPERM'; }
-}
+function lockedByLiveProcess(dataDir) { return lockHeldByLiveProcess(dataDir); }
 
 /**
  * La simulazione svuota la propria cartella a ogni avvio. Per non cancellare mai un archivio
