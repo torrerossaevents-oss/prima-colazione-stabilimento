@@ -1,6 +1,6 @@
 # Contratto ponte LOGO! ↔ gestionale (versione 1, 13 novembre 2026)
 
-Stato: **implementato e provato solo con simulatore e test automatici** (`npm run test:bridge`, `tests/bridge-e2e.test.ts`: trasmettitore reale ↔ route reali su HTTP locale). Nessun impianto reale è stato collegato. L'attivazione richiede un dispositivo registrato in Configurazione e il collaudo descritto in `COLLAUDO.md`.
+Stato: **implementato, provato con simulatore e test automatici** (`npm run test:bridge`, `tests/bridge-e2e.test.ts`: trasmettitore reale ↔ route reali su HTTP locale) e **collegato all'impianto reale il 20/11/2026**: prima chiusura dal pulsante della linea confermata dal gestionale (6 cartoni, uguali al conteggio a mano). Il collaudo completo è in corso (`FOGLIO-COLLAUDO-LINEA.md`, `COLLEGAMENTO-LOGO.md`): fino al suo esito non ci si fida del conteggio. L'attivazione richiede un dispositivo registrato in Configurazione.
 
 ## Architettura
 

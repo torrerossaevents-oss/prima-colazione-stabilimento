@@ -101,6 +101,7 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 | «Prima Colazione Backup ponte» | ogni giorno alle 13:10, oppure appena possibile se il PC era spento | `BACKUP-ARCHIVIO.cmd /automatico`: copia verificata dell'archivio, restano gli ultimi 30 |
 
 - Prima di installare chiudere la finestra del ponte aperta a mano (Ctrl+C, poi S): l'installatore si rifiuta se trova un ponte già in funzione.
+- **Estrarre prima lo ZIP** in una cartella sul disco del PC, per esempio `PonteLOGO` nella cartella dell'utente, e lanciare l'installatore da lì. Dal pacchetto 1.3.1 l'installatore si rifiuta, senza modificare nulla, se è aperto da dentro lo ZIP o da una cartella temporanea («ESTRAI PRIMA LO ZIP»), da una chiavetta o da un'unità di rete: le attività punterebbero a file che poi spariscono (è successo il 21/11/2026).
 - In modalità automatica nulla viene scritto nella finestra (un clic non può metterla in pausa): ogni avvio, errore e nuovo tentativo è in `bridge\data\impianto\avvio-automatico.log`, il resto nel log del ponte. L'esito dei backup è in `backup-automatico.log`.
 - Il blocco «un solo servizio» (`ponte.lock`) registra anche l'istante di accensione del PC: dopo un'interruzione di corrente o un arresto forzato non impedisce il riavvio.
 - `RIMUOVI-AVVIO-AUTOMATICO.cmd` toglie le due attività; non ferma un ponte già in funzione. `powershell -NoProfile -ExecutionPolicy Bypass -File bridge\avvio-automatico.ps1 -Azione Stato` mostra lo stato delle attività.

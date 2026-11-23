@@ -1,6 +1,6 @@
 # Stato di avanzamento
 
-Ultimo aggiornamento: 20 novembre 2026 (messa in servizio del LOGO!). Prima stesura: 13 novembre 2026 · branch `claude/ottimizzazione-stabilimento-20261113` · base `main` 31ecaf5.
+Ultimo aggiornamento: 23 novembre 2026 (spostamento del ponte, pacchetto 1.3.1). Prima stesura: 13 novembre 2026 · branch `claude/ottimizzazione-stabilimento-20261113` · base `main` 31ecaf5.
 Riprendere da «Prossimo passo». Documento operativo: decisioni, comandi, risultati, problemi aperti.
 
 ## Baseline registrata prima delle modifiche (31ecaf5, Linux, Node 22.23.4, npm 10.9.9)
@@ -210,8 +210,21 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 - Guida: impostazioni del PC di linea (sospensione, ore di attività, scheda di rete, modifica rapida) e copia su chiavetta senza token. Foglio di collaudo stampabile (`docs/FOGLIO-COLLAUDO-LINEA.md`).
 - I file `.cmd`/`.ps1` sono controllati qui (ASCII, CRLF, revisione); vanno provati sul PC Windows con la verifica descritta in `bridge/README.md`.
 
+## Situazione al 23/11/2026 e pacchetto 1.3.1
+
+- Il lavoro prosegue da un altro account Claude, con lo stesso repository.
+- **Ponte**: ancora in funzione sul PC dell'ufficio. Va spostato sul PC del reparto (Windows 11, raggiunge Internet e l'etichettatrice), dove Node.js portatile è già nel Path. Il pacchetto lì era stato estratto per errore sulla chiavetta.
+- **Prima di fermare il ponte sul PC dell'ufficio**: `STATO-PONTE.cmd` deve mostrare nessuna lavorazione seguita e coda a 0, altrimenti una chiusura non ancora inviata resterebbe su quel PC.
+- **Rete**: l'intervallo DHCP del router è stato ridotto (il LOGO! ha un indirizzo statico fuori dall'intervallo). Il LOGO! era spento: dal PC del reparto vanno rifatti ping, porta Modbus, `PROVA-INGRESSI` e `LEGGI-LOGO` quando viene riacceso.
+- **Pacchetto 1.3.1**: `INSTALLA-AVVIO-AUTOMATICO.cmd` si rifiuta, senza modificare nulla, se è aperto da dentro lo ZIP o da una cartella temporanea, da una chiavetta o da un'unità di rete. Il ponte (1.3.0) e la logica di conteggio non cambiano. I `.cmd`/`.ps1` restano ASCII con CRLF; il controllo è da confermare sul PC Windows: lanciato da dentro lo ZIP deve dire «ESTRAI PRIMA LO ZIP».
+- **Collaudo, punti aperti**: lavorazione 2 con ponte 21 e conteggio a mano 19 (+2), da spiegare o correggere con «Correggi cartoni»; 5 cartoni «non attribuiti» passati senza lavorazione aperta, da decidere se registrarli a mano.
+- **Catalogo**: nel gestionale mancano articoli importati in passato. Serve l'Excel degli articoli dal gestionale contabile, da controllare e importare con «Salta gli esistenti» (limite pilota 350 articoli; l'importazione è tutto o niente).
+- **Etichettatrice** (prossimo progetto): stampa e applica con motore Zebra ZE511 300 dpi in rete; modelli ZebraDesigner 3 `.nlbl` cifrati, da non forzare. Prossimo passo: 1–2 file ZPL ottenuti con «Stampa su file», con lotto e IDENT. impostati a «PROVA», senza stampare sulla Zebra né cambiarne le impostazioni. Far partire una lavorazione dal ponte richiede una decisione esplicita di Teo che cambi la regola del dispositivo in `AGENTS.md`.
+
 ## Prossimo passo
 
-1. Uso del gestionale sul nuovo indirizzo; primo backup completo scaricato e verificato.
-2. Nuove pubblicazioni: Actions → «Pubblica su Cloudflare» → Run workflow, dopo un backup.
-3. LOGO!: finire il collaudo con almeno 100 cartoni contati anche a mano e i casi particolari; riservare nel router l'indirizzo del LOGO!.
+1. Spostare il ponte sul PC del reparto (cartella sul disco del PC, `INSTALLA-AVVIO-AUTOMATICO.cmd` dalla cartella estratta) e verificare: dispositivo «Attivo»; di nuovo «Attivo» dopo un riavvio; `taskkill /F /IM node.exe` e ripartenza entro 60 s. Poi cancellare le copie dei `.local.json` dalla chiavetta e dallo ZIP.
+2. LOGO!: finire il collaudo con almeno 100 cartoni contati anche a mano e le cinque prove del foglio di collaudo; prenotare nel router l'indirizzo del LOGO! e dell'etichettatrice.
+3. Catalogo dall'Excel del gestionale contabile.
+4. Etichettatrice, dai file ZPL di prova.
+5. Nuove pubblicazioni: Actions → «Pubblica su Cloudflare» → Run workflow, dopo un backup.
