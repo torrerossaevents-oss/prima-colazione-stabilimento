@@ -1,9 +1,10 @@
 # Avvio automatico del ponte e backup giornaliero con l'Utilita' di pianificazione di Windows.
 # Uso (dal file INSTALLA-AVVIO-AUTOMATICO.cmd o RIMUOVI-AVVIO-AUTOMATICO.cmd):
-#   powershell -NoProfile -ExecutionPolicy Bypass -File avvio-automatico.ps1 -Azione Installa | Rimuovi | Stato
+#   powershell -NoProfile -ExecutionPolicy Bypass -File avvio-automatico.ps1 -Azione Installa | Rimuovi | Stato | Controlla
+# Controlla: rifiuta una cartella temporanea (file aperto da dentro lo ZIP), una chiavetta o un'unita' di rete.
 # Le attivita' girano con l'utente attuale, all'accesso a Windows, finestra ridotta a icona.
 # Nessuna password viene chiesta o salvata; nessuna impostazione di sicurezza di Windows viene cambiata.
-param([ValidateSet('Installa', 'Rimuovi', 'Stato')][string]$Azione = 'Stato')
+param([ValidateSet('Installa', 'Rimuovi', 'Stato', 'Controlla')][string]$Azione = 'Stato')
 $ErrorActionPreference = 'Stop'
 $bridge = $PSScriptRoot
 $taskPonte = 'Prima Colazione Ponte'
@@ -23,7 +24,26 @@ function Find-RunningBridge {
   Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" | Where-Object { $_.CommandLine -like '*service.mjs*--impianto*' }
 }
 
+function Assert-Location {
+  $here = $bridge.TrimEnd('\') + '\'
+  $suggested = Join-Path $env:USERPROFILE 'PonteLOGO'
+  $temps = @([IO.Path]::GetTempPath(), $env:TEMP, $env:TMP) | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\') + '\' }
+  $inTemp = @($temps | Where-Object { $here.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
+  if ($inTemp -or $here -match '\.zip\\') {
+    throw "ESTRAI PRIMA LO ZIP. Questo file e' stato aperto da dentro lo ZIP (cartella temporanea $bridge). Clic destro sul file ZIP > Estrai tutto, nella cartella $suggested, poi lancia INSTALLA-AVVIO-AUTOMATICO.cmd dalla cartella estratta."
+  }
+  $root = [IO.Path]::GetPathRoot($bridge)
+  if ($root.StartsWith('\\')) {
+    throw "La cartella del ponte e' in rete ($root). Copia la cartella prima-colazione-logo in $suggested e lancia il file da li'."
+  }
+  $disk = Get-CimInstance Win32_LogicalDisk -Filter ("DeviceID='" + $root.TrimEnd('\') + "'") -ErrorAction SilentlyContinue
+  if ($disk -and ($disk.DriveType -eq 2 -or $disk.DriveType -eq 4)) {
+    throw "La cartella del ponte e' su una chiavetta o su un'unita' di rete ($root). Copia la cartella prima-colazione-logo in $suggested e lancia il file da li': il ponte deve restare sul disco del PC."
+  }
+}
+
 if ($Azione -eq 'Stato') { Show-State; exit 0 }
+if ($Azione -eq 'Controlla') { Assert-Location; exit 0 }
 
 if ($Azione -eq 'Rimuovi') {
   foreach ($name in $taskPonte, $taskBackup) {
@@ -37,6 +57,7 @@ if ($Azione -eq 'Rimuovi') {
   exit 0
 }
 
+Assert-Location
 foreach ($file in 'ponte.local.json', 'token.local.json', 'AVVIA-SERVIZIO-IMPIANTO.cmd', 'BACKUP-ARCHIVIO.cmd') {
   if (-not (Test-Path (Join-Path $bridge $file))) { throw "Manca bridge\$file. Completa la configurazione del ponte prima di attivare l'avvio automatico." }
 }

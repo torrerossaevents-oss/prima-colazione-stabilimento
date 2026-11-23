@@ -3,6 +3,11 @@ setlocal
 rem Attiva l'avvio automatico del ponte all'accesso a Windows e il backup giornaliero.
 rem Prima chiudere la finestra del ponte aperta a mano (Ctrl+C, poi S).
 title Prima Colazione - Avvio automatico del ponte
+rem Aperto da dentro lo ZIP Windows copia solo questo file in una cartella temporanea.
+if not exist "%~dp0avvio-automatico.ps1" goto :notextracted
+if not exist "%~dp0service.mjs" goto :notextracted
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0avvio-automatico.ps1" -Azione Controlla
+if errorlevel 1 goto :stopped
 echo AVVIO AUTOMATICO DEL PONTE
 echo - il ponte partira' da solo quando questo utente accede a Windows, ridotto a icona;
 echo - se si ferma per un errore riprova da solo ogni 60 secondi;
@@ -20,3 +25,18 @@ exit /b 0
 echo Nessuna modifica.
 pause
 exit /b 0
+
+:notextracted
+echo ESTRAI PRIMA LO ZIP.
+echo Questo file e' stato aperto da dentro il file ZIP: cosi' non funziona.
+echo 1. Chiudi questa finestra.
+echo 2. Clic destro sul file ZIP, poi "Estrai tutto", nella cartella PonteLOGO del tuo utente.
+echo 3. Apri la cartella estratta, poi bridge, e lancia da li' INSTALLA-AVVIO-AUTOMATICO.cmd.
+echo Nessuna modifica.
+pause
+exit /b 1
+
+:stopped
+echo Nessuna modifica. Leggi il messaggio sopra.
+pause
+exit /b 1
