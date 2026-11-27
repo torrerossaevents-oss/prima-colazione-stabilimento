@@ -10,6 +10,9 @@
  * - Chiusura: richiesta nuova del pulsante → sensori liberi e stabili → transazione SQLite
  *   (sessione chiusa + evento in coda + nuova baseline) → riscontro al PLC solo se
  *   writesEnabled === true → invio con ritentativi.
+ * - Richiesta trovata in sospeso alla prima lettura dopo l'avvio (CHIUDI premuto a ponte spento):
+ *   chiude solo la lavorazione già seguita nell'archivio prima dello spegnimento; una lavorazione
+ *   iniziata a seguire in questo avvio non viene chiusa (decisione di Teo del 27/11/2026).
  * Il conteggio non sostituisce arresti o dispositivi di sicurezza della macchina.
  */
 import { mkdirSync, writeFileSync, renameSync, readFileSync, rmSync } from 'node:fs';
@@ -20,7 +23,7 @@ import { createCounterState, observeCounter, partialOf } from './counter.mjs';
 import { RotatingLog } from './log.mjs';
 import { lockIsLive, lockText, parseLock } from './lock.mjs';
 
-export const BRIDGE_VERSION = '1.3.0';
+export const BRIDGE_VERSION = '1.3.1';
 
 const heldLocks = new Set();
 
@@ -62,6 +65,9 @@ export class BridgeService {
     this.counter = this.store.getState('counter');
     this.closeRef = this.store.getState('closeRef');
     this.pendingClose = null;
+    // Lavorazione seguita nell'archivio al momento dell'avvio: l'unica che una richiesta in sospeso può chiudere.
+    this.sessionAtStart = this.store.openSession()?.id ?? null;
+    this.closeChecked = false;
     this.sensorsFreeSince = null;
     this.lastReading = null;
     this.lastReadAt = null;
@@ -207,6 +213,8 @@ export class BridgeService {
 
   #handleClose(reading, now) {
     const value = reading.closeRequest;
+    const firstCheck = !this.closeChecked; // prima lettura del pulsante in questo avvio
+    this.closeChecked = true;
     if (!this.closeRef) {
       this.closeRef = { value };
       this.store.setState('closeRef', this.closeRef);
@@ -221,13 +229,22 @@ export class BridgeService {
       return;
     }
     if (diff > 0 && this.pendingClose?.value !== value) {
-      this.pendingClose = { value, since: now };
-      this.log('INFO', `Richiesta di chiusura n. ${value} ricevuta: attendo sensori liberi e stabili per ${this.config.close.sensorsFreeStableMs} ms.`);
+      this.pendingClose = { value, since: now, atStartup: firstCheck };
+      this.log('INFO', firstCheck
+        ? `Richiesta di chiusura n. ${value} trovata all'avvio (CHIUDI premuto mentre il ponte era spento).`
+        : `Richiesta di chiusura n. ${value} ricevuta: attendo sensori liberi e stabili per ${this.config.close.sensorsFreeStableMs} ms.`);
     }
     if (!this.pendingClose) return;
     const session = this.store.openSession();
     if (!session) {
       this.log('AVVISO', `Richiesta di chiusura n. ${value} senza lavorazione seguita: ignorata, nessun riscontro al PLC.`);
+      this.closeRef = { value };
+      this.pendingClose = null;
+      this.store.setState('closeRef', this.closeRef);
+      return;
+    }
+    if (this.pendingClose.atStartup && session.id !== this.sessionAtStart) {
+      this.log('AVVISO', `Richiesta di chiusura n. ${value} fatta mentre il ponte era spento: la lavorazione ${session.id} è seguita solo da questo avvio, quindi NON viene chiusa. Per chiuderla premere di nuovo CHIUDI.`);
       this.closeRef = { value };
       this.pendingClose = null;
       this.store.setState('closeRef', this.closeRef);

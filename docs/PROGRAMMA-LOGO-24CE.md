@@ -181,7 +181,7 @@ Con il LOGO! collegato, il **Test online** mostra lo schema con i valori reali: 
 2. In Configurazione del gestionale creare il dispositivo della linea e copiare il token in `bridge\token.local.json`. Il token non va mai in chat o via e-mail.
 3. Avviare `AVVIA-SERVIZIO-IMPIANTO.cmd` e seguire il collaudo di `docs/COLLEGAMENTO-LOGO.md`.
 
-**Uso del pulsante CHIUDI.** Tenerlo premuto **almeno 2 secondi**: il programma registra la richiesta dopo 1 s (B034), i 2 s danno margine. Il ponte reagisce solo a un aumento del contatore delle richieste che avviene **mentre è in funzione**: una pressione fatta a ponte spento non chiude la lavorazione, va ripetuta con il ponte avviato.
+**Uso del pulsante CHIUDI.** Tenerlo premuto **almeno 2 secondi**: il programma registra la richiesta dopo 1 s (B034), i 2 s danno margine. Il ponte legge l'aumento del contatore delle richieste. **CHIUDI premuto a ponte spento** (dal ponte 1.3.1): alla ripartenza il ponte chiude la lavorazione **solo se la seguiva già prima dello spegnimento**, con i cartoni contati nel frattempo dal LOGO!. Se invece la lavorazione viene seguita solo da quell'avvio, per esempio perché è stata aperta nel gestionale mentre il ponte era spento, **non** viene chiusa: nel log compare un AVVISO e per chiuderla si preme di nuovo CHIUDI con il ponte acceso.
 
 ## Tempi da verificare sulla linea
 

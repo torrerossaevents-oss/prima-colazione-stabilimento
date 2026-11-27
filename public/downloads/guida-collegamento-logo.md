@@ -76,7 +76,7 @@ La logica di riferimento è in `bridge/core/sensors.mjs` ed è provata dai test:
 ## Chiusura di una lavorazione
 
 1. Fermare gli arrivi secondo la procedura della linea e far uscire l'ultimo cartone.
-2. Premere il pulsante di chiusura **una volta**, tenendolo premuto **almeno 2 secondi**. Il ponte deve essere in funzione: reagisce solo a una richiesta fatta mentre è acceso. Pressioni ripetute della stessa richiesta non creano una seconda chiusura.
+2. Premere il pulsante di chiusura **una volta**, tenendolo premuto **almeno 2 secondi**. Meglio con il ponte in funzione. Se CHIUDI viene premuto a ponte spento, alla ripartenza il ponte chiude la lavorazione solo se la seguiva già prima dello spegnimento; una lavorazione seguita solo da quell'avvio non viene chiusa (AVVISO nel log): si preme di nuovo CHIUDI. Pressioni ripetute della stessa richiesta non creano una seconda chiusura.
 3. Il ponte aspetta i sensori liberi e stabili, poi salva tutto sul PC in un'unica operazione.
 4. Solo dopo il salvataggio, se le scritture sono abilitate, manda il riscontro al LOGO!.
 5. Il parziale riparte da zero; il totale del LOGO! non viene azzerato.
