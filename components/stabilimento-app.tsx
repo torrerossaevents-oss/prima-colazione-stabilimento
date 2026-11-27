@@ -408,10 +408,13 @@ export default function StabilimentoApp() {
             case 'start': {
                 // Lotto scritto a mano: data di produzione AAMMGG vera; se non è oggi, chiedere conferma prima di avviare.
                 const lot = str('lotCode');
+                setError('');
                 if (lot) {
                     const lotDay = productionLotDay(lot);
                     if (!lotDay) { setError(`${PRODUCTION_LOT_FORMAT}.`); return; }
-                    if (lotDay !== today && !confirm(`Il lotto ${lot} è la data ${lotDay.split('-').reverse().join('/')}, non quella di oggi (${productionLot(today)}). Avviare la lavorazione con il lotto ${lot}?`)) return;
+                    // Giorno di Roma calcolato adesso, non quello aggiornato ogni minuto: giusto anche subito dopo mezzanotte.
+                    const startDay = todayRome(new Date());
+                    if (lotDay !== startDay && !confirm(`Il lotto ${lot} è la data ${lotDay.split('-').reverse().join('/')}, non quella di oggi (${productionLot(startDay)}). Avviare la lavorazione con il lotto ${lot}?`)) return;
                 }
                 action = { type: 'production.start', code: code.trim(), operator: str('operator'), lotCode: lot, expiry: str('expiry'), counting: str('counting') === 'device' ? 'device' : 'manual' };
                 break;

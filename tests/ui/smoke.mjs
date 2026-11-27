@@ -170,6 +170,7 @@ const asked = new Promise(resolve => page.once('dialog', async d => { const text
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click();
 assert.match(await asked, new RegExp(`Il lotto ${otherLot} .*non quella di oggi \\(${autoLot}\\)`));
 await page.waitForTimeout(300);
+assert.equal(await dialog().getByRole('alert').count(), 0, 'lotto corretto e conferma annullata: non resta l’errore vecchio');
 assert.equal((await api()).version, versionBeforeLot, 'lotto non valido o conferma rifiutata: nessuna lavorazione avviata');
 await lotInput.fill('');
 log('lotto a mano: formato sbagliato rifiutato con messaggio chiaro, data diversa da oggi con richiesta di conferma');
