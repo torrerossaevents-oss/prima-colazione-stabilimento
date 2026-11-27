@@ -47,8 +47,8 @@ def main():
         payloads[name] = path.read_bytes()
     payloads["MANIFEST.json"] = (json.dumps({
         "package": "Prima Colazione - preparazione LOGO!",
-        "purpose": "Ponte LOGO!-gestionale per il LOGO! 24CE 8.4 del progetto PC-CC01: provato in simulazione, collegato all'impianto il 20/11/2026 con una prima chiusura corretta. Collaudo in corso.",
-        "version": "1.3.1",
+        "purpose": "Ponte LOGO!-gestionale per il LOGO! 24CE 8.4 del progetto PC-CC01: provato in simulazione, collegato all'impianto il 20/11/2026, collaudo sulla linea del 27/11/2026 superato (circa 105 cartoni uguali al conteggio a mano, 5 prove). Ponte 1.3.1.",
+        "version": "1.3.2",
         "sha256": {name: sha256(data).hexdigest() for name, data in payloads.items()},
     }, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     output = ROOT / "public/downloads"
@@ -56,7 +56,7 @@ def main():
     target = output / "ponte-logo-preparazione.zip"
     with ZipFile(target, "w", compression=ZIP_DEFLATED) as archive:
         for name, data in sorted(payloads.items()):
-            info = ZipInfo("prima-colazione-logo/" + name, date_time=(2026, 11, 23, 0, 0, 0))
+            info = ZipInfo("prima-colazione-logo/" + name, date_time=(2026, 11, 27, 0, 0, 0))
             info.compress_type = ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
             archive.writestr(info, data)

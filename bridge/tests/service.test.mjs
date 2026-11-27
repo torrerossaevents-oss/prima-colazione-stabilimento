@@ -184,6 +184,62 @@ test('PC riavviato: ripresa da SQLite di lavorazione, baseline e coda; nessun do
   assert.match(log(), /Ripresa dall'archivio locale/);
 });
 
+/** Ponte spento senza altro salvataggio (come un PC spento o un processo terminato). */
+function stopBridge(sim) { sim.service.dispose('Simulazione: ponte spento.'); }
+
+test('CHIUDI premuto a ponte spento con lavorazione già seguita: chiusa alla ripartenza (a)', async t => {
+  const { sim, log } = await setup(t);
+  await sim.cycle();
+  await openRemote(sim, 'A');
+  sim.cartons(40);
+  await sim.cycle();
+  stopBridge(sim);
+  sim.cartons(5);          // ultimi cartoni passati a ponte spento
+  sim.plc.pressClose();    // CHIUDI premuto a ponte spento
+  sim.start();
+  await sim.cycle(1, 1100);
+  await sim.cycle(1, 600); // sensori liberi e stabili
+  const closed = sim.service.store.session('A');
+  assert.equal(closed.status, 'chiusa', 'la lavorazione seguita prima dello spegnimento viene chiusa');
+  assert.equal(closed.cartons, 45);
+  await sim.cycle(1, 1100);
+  assert.equal(sim.gestionale.closures.length, 1);
+  assert.equal(sim.gestionale.closures[0].cartons, 45);
+  assert.match(log(), /trovata all'avvio/);
+  assert.doesNotMatch(log(), /NON viene chiusa/);
+});
+
+test('CHIUDI premuto a ponte spento e lavorazione nuova trovata all’avvio: NON chiusa (b)', async t => {
+  const { sim, log } = await setup(t);
+  await sim.cycle();
+  await openRemote(sim, 'A');
+  sim.cartons(30);
+  await closeWithButton(sim);
+  await sim.cycle(1, 1100);
+  assert.equal(sim.gestionale.closures.length, 1, 'A chiusa normalmente');
+  stopBridge(sim);
+  // A ponte spento: si avvia la lavorazione successiva nel gestionale e qualcuno preme CHIUDI.
+  sim.gestionale.openSession({ id: 'N', productCode: 'SIM-014', lotCode: '261127', startedAt: new Date(sim.clock.t).toISOString() });
+  sim.plc.pressClose();
+  const ackBefore = sim.plc.ack;
+  sim.start();
+  await sim.cycle(1, 1100); // segue N e trova la richiesta in sospeso nello stesso ciclo
+  await sim.cycle(3, 600);
+  assert.equal(sim.service.store.openSession()?.id, 'N', 'la lavorazione nuova resta aperta e seguita');
+  assert.equal(sim.service.store.session('N').status, 'attiva');
+  assert.equal(sim.gestionale.closures.length, 1, 'nessuna chiusura con 0 cartoni inviata al gestionale');
+  assert.equal(sim.plc.ack, ackBefore, 'nessun riscontro al PLC per la richiesta ignorata');
+  assert.match(log(), /fatta mentre il ponte era spento: la lavorazione N è seguita solo da questo avvio, quindi NON viene chiusa/);
+  // Una nuova pressione, con il ponte acceso, chiude N normalmente.
+  sim.cartons(12);
+  await closeWithButton(sim);
+  assert.equal(sim.service.store.session('N').status, 'chiusa');
+  assert.equal(sim.service.store.session('N').cartons, 12);
+  await sim.cycle(1, 1100);
+  assert.equal(sim.gestionale.closures.length, 2);
+  assert.equal(sim.gestionale.closures[1].cartons, 12);
+});
+
 test('orologio del PC che torna indietro: le letture del contatore non si bloccano', async t => {
   const { sim, log } = await setup(t);
   await sim.cycle();

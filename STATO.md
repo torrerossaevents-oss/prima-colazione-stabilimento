@@ -195,7 +195,7 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 - Rete: il LOGO! va su un indirizzo statico fuori dall'intervallo DHCP del router; un conflitto di indirizzo faceva rispondere al ping un altro apparecchio. Controllo con `arp -a`. Riserva nel router ancora da fare. Nessun indirizzo o MAC nel repository.
 - Porta Modbus: sull'impianto il LOGO! non rispondeva sulla 502; si trova provando 502–510. `PROVA-INGRESSI.cmd` ora chiede anche la porta; i modelli `bridge/*.24ce.json` lo spiegano in `_port`. Il ponte distingue «Timeout del collegamento» (porta chiusa o accesso Modbus spento) da «Timeout della risposta» (collegato, nessuna risposta: `unitId`).
 - 20/11/2026: ingressi I1, I3, I4 verificati (filo allentato su I3 trovato e sistemato); lettura Modbus verificata (registri 0–5 = `[0, TOT, 0, CHIUS, 0, ANOM]`); ponte collegato al gestionale con token del dispositivo e token di servizio di Access; prima chiusura dal pulsante della linea: 6 cartoni, uguali al conteggio a mano, evento confermato dal gestionale.
-- Nota d'uso: CHIUDI va tenuto almeno 2 s; il ponte reagisce solo a richieste fatte mentre è in funzione.
+- Nota d'uso: CHIUDI va tenuto almeno 2 s. Se viene premuto a ponte spento, alla ripartenza il ponte chiude la lavorazione solo se la seguiva già prima dello spegnimento; una lavorazione seguita solo da quell'avvio non viene chiusa (AVVISO nel log): si preme di nuovo CHIUDI (dal ponte 1.3.1).
 - In corso: collaudo con almeno 100 cartoni contati anche a mano e casi particolari (`docs/COLLEGAMENTO-LOGO.md`). Pacchetto PC 1.2.0.
 
 ## Conteggio dal vivo (20/11/2026)
@@ -224,6 +224,12 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 ## Lotto scritto a mano all'avvio (27/11/2026)
 
 Piano di Teo, pezzo 1. Nella finestra di avvio del gestionale il campo «Lotto diverso» accetta solo una data di produzione vera di 6 cifre AAMMGG; altrimenti compare «Il lotto deve essere la data di produzione, 6 cifre: AAMMGG, es. 261127» e i dati inseriti restano. Una data valida diversa da oggi chiede conferma prima di avviare. Il server fa lo stesso controllo in `production.start` (`productionLotDay` in `lib/domain.ts`), con o senza ponte. Campo vuoto: lotto automatico come prima. Invariati ponte, iPad `/linea` (che usa sempre il lotto automatico), carico a magazzino e lotti già esistenti. Test: `tests/production-label.test.ts` e un passaggio nuovo in `tests/ui/smoke.mjs`; i test che usavano lotti di fantasia all'avvio ora usano date AAMMGG.
+
+## Collaudo superato e CHIUDI a ponte spento (27/11/2026)
+
+- Collaudo della linea completato il 27/11/2026: circa 105 cartoni uguali al conteggio a mano, le 5 prove del foglio di collaudo superate. Il ponte gira sul PC del reparto con l'avvio automatico.
+- Difetto visto il 27/11: alla ripartenza il ponte applicava una richiesta di CHIUDI fatta a ponte spento anche a una lavorazione che iniziava a seguire in quello stesso avvio, chiudendola subito con 0 cartoni. Piano di Teo, pezzo 5: una richiesta trovata in sospeso alla prima lettura dopo l'avvio chiude solo la lavorazione già seguita nell'archivio prima dello spegnimento; altrimenti è ignorata con un AVVISO nel log e senza riscontro al LOGO!. Ponte 1.3.1, pacchetto 1.3.2. Il calcolo dei cartoni (`counter.mjs`) non cambia. Test (a) e (b) in `bridge/tests/service.test.mjs`. Corretti `docs/PROGRAMMA-LOGO-24CE.md`, `docs/COLLEGAMENTO-LOGO.md` e `bridge/README.md`.
+- Da fare dopo: pezzo 1b, con un lotto scritto a mano di un altro giorno la scadenza si calcola dalla data del lotto.
 
 ## Prossimo passo
 

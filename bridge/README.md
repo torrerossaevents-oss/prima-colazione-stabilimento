@@ -84,7 +84,7 @@ I dati della simulazione stanno in una cartella temporanea o in `bridge\data\sim
 ## Diagnosi
 
 - **«Timeout del collegamento Modbus»**: il LOGO! non accetta connessioni su quella porta. Controllare che l'accesso Modbus sia abilitato sul dispositivo e provare le porte da 502 a 510. **«Timeout della risposta Modbus»**: il collegamento c'è, ma il LOGO! non risponde alla richiesta: provare `unitId` 255.
-- Il pulsante CHIUDI va tenuto premuto almeno 2 secondi. Il ponte reagisce solo a una richiesta fatta mentre è in funzione.
+- Il pulsante CHIUDI va tenuto premuto almeno 2 secondi. Se viene premuto a ponte spento, alla ripartenza il ponte chiude la lavorazione solo se la seguiva già prima dello spegnimento; una lavorazione seguita solo da quell'avvio non viene chiusa e nel log compare «fatta mentre il ponte era spento … NON viene chiusa»: premere di nuovo CHIUDI (dal ponte 1.3.1).
 
 - `bridge\data\impianto\stato.json`: ultimo ciclo, ultima lettura PLC, ultimo contatto e heartbeat, lavorazione, coda. `STATO-PONTE.cmd` lo mostra in chiaro e avvisa se è vecchio di oltre 90 secondi.
 - `bridge\data\impianto\log\ponte.log`: righe leggibili con data UTC e livello (`INFO`, `AVVISO`, `ALLARME`). Rotazione automatica: 5 file da 1 MB al massimo.
