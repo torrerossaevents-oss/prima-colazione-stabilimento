@@ -53,6 +53,10 @@ La stessa pagina `/linea` serve anche come schermo della linea sul PC del repart
   - senza lavorazione si legge ogni 10 s, solo per lo stato del ponte;
   - quando il ponte chiude o prende una lavorazione la pagina si ricarica subito, invece di aspettare il giro di 15 s;
   - costo: circa 1.200 letture all'ora per schermo aperto, entro i limiti gratuiti di Cloudflare insieme ai segnali del ponte.
+- **Ultima chiusura** (riquadro fisso): dopo una chiusura dal pulsante della linea compare «Ultima chiusura: ore hh:mm – N cartoni – lotto X» con l'esito del carico a magazzino. Resta finché non parte la lavorazione successiva, anche se si ricarica la pagina.
+  - Carico fatto: quantità, lotto e area.
+  - Carico **NON** fatto: bianco su rosso, con il motivo e cosa fare. I motivi sono area di carico non impostata, carico automatico disattivato, oppure nessun cartone buono da caricare (questo non è un errore).
+  - Al posto dell'avviso «Chiusa dal contapezzi» che spariva dopo 4 s.
 - **Schermo intero**: il pulsante con le quattro frecce in alto, dove il browser lo consente; sull'iPad non compare.
 - **Apertura automatica all'accensione** (Edge come app): conviene aprire direttamente `/linea`, cioè `msedge.exe --app=https://<indirizzo del gestionale>/linea --start-fullscreen`.
   - Usare il profilo normale di Edge, **non** `--kiosk`: il kiosk usa una navigazione privata e chiederebbe il codice di Cloudflare Access a ogni avvio.
