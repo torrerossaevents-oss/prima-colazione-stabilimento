@@ -231,6 +231,10 @@ Piano di Teo, pezzo 1. Nella finestra di avvio del gestionale il campo «Lotto d
 - Difetto visto il 27/11: alla ripartenza il ponte applicava una richiesta di CHIUDI fatta a ponte spento anche a una lavorazione che iniziava a seguire in quello stesso avvio, chiudendola subito con 0 cartoni. Piano di Teo, pezzo 5: una richiesta trovata in sospeso alla prima lettura dopo l'avvio chiude solo la lavorazione già seguita nell'archivio prima dello spegnimento; altrimenti è ignorata con un AVVISO nel log e senza riscontro al LOGO!. Ponte 1.3.1, pacchetto 1.3.2. Il calcolo dei cartoni (`counter.mjs`) non cambia. Test (a) e (b) in `bridge/tests/service.test.mjs`. Corretti `docs/PROGRAMMA-LOGO-24CE.md`, `docs/COLLEGAMENTO-LOGO.md` e `bridge/README.md`.
 - Da fare dopo: pezzo 1b, con un lotto scritto a mano di un altro giorno la scadenza si calcola dalla data del lotto.
 
+## Pagina Linea per il PC del reparto (27/11/2026)
+
+Piano di Teo, pezzo 2. `/linea` mostra in alto lo stato del ponte (agganciato, LOGO! raggiungibile, ultimo segnale, eventi in coda) e «Ponte non risponde» in rosso dopo 30 s di silenzio (soglia del dato fermo portata da 20 a 30 s, anche nel gestionale). Su schermo largo prodotto, lotto, scadenza e cartoni sono molto grandi; l'iPad resta com'era. Lettura dello stato ogni 3 s con lavorazione da fotocellule aperta (10 s senza) e ricarica immediata quando il ponte lascia o prende una lavorazione. `/api/workspace/live` espone anche `queueLength`. Pulsante «Schermo intero». Invariati ponte, conteggio e carico a magazzino. Guida: `docs/APP-LINEA-IPAD.md`.
+
 ## Prossimo passo
 
 1. Spostare il ponte sul PC del reparto (cartella sul disco del PC, `INSTALLA-AVVIO-AUTOMATICO.cmd` dalla cartella estratta) e verificare: dispositivo «Attivo»; di nuovo «Attivo» dopo un riavvio; `taskkill /F /IM node.exe` e ripartenza entro 60 s. Poi cancellare le copie dei `.local.json` dalla chiavetta e dallo ZIP.

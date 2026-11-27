@@ -107,4 +107,70 @@ else {
   await camBrowser.close();
   log('lettore dal vivo: codice a barre riconosciuto, fotocamera chiusa da sola, articolo pronto da avviare');
 }
+// 7. PC del reparto (27/11/2026): stato del ponte sempre visibile e numeri grandi da lontano; resta usabile sull'iPad.
+{
+  const created = await (await fetch(base + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ op: 'create', name: 'PC reparto prova' }) })).json();
+  assert.ok(created.token, 'dispositivo di prova creato');
+  const toBridge = async body => { const r = await fetch(base + '/api/devices/production', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + created.token }, body: JSON.stringify(body) }); assert.equal(r.status, 200, await r.text()); };
+  let lastBeat = 0;
+  // Il server conserva al massimo un heartbeat ogni 5 s per dispositivo (il ponte vero ne manda uno ogni 6 s).
+  const beat = async (session, extra = {}) => { const wait = 5_200 - (Date.now() - lastBeat); if (wait > 0) await new Promise(r => setTimeout(r, wait)); lastBeat = Date.now(); return toBridge({ eventId: 'hb_' + crypto.randomUUID(), type: 'heartbeat', at: new Date().toISOString(), bridgeVersion: '1.3.1', queueLength: 0, plc: { reachable: true, lastReadAt: new Date().toISOString() }, session, ...extra }); };
+  const wide = await chromium.launch();
+  const pc = await (await wide.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
+  const pcErrors = []; pc.on('pageerror', e => pcErrors.push(e.message)); pc.on('console', m => { if (m.type() === 'error') pcErrors.push(m.text()); });
+  await pc.goto(base + '/linea');
+  const status = pc.getByRole('region', { name: 'Stato del ponte' });
+  const chip = label => status.locator('.line-status-grid > div', { hasText: label });
+  await pc.locator('.line-silent', { hasText: 'Ponte non risponde: nessun segnale ricevuto' }).waitFor();
+  log('nessun segnale dal ponte: scritta rossa «Ponte non risponde»');
+  await beat(null);
+  await pc.locator('.line-silent').waitFor({ state: 'detached', timeout: 15_000 });
+  await chip('Ponte agganciato').getByText('Nessuna lavorazione').waitFor();
+  await chip('LOGO! raggiungibile').getByText('Sì').waitFor();
+  assert.match(await chip('Ultimo segnale del ponte').innerText(), /\d{2}:\d{2}:\d{2}\s+\d+ s fa/);
+  await post({ type: 'production.start', code, operator: 'Operatore prova', counting: 'device' });
+  await pc.getByRole('button', { name: 'Aggiorna' }).click();
+  await chip('Ponte agganciato').getByText('No').waitFor();
+  const run = (await api()).state.sessions.find(s => s.status === 'active');
+  const t0 = Date.now();
+  await beat({ id: run.id, cartons: 37 }, { queueLength: 2, plc: { reachable: false, lastReadAt: new Date().toISOString() } });
+  await pc.locator('.ipad-count-n', { hasText: '37' }).waitFor({ timeout: 8_000 });
+  log(`conteggio dal vivo sul PC del reparto aggiornato in ${((Date.now() - t0) / 1000).toFixed(1)} s (lettura ogni 3 s con lavorazione aperta)`);
+  await chip('Ponte agganciato').getByText('Sì').waitFor();
+  await chip('LOGO! raggiungibile').getByText('No').waitFor();
+  await chip('Eventi in coda').getByText('2').waitFor();
+  const head = await pc.locator('.ipad-run-head').innerText();
+  for (const v of [run.productCode, run.productName, run.lotCode, run.expiry.split('-').reverse().join('/')]) assert.ok(head.includes(v), `in grande: ${v}`);
+  const sizes = await pc.evaluate(() => { const px = s => parseFloat(getComputedStyle(document.querySelector(s)).fontSize); return { count: px('.ipad-count-n'), name: px('.ipad-run-head h1'), lot: px('.ipad-facts dd'), chip: px('.line-status-grid dd') }; });
+  assert.ok(sizes.count >= 150 && sizes.name >= 40 && sizes.lot >= 32 && sizes.chip >= 30, 'da leggere a distanza: ' + JSON.stringify(sizes));
+  const ink = await pc.evaluate(() => [...document.querySelectorAll('.line-status *, .ipad-run-head *, .ipad-count *')].filter(e => e.childElementCount === 0 && e.textContent.trim() && !e.closest('svg')).map(e => { const s = getComputedStyle(e); return [e.textContent.trim().slice(0, 30), s.color, s.fontWeight]; }).filter(([, c, w]) => !['rgb(0, 0, 0)', 'rgb(255, 255, 255)'].includes(c) || w !== '400'));
+  assert.deepEqual(ink, [], 'testo nero o bianco, peso 400');
+  await pc.screenshot({ path: `${out}/linea-pc-reparto.png` });
+  log('PC del reparto: prodotto, lotto, scadenza e cartoni in grande; agganciato sì, LOGO! no, 2 eventi in coda');
+  // iPad: stessa pagina, dimensioni di prima.
+  const tablet = await (await wide.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true })).newPage();
+  await tablet.goto(base + '/linea'); await tablet.locator('.ipad-count-n', { hasText: '37' }).waitFor({ timeout: 8_000 });
+  assert.equal(await tablet.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.ipad-count-n')).fontSize)), 96, 'iPad: numero come prima');
+  const smallTablet = await tablet.evaluate(() => [...document.querySelectorAll('button, input')].filter(b => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 44 && b.type !== 'checkbox'; }).length);
+  assert.equal(smallTablet, 0, 'iPad: pulsanti di almeno 44 px');
+  log('iPad: stato del ponte visibile, numeri e pulsanti come prima');
+  // Se è il PC del reparto a non raggiungere più il gestionale, lo stato non resta fermo su «Sì».
+  await pc.route('**/api/workspace/live', r => r.abort());
+  await pc.locator('.line-silent', { hasText: 'Ponte non risponde da' }).waitFor({ timeout: 45_000 });
+  await pc.unroute('**/api/workspace/live');
+  await beat({ id: run.id, cartons: 37 });
+  await pc.locator('.line-silent').waitFor({ state: 'detached', timeout: 15_000 });
+  log('PC senza collegamento al gestionale: dopo 30 s «Ponte non risponde», poi torna normale');
+  // Chiusura dal pulsante: come il ponte vero, prima il segnale di stato senza lavorazione, poi la chiusura.
+  // La pagina rilegge subito e di nuovo dopo 4 s, senza aspettare il giro di 15 s.
+  await beat(null);
+  const t1 = Date.now();
+  await new Promise(r => setTimeout(r, 1_500));
+  await toBridge({ eventId: 'evt_linea_reparto_1', type: 'session.close', sessionId: run.id, closeRequestId: 'req_linea_reparto_1', counterStart: 1000, counterEnd: 1037, cartons: 37, closedAt: new Date().toISOString(), anomalies: [] });
+  await pc.getByText('Etichetta del prodotto').waitFor({ timeout: 9_000 });
+  log(`chiusura dal ponte vista sul PC del reparto in ${((Date.now() - t1) / 1000).toFixed(1)} s`);
+  assert.deepEqual(pcErrors.filter(e => !/Failed to load resource|net::/.test(e)), [], 'nessun errore nella pagina');
+  await wide.close();
+  await fetch(base + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ op: 'revoke', id: created.device.id }) });
+}
 console.log('APP LINEA SUPERATA');

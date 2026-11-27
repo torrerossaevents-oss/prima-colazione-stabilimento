@@ -1164,6 +1164,29 @@ fieldset.field > span { margin-bottom: 2px; }
 .ipad-runs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; } .ipad-runs li { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 16px; }
 .ipad-toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-radius: 12px; background: var(--ink-oven); color: #fff; font-size: 17px; box-shadow: var(--shadow-float); z-index: 20; }
 .ipad-app .carton-label { max-width: 620px; }
+/* Pagina Linea: stato del ponte (27/11/2026). Testo nero 400 sulle superfici chiare, bianco 400 sul rosso pieno. */
+.line-status { display: flex; flex-direction: column; gap: 10px; }
+.line-silent { display: flex; align-items: center; gap: 12px; margin: 0; padding: 14px 18px; border-radius: 12px; background: #8a1f12; color: #fff; font-size: 22px; line-height: 1.35; }
+.line-silent svg { flex: none; color: #fff; }
+.line-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0; }
+.line-status-grid > div { padding: 10px 14px; border: 1px solid var(--line); border-left: 6px solid var(--line-strong); border-radius: 10px; background: #fff; }
+.line-status-grid > div.ok { border-left-color: #2e8b57; background: #e8f6ec; }
+.line-status-grid > div.bad { border-left-color: #d93f2b; background: #fde7e4; }
+.line-status-grid > div.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.line-status-grid dt { font-size: 15px; color: #000; }
+.line-status-grid dd { margin: 2px 0 0; font-size: 26px; color: #000; font-variant-numeric: tabular-nums; }
+.line-status-grid dd small { font-size: 16px; }
+/* Schermo grande del PC del reparto: da leggere a distanza (anche Full HD con zoom di Windows al 150% = 1280 px). L'iPad (1180 px) resta com'era. */
+@media (min-width: 1200px) {
+  .ipad-main { max-width: 1680px; }
+  .ipad-run-head h1 { font-size: 48px; line-height: 1.15; }
+  .ipad-run-head .ipad-code { font-size: 30px; }
+  .ipad-facts dt { font-size: 18px; } .ipad-facts dd { font-size: 40px; }
+  .ipad-count-n { font-size: 200px; } .ipad-count span:last-child { font-size: 28px; }
+  .ipad-live { font-size: 22px; }
+  .line-silent { font-size: 30px; padding: 18px 24px; }
+  .line-status-grid dt { font-size: 20px; } .line-status-grid dd { font-size: 36px; } .line-status-grid dd small { font-size: 20px; }
+}
 @media (max-width: 760px) { .ipad-scan { grid-template-columns: minmax(0, 1fr); } .ipad-scan img { max-width: 260px; } .ipad-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ipad-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ipad-count-n { font-size: 72px; } .ipad-status { display: none; } }
 .install-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; }
 
