@@ -192,7 +192,7 @@ else {
   await pc.getByRole('button', { name: 'Aggiorna' }).click();
   const bad = card.locator('.line-load.bad', { hasText: 'Carico a magazzino NON fatto: carico automatico disattivato.' });
   await bad.waitFor();
-  await card.getByText(/Avvisa l’amministrazione: registrare a mano l’entrata di 12 cartoni/).waitFor();
+  await card.getByText(new RegExp(`Avvisa l’amministrazione: registrare a mano l’entrata di 12 CRT nel lotto ${run2.lotCode}, scadenza \\d{2}/\\d{2}/\\d{4}`)).waitFor();
   const badInk = await bad.evaluate(e => { const s = getComputedStyle(e); return [s.color, s.backgroundColor, s.fontWeight]; });
   assert.deepEqual(badInk, ['rgb(255, 255, 255)', 'rgb(138, 31, 18)', '400'], 'scritta bianca su rosso pieno, peso 400');
   const cardInk = await pc.evaluate(() => [...document.querySelectorAll('.line-last-close *')].filter(e => e.childElementCount === 0 && e.textContent.trim() && !e.closest('svg')).map(e => { const s = getComputedStyle(e); return [e.textContent.trim().slice(0, 30), s.color, s.fontWeight]; }).filter(([, c, w]) => !['rgb(0, 0, 0)', 'rgb(255, 255, 255)'].includes(c) || w !== '400'));

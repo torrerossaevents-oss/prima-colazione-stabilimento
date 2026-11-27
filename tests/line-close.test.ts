@@ -13,8 +13,8 @@ const ctx = (extra: Context = {}): Context => ({ now: '2026-11-27T16:40:00.000Z'
 const act = (s: State, a: Action, c: Context = ctx()) => applyAction(s, a, c);
 const product = { code: 'A1', name: 'Cornetto PROVA', kind: 'finished' as const, unit: 'CRT', unitsPerBox: 1, minStock: 0 };
 
-function closedByLine(settings: State['settings'], cartons = 37, anomalies: string[] = []) {
-  let s = act(initialState(), { type: 'product.add', product });
+function closedByLine(settings: State['settings'], cartons = 37, anomalies: string[] = [], item: typeof product = product) {
+  let s = act(initialState(), { type: 'product.add', product: item });
   if (settings) s = act(s, { type: 'settings.update', settings });
   s = act(s, { type: 'production.start', code: 'A1', operator: 'Operatore prova', counting: 'device' });
   const sessionId = s.sessions[0].id;
@@ -35,7 +35,7 @@ test('carico NON fatto: area di carico non impostata, con cosa fare', () => {
   assert.equal(close.problem, true); assert.equal(close.loaded, false);
   assert.equal(close.load, 'Carico a magazzino NON fatto: area di carico non impostata.');
   assert.match(close.todo!, /Configurazione → Produzione ed etichette/);
-  assert.match(close.todo!, /entrata di 37 cartoni nel lotto 261127/);
+  assert.equal(close.todo, 'Avvisa l’amministrazione: scegliere l’area in Configurazione → Produzione ed etichette, poi registrare a mano l’entrata di 37 CRT nel lotto 261127, scadenza 27/11/2027 (Magazzino → Registra entrata).');
 });
 
 test('carico NON fatto: carico automatico disattivato', () => {
@@ -60,4 +60,11 @@ test('il riquadro sparisce quando parte la lavorazione successiva; niente per un
   s = act(s, { type: 'production.close', sessionId: s.sessions[1].id }, ctx({ now: '2026-11-27T17:00:00.000Z' }));
   assert.equal(lastLineClose(s), null, 'l’ultima chiusura è manuale: nessun riquadro del ponte');
   assert.equal(lastLineClose(initialState()), null);
+});
+
+test('cosa fare nell’unità dell’articolo: 12 confezioni per cartone', () => {
+  const close = lastLineClose(closedByLine({ productionArea: 'Cella', autoLoad: false }, 10, [], { ...product, code: 'A1', unit: 'confezioni', unitsPerBox: 12 }))!;
+  assert.equal(close.todo, 'Avvisa l’amministrazione: registrare a mano l’entrata di 120 confezioni (10 cartoni da 12) nel lotto 261127, scadenza 27/11/2027 (Magazzino → Registra entrata).');
+  const loaded = lastLineClose(closedByLine({ productionArea: 'Cella' }, 10, [], { ...product, code: 'A1', unit: 'confezioni', unitsPerBox: 12 }))!;
+  assert.equal(loaded.load, 'Carico a magazzino fatto: 120 confezioni nel lotto 261127 in Cella.');
 });

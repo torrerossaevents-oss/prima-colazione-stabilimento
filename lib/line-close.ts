@@ -23,7 +23,10 @@ export function lastLineClose(state: State): LineClose | null {
   if (last.stockLoaded) return { ...base, loaded: true, problem: false, load: `Carico a magazzino fatto: ${last.loadedQuantity ?? 0} ${unit} nel lotto ${last.lotCode}${lot ? ` in ${lot.area}` : ''}.` };
   // Carico tentato (area e carico automatico a posto) ma nessun cartone buono: niente da fare.
   if (last.autoLoad) return { ...base, loaded: false, problem: false, load: 'Carico a magazzino NON fatto: nessun cartone buono da caricare.' };
-  const manual = `registrare a mano l’entrata di ${last.cartons} cartoni nel lotto ${last.lotCode} (Magazzino → Registra entrata).`;
+  // Stessa quantità che il server avrebbe caricato: cartoni buoni × unità per cartone, nell'unità dell'articolo.
+  const quantity = Math.max(0, last.cartons - (last.scrapCartons ?? 0)) * last.unitsPerBox;
+  const expiry = last.expiry.split('-').reverse().join('/');
+  const manual = `registrare a mano l’entrata di ${quantity} ${unit}${last.unitsPerBox > 1 ? ` (${last.cartons} cartoni da ${last.unitsPerBox})` : ''} nel lotto ${last.lotCode}, scadenza ${expiry} (Magazzino → Registra entrata).`;
   if (state.settings?.autoLoad === false) return { ...base, loaded: false, problem: true, load: 'Carico a magazzino NON fatto: carico automatico disattivato.', todo: `Avvisa l’amministrazione: ${manual}` };
   if (!productionArea(state)) return { ...base, loaded: false, problem: true, load: 'Carico a magazzino NON fatto: area di carico non impostata.', todo: `Avvisa l’amministrazione: scegliere l’area in Configurazione → Produzione ed etichette, poi ${manual}` };
   return { ...base, loaded: false, problem: true, load: 'Carico a magazzino NON fatto alla chiusura.', todo: `Avvisa l’amministrazione: ${manual} Il motivo è scritto nello storico.` };
