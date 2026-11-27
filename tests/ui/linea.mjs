@@ -154,10 +154,19 @@ else {
   const smallTablet = await tablet.evaluate(() => [...document.querySelectorAll('button, input')].filter(b => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 44 && b.type !== 'checkbox'; }).length);
   assert.equal(smallTablet, 0, 'iPad: pulsanti di almeno 44 px');
   log('iPad: stato del ponte visibile, numeri e pulsanti come prima');
-  // Chiusura dal pulsante: quando il ponte lascia la lavorazione la pagina si ricarica subito, senza aspettare 15 s.
-  await toBridge({ eventId: 'evt_linea_reparto_1', type: 'session.close', sessionId: run.id, closeRequestId: 'req_linea_reparto_1', counterStart: 1000, counterEnd: 1037, cartons: 37, closedAt: new Date().toISOString(), anomalies: [] });
+  // Se è il PC del reparto a non raggiungere più il gestionale, lo stato non resta fermo su «Sì».
+  await pc.route('**/api/workspace/live', r => r.abort());
+  await pc.locator('.line-silent', { hasText: 'Ponte non risponde da' }).waitFor({ timeout: 45_000 });
+  await pc.unroute('**/api/workspace/live');
+  await beat({ id: run.id, cartons: 37 });
+  await pc.locator('.line-silent').waitFor({ state: 'detached', timeout: 15_000 });
+  log('PC senza collegamento al gestionale: dopo 30 s «Ponte non risponde», poi torna normale');
+  // Chiusura dal pulsante: come il ponte vero, prima il segnale di stato senza lavorazione, poi la chiusura.
+  // La pagina rilegge subito e di nuovo dopo 4 s, senza aspettare il giro di 15 s.
   await beat(null);
   const t1 = Date.now();
+  await new Promise(r => setTimeout(r, 1_500));
+  await toBridge({ eventId: 'evt_linea_reparto_1', type: 'session.close', sessionId: run.id, closeRequestId: 'req_linea_reparto_1', counterStart: 1000, counterEnd: 1037, cartons: 37, closedAt: new Date().toISOString(), anomalies: [] });
   await pc.getByText('Etichetta del prodotto').waitFor({ timeout: 9_000 });
   log(`chiusura dal ponte vista sul PC del reparto in ${((Date.now() - t1) / 1000).toFixed(1)} s`);
   // 8. «Chiusura ricevuta» fissa: ora, cartoni, lotto, carico; resta dopo un ricaricamento, sparisce al prossimo avvio.
