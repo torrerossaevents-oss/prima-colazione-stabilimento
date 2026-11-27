@@ -1176,6 +1176,16 @@ fieldset.field > span { margin-bottom: 2px; }
 .line-status-grid dt { font-size: 15px; color: #000; }
 .line-status-grid dd { margin: 2px 0 0; font-size: 26px; color: #000; font-variant-numeric: tabular-nums; }
 .line-status-grid dd small { font-size: 16px; }
+/* Pagina Linea: riquadro fisso «Ultima chiusura» (pezzo 3). */
+.line-last-close { border-left: 6px solid #2e8b57; }
+.line-last-close.bad { border-left-color: #d93f2b; }
+.line-last-close h2 { font-size: 26px; line-height: 1.3; }
+.line-last-product { margin: 0; font-size: 18px; }
+.line-load { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 14px; border-radius: 10px; background: #e8f6ec; color: #000; font-size: 20px; }
+.line-load svg { flex: none; color: #2e8b57; }
+.line-load.bad { background: #8a1f12; color: #fff; }
+.line-load.bad svg { color: #fff; }
+.line-last-todo { margin: 0; font-size: 18px; line-height: 1.45; }
 /* Schermo grande del PC del reparto: da leggere a distanza (anche Full HD con zoom di Windows al 150% = 1280 px). L'iPad (1180 px) resta com'era. */
 @media (min-width: 1200px) {
   .ipad-main { max-width: 1680px; }
@@ -1186,6 +1196,7 @@ fieldset.field > span { margin-bottom: 2px; }
   .ipad-live { font-size: 22px; }
   .line-silent { font-size: 30px; padding: 18px 24px; }
   .line-status-grid dt { font-size: 20px; } .line-status-grid dd { font-size: 36px; } .line-status-grid dd small { font-size: 20px; }
+  .line-last-close h2 { font-size: 40px; } .line-last-product, .line-last-todo { font-size: 24px; } .line-load { font-size: 28px; }
 }
 @media (max-width: 760px) { .ipad-scan { grid-template-columns: minmax(0, 1fr); } .ipad-scan img { max-width: 260px; } .ipad-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ipad-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ipad-count-n { font-size: 72px; } .ipad-status { display: none; } }
 .install-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; }

@@ -235,6 +235,10 @@ Piano di Teo, pezzo 1. Nella finestra di avvio del gestionale il campo «Lotto d
 
 Piano di Teo, pezzo 2. `/linea` mostra in alto lo stato del ponte (agganciato, LOGO! raggiungibile, ultimo segnale, eventi in coda) e «Ponte non risponde» in rosso dopo 30 s di silenzio (soglia del dato fermo portata da 20 a 30 s, anche nel gestionale). Su schermo largo prodotto, lotto, scadenza e cartoni sono molto grandi; l'iPad resta com'era. Lettura dello stato ogni 3 s con lavorazione da fotocellule aperta (10 s senza) e ricarica immediata quando il ponte lascia o prende una lavorazione. `/api/workspace/live` espone anche `queueLength`. Pulsante «Schermo intero». Invariati ponte, conteggio e carico a magazzino. Guida: `docs/APP-LINEA-IPAD.md`.
 
+## «Chiusura ricevuta» fissa nella pagina Linea (27/11/2026)
+
+Piano di Teo, pezzo 3. Dopo una chiusura dal pulsante della linea `/linea` mostra un riquadro fisso «Ultima chiusura: ore hh:mm – N cartoni – lotto X» con l'esito del carico. Se il carico non è stato fatto lo scrive in bianco su rosso, con il motivo (area non impostata, carico automatico disattivato) e cosa fare. Resta finché non parte la lavorazione successiva e sostituisce l'avviso temporaneo sull'iPad. La regola è in `lib/line-close.ts` e legge soltanto lo stato: il carico lo decide il server come prima. Test: `tests/line-close.test.ts` e passaggi in `tests/ui/linea.mjs`.
+
 ## Prossimo passo
 
 1. Spostare il ponte sul PC del reparto (cartella sul disco del PC, `INSTALLA-AVVIO-AUTOMATICO.cmd` dalla cartella estratta) e verificare: dispositivo «Attivo»; di nuovo «Attivo» dopo un riavvio; `taskkill /F /IM node.exe` e ripartenza entro 60 s. Poi cancellare le copie dei `.local.json` dalla chiavetta e dallo ZIP.

@@ -17,6 +17,7 @@ import type { LabelScan } from '../lib/label-reader';
 import LabelPreview from './label-preview';
 import LabelCamera from './label-camera';
 import { useLiveCount } from './live-count';
+import { lastLineClose, type LineClose } from '../lib/line-close';
 import { bridgeStatus, liveMessage, liveView, LINE_IDLE_POLL_MS, LINE_LIVE_POLL_MS, type BridgeStatus, type Live } from '../lib/live';
 
 type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean; devicesEnabled?: boolean };
@@ -40,12 +41,8 @@ export default function LineApp() {
   const can = (type: Action['type']) => canRecord(role, type);
 
   const [devicesEnabled, setDevicesEnabled] = useState(false);
-  const activeLive = useRef<string | undefined>(undefined);
+  // La chiusura dal pulsante della linea non usa più un avviso che sparisce: resta il riquadro «Ultima chiusura».
   const apply = (data: Resp) => {
-    // The line's button closed the run: tell the operator what entered stock.
-    const was = activeLive.current; const closed = was ? data.state.sessions.find(x => x.id === was && x.status === 'closed' && x.closedBy === 'device') : undefined;
-    if (closed) setToast(`Chiusa dal contapezzi: ${n(closed.cartons)} cartoni${closed.stockLoaded ? ' caricati in magazzino' : ''}`);
-    activeLive.current = activeSession(data.state)?.id;
     setState(data.state); setVersion(data.version); if (data.role) setRole(data.role); if (typeof data.devicesEnabled === 'boolean') setDevicesEnabled(data.devicesEnabled);
   };
   const load = useCallback(async () => {
@@ -98,6 +95,7 @@ export default function LineApp() {
 
   const current = state ? activeSession(state) : undefined;
   const day = state ? productionDay(state.sessions, today) : null;
+  const lastClose = state && !current ? lastLineClose(state) : null;
   // Stato del ponte e conteggio dal vivo: ogni 3 s con una lavorazione da fotocellule aperta, altrimenti ogni 10 s.
   const deviceRun = current?.source === 'device';
   const polled = useLiveCount(devicesEnabled || deviceRun, deviceRun ? LINE_LIVE_POLL_MS : LINE_IDLE_POLL_MS);
@@ -143,7 +141,7 @@ export default function LineApp() {
       {state && devicesEnabled && <BridgeStatusPanel status={bridgeStatus(liveData.live, liveData.serverTime, deviceRun ? current!.id : null)} loading={!liveData.serverTime} noRun={current ? 'Lavorazione manuale' : 'Nessuna lavorazione'}/>}
       {!state ? <p className="ipad-loading"><RefreshCw size={20} className="spin"/> Collegamento al gestionale…</p>
         : current ? <RunView key={current.id} state={state} sessionId={current.id} busy={busy} can={can} send={send} now={now} liveData={liveData}/>
-        : <StartView state={state} busy={busy} can={can} send={send} today={today} devicesEnabled={devicesEnabled}/>}
+        : <>{lastClose && <LastCloseCard close={lastClose}/>}<StartView state={state} busy={busy} can={can} send={send} today={today} devicesEnabled={devicesEnabled}/></>}
       {day && day.totals.runs > 0 && <section className="ipad-card ipad-today" aria-label="Produzione di oggi">
         <h2>Oggi</h2>
         <div className="ipad-today-totals"><span><b>{n(day.totals.confirmedCartons)}</b> cartoni confermati</span><span><b>{n(day.totals.runs)}</b> lavorazioni</span>{day.totals.activeCartons > 0 && <span><b>{n(day.totals.activeCartons)}</b> in corso</span>}</div>
@@ -168,6 +166,17 @@ function BridgeStatusPanel({ status, loading, noRun }: { status: BridgeStatus; l
       <div className={status.silent ? 'bad' : ''}><dt>Ultimo segnale del ponte</dt><dd>{loading ? '…' : status.lastSeenAt ? <>{clock(status.lastSeenAt)} <small>{status.ageS} s fa</small></> : 'Nessuno'}</dd></div>
       {(status.queueLength ?? 0) > 0 && <div className="warn"><dt>Eventi in coda</dt><dd>{n(status.queueLength!)} <small>da inviare</small></dd></div>}
     </dl>
+  </section>;
+}
+
+/** Riquadro fisso dopo una chiusura dal pulsante della linea: resta finché non parte la lavorazione successiva. */
+function LastCloseCard({ close }: { close: LineClose }) {
+  return <section className={'ipad-card line-last-close ' + (close.problem ? 'bad' : 'ok')} aria-label="Ultima chiusura">
+    <h2>Ultima chiusura: ore {time(close.at)} – {n(close.cartons)} cartoni – lotto {close.lotCode}</h2>
+    <p className="line-last-product">{close.productCode} · {close.productName}</p>
+    <p className={close.problem ? 'line-load bad' : 'line-load'}>{close.problem ? <CircleAlert size={24}/> : <Check size={24}/>}<span>{close.load}</span></p>
+    {close.todo && <p className="line-last-todo">{close.todo}</p>}
+    {close.anomalies.length > 0 && <p className="line-last-todo">Anomalie da verificare: {close.anomalies.join(', ')}.</p>}
   </section>;
 }
 

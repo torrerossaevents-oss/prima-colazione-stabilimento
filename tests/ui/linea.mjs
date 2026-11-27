@@ -169,6 +169,37 @@ else {
   await toBridge({ eventId: 'evt_linea_reparto_1', type: 'session.close', sessionId: run.id, closeRequestId: 'req_linea_reparto_1', counterStart: 1000, counterEnd: 1037, cartons: 37, closedAt: new Date().toISOString(), anomalies: [] });
   await pc.getByText('Etichetta del prodotto').waitFor({ timeout: 9_000 });
   log(`chiusura dal ponte vista sul PC del reparto in ${((Date.now() - t1) / 1000).toFixed(1)} s`);
+  // 8. «Chiusura ricevuta» fissa: ora, cartoni, lotto, carico; resta dopo un ricaricamento, sparisce al prossimo avvio.
+  const card = pc.getByRole('region', { name: 'Ultima chiusura' });
+  const hhmm = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' });
+  await card.getByText(new RegExp(`Ultima chiusura: ore \\d{2}:\\d{2} – 37 cartoni – lotto ${run.lotCode}`)).waitFor();
+  await card.getByText(`Carico a magazzino fatto: 37 CRT nel lotto ${run.lotCode} in Cella frigo.`).waitFor();
+  assert.equal(await pc.getByText('Chiusa dal contapezzi').count(), 0, 'nessun avviso che sparisce');
+  await pc.waitForTimeout(4_500);
+  await pc.reload(); await card.getByText('Carico a magazzino fatto').waitFor();
+  const shown = (await card.locator('h2').innerText()).match(/ore (\d{2}:\d{2})/)[1];
+  assert.ok([0, 1, 2].map(m => hhmm.format(new Date(Date.now() - m * 60_000))).includes(shown), 'ora della chiusura: ' + shown);
+  await pc.screenshot({ path: `${out}/linea-ultima-chiusura.png` });
+  log('ultima chiusura fissa: ore, 37 cartoni, lotto, carico fatto; resta dopo il ricaricamento');
+  // Carico non eseguito: scritto in rosso (bianco su rosso pieno) con cosa fare.
+  await post({ type: 'settings.update', settings: { autoLoad: false } });
+  await post({ type: 'production.start', code, operator: 'Operatore prova', counting: 'device' });
+  await pc.getByRole('button', { name: 'Aggiorna' }).click();
+  await card.waitFor({ state: 'detached' });
+  log('il riquadro sparisce quando parte la lavorazione successiva');
+  const run2 = (await api()).state.sessions.find(s => s.status === 'active');
+  await toBridge({ eventId: 'evt_linea_reparto_2', type: 'session.close', sessionId: run2.id, closeRequestId: 'req_linea_reparto_2', counterStart: 1037, counterEnd: 1049, cartons: 12, closedAt: new Date().toISOString(), anomalies: [] });
+  await pc.getByRole('button', { name: 'Aggiorna' }).click();
+  const bad = card.locator('.line-load.bad', { hasText: 'Carico a magazzino NON fatto: carico automatico disattivato.' });
+  await bad.waitFor();
+  await card.getByText(new RegExp(`Avvisa l’amministrazione: registrare a mano l’entrata di 12 CRT nel lotto ${run2.lotCode}, scadenza \\d{2}/\\d{2}/\\d{4}`)).waitFor();
+  const badInk = await bad.evaluate(e => { const s = getComputedStyle(e); return [s.color, s.backgroundColor, s.fontWeight]; });
+  assert.deepEqual(badInk, ['rgb(255, 255, 255)', 'rgb(138, 31, 18)', '400'], 'scritta bianca su rosso pieno, peso 400');
+  const cardInk = await pc.evaluate(() => [...document.querySelectorAll('.line-last-close *')].filter(e => e.childElementCount === 0 && e.textContent.trim() && !e.closest('svg')).map(e => { const s = getComputedStyle(e); return [e.textContent.trim().slice(0, 30), s.color, s.fontWeight]; }).filter(([, c, w]) => !['rgb(0, 0, 0)', 'rgb(255, 255, 255)'].includes(c) || w !== '400'));
+  assert.deepEqual(cardInk, [], 'riquadro: testo nero o bianco, peso 400');
+  await pc.screenshot({ path: `${out}/linea-carico-non-fatto.png` });
+  log('carico non eseguito: in rosso con cosa fare');
+  await post({ type: 'settings.update', settings: { autoLoad: true } });
   assert.deepEqual(pcErrors.filter(e => !/Failed to load resource|net::/.test(e)), [], 'nessun errore nella pagina');
   await wide.close();
   await fetch(base + '/api/devices', { method: 'POST', headers: { 'content-type': 'application/json', origin: base }, body: JSON.stringify({ op: 'revoke', id: created.device.id }) });
