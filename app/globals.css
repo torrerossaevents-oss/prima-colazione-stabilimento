@@ -1176,8 +1176,8 @@ fieldset.field > span { margin-bottom: 2px; }
 .line-status-grid dt { font-size: 15px; color: #000; }
 .line-status-grid dd { margin: 2px 0 0; font-size: 26px; color: #000; font-variant-numeric: tabular-nums; }
 .line-status-grid dd small { font-size: 16px; }
-/* Schermo grande del PC del reparto: da leggere a distanza. L'iPad (1180 px) resta com'era. */
-@media (min-width: 1300px) {
+/* Schermo grande del PC del reparto: da leggere a distanza (anche Full HD con zoom di Windows al 150% = 1280 px). L'iPad (1180 px) resta com'era. */
+@media (min-width: 1200px) {
   .ipad-main { max-width: 1680px; }
   .ipad-run-head h1 { font-size: 48px; line-height: 1.15; }
   .ipad-run-head .ipad-code { font-size: 30px; }

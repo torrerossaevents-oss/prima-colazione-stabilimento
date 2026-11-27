@@ -41,13 +41,13 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
 
 La stessa pagina `/linea` serve anche come schermo della linea sul PC del reparto, da leggere a distanza.
 
-- Su uno schermo largo (dai 1300 px in su) prodotto, lotto, scadenza e cartoni dal vivo sono molto più grandi. Sull'iPad resta tutto come prima.
+- Su uno schermo largo (dai 1200 px in su, anche un Full HD con lo zoom di Windows al 150%) prodotto, lotto, scadenza e cartoni dal vivo sono molto più grandi. Sull'iPad resta tutto come prima.
 - In alto c'è sempre lo **stato del ponte**:
   - **Ponte agganciato** sì/no: se c'è una lavorazione con fotocellule, dice se il ponte la sta seguendo;
   - **LOGO! raggiungibile** sì/no;
   - **ultimo segnale del ponte**, con l'ora e i secondi passati;
   - **eventi in coda**, solo se ce ne sono.
-  - Se il ponte tace da più di 30 s compare la scritta rossa **«Ponte non risponde»**.
+  - Se il ponte tace da più di 30 s compare la scritta rossa **«Ponte non risponde»**. Compare anche quando è il PC stesso a non raggiungere più il gestionale (rete, accesso scaduto): lo stato non resta fermo su «Sì».
 - **Aggiornamento**:
   - con una lavorazione da fotocellule aperta si legge ogni **3 s**; il ponte manda un segnale ogni 6 s, quindi il numero arriva con al massimo ~9 s di ritardo;
   - senza lavorazione si legge ogni 10 s, solo per lo stato del ponte;

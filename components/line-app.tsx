@@ -20,7 +20,7 @@ import { useLiveCount } from './live-count';
 import { bridgeStatus, liveMessage, liveView, LINE_IDLE_POLL_MS, LINE_LIVE_POLL_MS, type BridgeStatus, type Live } from '../lib/live';
 
 type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean; devicesEnabled?: boolean };
-type LiveData = { live: Live | null; serverTime: string | null };
+type LiveData = { live: Live | null; serverTime: string | null; receivedAt?: number | null };
 const OPERATOR_KEY = 'prima-colazione-linea-operatore';
 const n = (v: number) => new Intl.NumberFormat('it-IT').format(v);
 const itDate = (d: string) => d.split('-').reverse().join('/');
@@ -100,13 +100,24 @@ export default function LineApp() {
   const day = state ? productionDay(state.sessions, today) : null;
   // Stato del ponte e conteggio dal vivo: ogni 3 s con una lavorazione da fotocellule aperta, altrimenti ogni 10 s.
   const deviceRun = current?.source === 'device';
-  const liveData = useLiveCount(devicesEnabled || deviceRun, deviceRun ? LINE_LIVE_POLL_MS : LINE_IDLE_POLL_MS);
+  const polled = useLiveCount(devicesEnabled || deviceRun, deviceRun ? LINE_LIVE_POLL_MS : LINE_IDLE_POLL_MS);
+  // Se questa pagina non riesce più a leggere (rete del PC, accesso scaduto) il dato invecchia lo stesso:
+  // all'ora del server si aggiunge il tempo passato qui dall'ultima lettura riuscita, così compare «Ponte non risponde».
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setClockNow(Date.now()), 5_000); return () => clearInterval(t); }, []);
+  const sinceRead = polled.receivedAt ? Math.max(0, clockNow - polled.receivedAt) : 0;
+  const liveData: LiveData = polled.serverTime && sinceRead > LINE_LIVE_POLL_MS ? { ...polled, serverTime: new Date(Date.parse(polled.serverTime) + sinceRead).toISOString() } : polled;
   // Il ponte ha lasciato o preso una lavorazione (chiusura dal pulsante, avvio da un altro dispositivo): ricarica subito.
   const liveSession = liveData.live?.sessionId ?? null;
   const seenLiveSession = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (seenLiveSession.current !== undefined && seenLiveSession.current !== liveSession) void load();
+    const changed = seenLiveSession.current !== undefined && seenLiveSession.current !== liveSession;
     seenLiveSession.current = liveSession;
+    if (!changed) return;
+    void load();
+    // Il ponte manda il segnale di stato prima della chiusura: una seconda lettura poco dopo la trova di sicuro.
+    const again = setTimeout(() => { void load(); }, 4_000);
+    return () => clearTimeout(again);
   }, [liveSession, load]);
   const [fullscreen, setFullscreen] = useState({ can: false, on: false });
   useEffect(() => {
