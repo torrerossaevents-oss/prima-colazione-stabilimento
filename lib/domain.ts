@@ -63,6 +63,16 @@ export function romeDayStart(day:string):string{
 }
 /** Lotto di produzione: la data di produzione AAMMGG (2 ottobre 2026 → 261002), come sull'etichetta. */
 export function productionLot(day:string):string{return day.slice(2).replaceAll('-','');}
+/** Messaggio unico per un lotto scritto a mano non valido (decisione di Teo del 27/11/2026). */
+export const PRODUCTION_LOT_FORMAT='Il lotto deve essere la data di produzione, 6 cifre: AAMMGG, es. 261127';
+/** Giorno AAAA-MM-GG di un lotto AAMMGG (anni 2000–2099), oppure undefined se non sono 6 cifre o non è una data vera. */
+export function productionLotDay(code:string):string|undefined{
+ if(!/^\d{6}$/.test(code))return undefined;
+ const year=2000+Number(code.slice(0,2)),month=Number(code.slice(2,4)),day=Number(code.slice(4,6));
+ const date=new Date(Date.UTC(year,month-1,day));
+ if(month<1||month>12||day<1||date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day)return undefined;
+ return `${year}-${code.slice(2,4)}-${code.slice(4,6)}`;
+}
 /** Scadenza: stesso giorno dopo N mesi; se quel giorno non esiste (29/02, 31) l'ultimo giorno del mese. */
 export function productionExpiry(day:string,months:number):string{
  const [y,m,d]=day.split('-').map(Number);const total=m-1+months;const year=y+Math.floor(total/12);const month=((total%12)+12)%12;
@@ -436,7 +446,10 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
  case 'production.start':{
   if(activeSession(state))fail('Chiudi e salva la lavorazione attiva prima di iniziarne un’altra.');const p=productByScan(state,text(action.code,'Codice articolo',80))??fail('Codice sconosciuto o articolo non finito: avvio non consentito.');
   // Lotto e scadenza dalla data di produzione (regola dell'etichetta), salvo valori indicati espressamente.
-  const lotCode=action.lotCode===undefined||action.lotCode===''?productionLot(today):text(action.lotCode,'Codice lotto',80);
+  // Un lotto scritto a mano deve essere una data di produzione vera AAMMGG; la conferma di una data diversa da oggi è nella finestra di avvio.
+  const manualLot=action.lotCode===undefined||action.lotCode===''?undefined:text(action.lotCode,'Codice lotto',80);
+  if(manualLot!==undefined&&!productionLotDay(manualLot))fail(`${PRODUCTION_LOT_FORMAT}.`);
+  const lotCode=manualLot??productionLot(today);
   const expiry=action.expiry===undefined||action.expiry===''?productionExpiry(today,p.shelfLifeMonths??DEFAULT_SHELF_LIFE_MONTHS):date(action.expiry,'Scadenza');if(expiry<today)fail('La scadenza della produzione non può essere passata.');
   const sameLot=state.lots.find(l=>l.productId===p.id&&l.code===lotCode&&l.expiry!==expiry);if(sameLot)fail(`Il lotto ${lotCode} è già in magazzino con scadenza ${sameLot.expiry}: usa la stessa scadenza o un altro lotto.`);
   const counting=action.counting??'manual';if(counting!=='manual'&&counting!=='device')fail('Modalità di conteggio non valida.');

@@ -221,6 +221,10 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 - **Catalogo**: nel gestionale mancano articoli importati in passato. Serve l'Excel degli articoli dal gestionale contabile, da controllare e importare con «Salta gli esistenti» (limite pilota 350 articoli; l'importazione è tutto o niente).
 - **Etichettatrice** (prossimo progetto): stampa e applica con motore Zebra ZE511 300 dpi in rete; modelli ZebraDesigner 3 `.nlbl` cifrati, da non forzare. Prossimo passo: 1–2 file ZPL ottenuti con «Stampa su file», con lotto e IDENT. impostati a «PROVA», senza stampare sulla Zebra né cambiarne le impostazioni. Far partire una lavorazione dal ponte richiede una decisione esplicita di Teo che cambi la regola del dispositivo in `AGENTS.md`.
 
+## Lotto scritto a mano all'avvio (27/11/2026)
+
+Piano di Teo, pezzo 1. Nella finestra di avvio del gestionale il campo «Lotto diverso» accetta solo una data di produzione vera di 6 cifre AAMMGG; altrimenti compare «Il lotto deve essere la data di produzione, 6 cifre: AAMMGG, es. 261127» e i dati inseriti restano. Una data valida diversa da oggi chiede conferma prima di avviare. Il server fa lo stesso controllo in `production.start` (`productionLotDay` in `lib/domain.ts`), con o senza ponte. Campo vuoto: lotto automatico come prima. Invariati ponte, iPad `/linea` (che usa sempre il lotto automatico), carico a magazzino e lotti già esistenti. Test: `tests/production-label.test.ts` e un passaggio nuovo in `tests/ui/smoke.mjs`; i test che usavano lotti di fantasia all'avvio ora usano date AAMMGG.
+
 ## Prossimo passo
 
 1. Spostare il ponte sul PC del reparto (cartella sul disco del PC, `INSTALLA-AVVIO-AUTOMATICO.cmd` dalla cartella estratta) e verificare: dispositivo «Attivo»; di nuovo «Attivo» dopo un riavvio; `taskkill /F /IM node.exe` e ripartenza entro 60 s. Poi cancellare le copie dei `.local.json` dalla chiavetta e dallo ZIP.

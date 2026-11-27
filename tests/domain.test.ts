@@ -35,12 +35,12 @@ test('expired lots cannot be promised or dispatched even if previously reserved'
  state=reserve(fixture());state=act(state,{type:'order.prepare',orderId:state.orders[0].id});assert.throws(()=>applyAction(state,{type:'order.dispatch',orderId:state.orders[0].id,documentRef:'DDT-1'},{...context,now:'2027-01-01T00:00:00.000Z'}),/scaduto/);
 });
 test('unknown code or concurrent production session cannot start',()=>{
- let state=fixture();const start={type:'production.start' as const,code:'UNKNOWN',operator:'Operatore prova',lotCode:'PROD-A',expiry:'2026-12-31'};assert.throws(()=>act(state,start),/Codice sconosciuto/);state=act(state,{...start,code:'PC001'});assert.throws(()=>act(state,{...start,code:'PC001'}),/Chiudi e salva/);
+ let state=fixture();const start={type:'production.start' as const,code:'UNKNOWN',operator:'Operatore prova',lotCode:'261101',expiry:'2026-12-31'};assert.throws(()=>act(state,start),/Codice sconosciuto/);state=act(state,{...start,code:'PC001'});assert.throws(()=>act(state,{...start,code:'PC001'}),/Chiudi e salva/);
 });
 test('close retains immutable session and next start resets only the partial',()=>{
- let state=fixture();const start={type:'production.start' as const,code:'PC001',operator:'Operatore prova',lotCode:'PROD-A',expiry:'2026-12-31'};
+ let state=fixture();const start={type:'production.start' as const,code:'PC001',operator:'Operatore prova',lotCode:'261101',expiry:'2026-12-31'};
  state=act(state,start);const first=activeSession(state)!.id;state=act(state,{type:'production.count',sessionId:first,cartons:200});state=act(state,{type:'production.close',sessionId:first});assert.equal(activeSession(state),undefined);assert.equal(state.sessions[0].cartons,200);assert.equal(state.lots[0].quantity,150,'existing lot untouched');assert.equal(state.sessions[0].stockLoaded,true);assert.equal(state.lots.find(l=>l.id===state.sessions[0].loadedLotId)!.quantity,200*12,'good cartons loaded in stock units (12 per carton)');
- state=act(state,{...start,lotCode:'PROD-B'});assert.equal(activeSession(state)!.cartons,0);assert.equal(state.sessions[0].cartons,200);assert.equal(state.sessions[0].productCode,'PC001');assert.equal(state.sessions[0].unitsPerBox,12);assert.throws(()=>act(state,{type:'production.count',sessionId:first,cartons:1}),/chiusa/);
+ state=act(state,{...start,lotCode:'261102'});assert.equal(activeSession(state)!.cartons,0);assert.equal(state.sessions[0].cartons,200);assert.equal(state.sessions[0].productCode,'PC001');assert.equal(state.sessions[0].unitsPerBox,12);assert.throws(()=>act(state,{type:'production.count',sessionId:first,cartons:1}),/chiusa/);
 });
 test('Roman calendar day is used across UTC midnight and DST',()=>{
  assert.equal(todayRome('2026-11-07T23:30:00Z'),'2026-11-08');assert.equal(todayRome('2026-07-07T22:30:00Z'),'2026-07-08');
@@ -123,7 +123,7 @@ test('skip imports are repeatable and leave existing product values untouched',(
 });
 
 test('import updates preserve IDs, stock, order references and production snapshots',()=>{
- let state=reserve(fixture());state=act(state,{type:'production.start',code:'PC001',operator:'Prova',lotCode:'PROD',expiry:'2026-12-31'});
+ let state=reserve(fixture());state=act(state,{type:'production.start',code:'PC001',operator:'Prova',lotCode:'261101',expiry:'2026-12-31'});
  const original=structuredClone(state);const product=state.products[0];
  state=act(state,{type:'product.import',products:[{...product,code:' pc001 ',name:'Nuova descrizione',category:'Nuova categoria',priceGelCor:0,priceGelitria:null,priceDistribution:8.765,minStock:30}],mode:'update'});
  assert.equal(state.products[0].id,product.id);assert.equal(state.products[0].name,'Nuova descrizione');assert.equal(state.products[0].priceDistribution,8.765);assert.deepEqual(state.lots,original.lots);assert.deepEqual(state.orders,original.orders);assert.deepEqual(state.sessions,original.sessions);
@@ -138,7 +138,7 @@ test('referenced product edits block identity and stock-unit changes, including 
 });
 
 test('a closed production session also protects product structure',()=>{
- let state=act(initialState(),{type:'product.add',product:catalogProduct()});state=act(state,{type:'production.start',code:'0000123',operator:'Prova',lotCode:'PROD',expiry:'2026-12-31'});state=act(state,{type:'production.close',sessionId:state.sessions[0].id});
+ let state=act(initialState(),{type:'product.add',product:catalogProduct()});state=act(state,{type:'production.start',code:'0000123',operator:'Prova',lotCode:'261101',expiry:'2026-12-31'});state=act(state,{type:'production.close',sessionId:state.sessions[0].id});
  assert.equal(state.lots.length,0);assert.throws(()=>act(state,{type:'product.update',productId:state.products[0].id,product:{...state.products[0],code:'NEW'}}),/ha lotti o lavorazioni/);
 });
 
