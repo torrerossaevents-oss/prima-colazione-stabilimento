@@ -124,7 +124,7 @@ test('profiles: laboratorio records floor operations only; amministrazione every
     const product = { type: 'product.add', product: { code: 'A1', name: 'Articolo fittizio', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } };
     assert.equal(await post('laboratorio@esempio.it', product), 403, 'catalog is amministrazione only');
     assert.equal(await post('ufficio@esempio.it', product), 200);
-    assert.equal(await post('laboratorio@esempio.it', { type: 'production.start', code: 'A1', operator: 'Operatore prova', lotCode: 'L1', expiry: '2099-12-31' }), 200, 'production is allowed to laboratorio');
+    assert.equal(await post('laboratorio@esempio.it', { type: 'production.start', code: 'A1', operator: 'Operatore prova', lotCode: '261101', expiry: '2099-12-31' }), 200, 'production is allowed to laboratorio');
     assert.equal(await post('sconosciuto@esempio.it', { type: 'production.count', sessionId: 'x', cartons: 1 }), 401);
     const roleOf = async (email: string) => ((await (await workspace.GET(new Request(origin + '/api/workspace', { headers: await as(email) }))).json()) as { role: string }).role;
     assert.equal(await roleOf('laboratorio@esempio.it'), 'laboratorio');

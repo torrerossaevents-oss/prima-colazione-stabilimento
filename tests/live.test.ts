@@ -29,7 +29,7 @@ test('/api/workspace/live: ultimo heartbeat, laboratorio ammesso, nessun identif
     assert.deepEqual((await read(lab)).body.live, null, 'no device yet');
     await post({ type: 'product.add', product: { code: 'P1', name: 'Articolo PROVA', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } });
     const created = await (await devices.POST(new Request(origin + '/api/devices', { method: 'POST', headers: { ...admin, origin }, body: '{"op":"create","name":"PC prova"}' }))).json() as { token: string; device: { id: string; name: string } };
-    const state = await post({ type: 'production.start', code: 'P1', operator: 'Operatore prova', lotCode: 'L1', expiry: '2099-12-31', counting: 'device' });
+    const state = await post({ type: 'production.start', code: 'P1', operator: 'Operatore prova', lotCode: '261101', expiry: '2099-12-31', counting: 'device' });
     const sessionId = state.sessions[0].id;
     const beat = await production.POST(new Request(origin + '/api/devices/production', { method: 'POST', headers: { authorization: 'Bearer ' + created.token, 'content-type': 'application/json' }, body: JSON.stringify({ eventId: 'hb_' + crypto.randomUUID(), type: 'heartbeat', at: new Date().toISOString(), bridgeVersion: '1.0.0', queueLength: 0, plc: { reachable: true, lastReadAt: new Date().toISOString() }, session: { id: sessionId, cartons: 17 } }) }));
     assert.equal(beat.status, 200);

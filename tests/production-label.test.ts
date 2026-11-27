@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activeSession, applyAction, eanValid, initialState, productionExpiry, productionLot, type Action, type Context, type State } from '../lib/domain.ts';
+import { activeSession, applyAction, eanValid, initialState, productionExpiry, productionLot, productionLotDay, PRODUCTION_LOT_FORMAT, type Action, type Context, type State } from '../lib/domain.ts';
 import { canRecord } from '../lib/permissions.ts';
 
 let seq = 0;
@@ -21,6 +21,27 @@ test('lotto AAMMGG e scadenza a +N mesi, anche a fine mese e negli anni bisestil
   assert.equal(productionExpiry('2028-02-29', 12), '2029-02-28');
   assert.equal(productionExpiry('2026-01-31', 1), '2026-02-28');
   assert.equal(productionExpiry('2026-11-30', 3), '2027-02-28');
+});
+
+test('lotto scritto a mano all’avvio: solo una data vera AAMMGG (decisione del 27/11/2026)', () => {
+  assert.equal(productionLotDay('261127'), '2026-11-27');
+  assert.equal(productionLotDay('280229'), '2028-02-29', 'anno bisestile');
+  for (const bad of ['', '26112', '2611270', '26-11-27', 'L1', 'PROVA', '261131', '261301', '261100', '260229', ' 261127', '２６１１２７']) {
+    assert.equal(productionLotDay(bad), undefined, `rifiutato: «${bad}»`);
+  }
+  const start = (lotCode?: string) => act(base(), { type: 'production.start', code: '024', operator: 'Operatore prova', ...(lotCode === undefined ? {} : { lotCode }) });
+  assert.equal(activeSession(start())!.lotCode, '261002', 'campo assente: lotto automatico del giorno');
+  assert.equal(activeSession(start(''))!.lotCode, '261002', 'campo vuoto: lotto automatico del giorno');
+  for (const bad of ['2610', 'L-PROVA', '261032', '26100x']) {
+    assert.throws(() => start(bad), (e: Error) => e.message === `${PRODUCTION_LOT_FORMAT}.`, `«${bad}» rifiutato dal server con il messaggio chiaro`);
+  }
+  assert.equal(PRODUCTION_LOT_FORMAT, 'Il lotto deve essere la data di produzione, 6 cifre: AAMMGG, es. 261127');
+  const other = activeSession(start('261001'))!;
+  assert.equal(other.lotCode, '261001', 'data valida diversa da oggi: accettata dal server (la conferma è nella finestra di avvio)');
+  assert.equal(other.day, '2026-10-02', 'il giorno di produzione resta quello dell’avvio');
+  const device = act(base(), { type: 'production.start', code: '024', operator: 'Operatore prova', lotCode: '261002', counting: 'device' }, ctx(undefined, { devicesEnabled: true }));
+  assert.equal(activeSession(device)!.lotCode, '261002', 'stessa regola con il ponte');
+  assert.throws(() => act(base(), { type: 'production.start', code: '024', operator: 'Operatore prova', lotCode: 'X1', counting: 'device' }, ctx(undefined, { devicesEnabled: true })), /AAMMGG/);
 });
 
 test('EAN: cifra di controllo verificata; codice letto dall’EAN o dal codice articolo', () => {
