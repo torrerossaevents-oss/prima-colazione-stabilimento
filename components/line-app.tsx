@@ -9,7 +9,7 @@
  * versione attesa e identificativo stabile (una risposta persa non crea doppioni).
  */
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Camera, Check, CircleAlert, Factory, ImageUp, LayoutDashboard, PackagePlus, Play, RefreshCw, Save, ScanLine, Wheat, X } from 'lucide-react';
+import { Camera, Check, CircleAlert, Factory, ImageUp, LayoutDashboard, Maximize, Minimize, PackagePlus, Play, RefreshCw, Save, ScanLine, Wheat, X } from 'lucide-react';
 import { activeSession, DEFAULT_SHELF_LIFE_MONTHS, productByScan, productionArea, productionDay, productionExpiry, productionLot, todayRome, type Action, type Product, type State } from '../lib/domain';
 import { canRecord, roleNames, type Role } from '../lib/permissions';
 import { describeError, listPending, readWorkspaceResponse, removePending, request, writePending } from '../lib/client-api';
@@ -17,13 +17,15 @@ import type { LabelScan } from '../lib/label-reader';
 import LabelPreview from './label-preview';
 import LabelCamera from './label-camera';
 import { useLiveCount } from './live-count';
-import { liveMessage, liveView } from '../lib/live';
+import { bridgeStatus, liveMessage, liveView, LINE_IDLE_POLL_MS, LINE_LIVE_POLL_MS, type BridgeStatus, type Live } from '../lib/live';
 
 type Resp = { state: State; version: number; role?: Role; error?: string; duplicate?: boolean; devicesEnabled?: boolean };
+type LiveData = { live: Live | null; serverTime: string | null };
 const OPERATOR_KEY = 'prima-colazione-linea-operatore';
 const n = (v: number) => new Intl.NumberFormat('it-IT').format(v);
 const itDate = (d: string) => d.split('-').reverse().join('/');
 const time = (v: string) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' }).format(new Date(v));
+const clock = (v: string) => new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Rome' }).format(new Date(v));
 
 export default function LineApp() {
   const [state, setState] = useState<State | null>(null);
@@ -96,11 +98,30 @@ export default function LineApp() {
 
   const current = state ? activeSession(state) : undefined;
   const day = state ? productionDay(state.sessions, today) : null;
+  // Stato del ponte e conteggio dal vivo: ogni 3 s con una lavorazione da fotocellule aperta, altrimenti ogni 10 s.
+  const deviceRun = current?.source === 'device';
+  const liveData = useLiveCount(devicesEnabled || deviceRun, deviceRun ? LINE_LIVE_POLL_MS : LINE_IDLE_POLL_MS);
+  // Il ponte ha lasciato o preso una lavorazione (chiusura dal pulsante, avvio da un altro dispositivo): ricarica subito.
+  const liveSession = liveData.live?.sessionId ?? null;
+  const seenLiveSession = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (seenLiveSession.current !== undefined && seenLiveSession.current !== liveSession) void load();
+    seenLiveSession.current = liveSession;
+  }, [liveSession, load]);
+  const [fullscreen, setFullscreen] = useState({ can: false, on: false });
+  useEffect(() => {
+    const update = () => setFullscreen({ can: Boolean(document.fullscreenEnabled), on: Boolean(document.fullscreenElement) });
+    queueMicrotask(update);
+    document.addEventListener('fullscreenchange', update);
+    return () => document.removeEventListener('fullscreenchange', update);
+  }, []);
+  const toggleFullscreen = () => { void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => { /* non consentito: resta la finestra */ }); };
   return <div className="ipad-app">
     <header className="ipad-top">
       <div className="ipad-brand"><span className="ipad-mark"><Wheat size={22} aria-hidden="true"/></span><div><span className="ipad-title">Linea 1</span><span className="ipad-sub">{current ? 'In lavorazione' : 'Ferma'} · {roleNames[role]}</span></div></div>
       <div className="ipad-top-actions">
         <span className={'ipad-status ' + (error && !state ? 'off' : 'on')}>{error && !state ? 'Non collegata' : 'Collegata al gestionale'}</span>
+        {fullscreen.can && <button className="ipad-icon" aria-label={fullscreen.on ? 'Esci dallo schermo intero' : 'Schermo intero'} onClick={toggleFullscreen}>{fullscreen.on ? <Minimize size={22}/> : <Maximize size={22}/>}</button>}
         <button className="ipad-icon" aria-label="Aggiorna" onClick={() => void load()}><RefreshCw size={22}/></button>
         <button className="ipad-icon" aria-label="Apri il gestionale completo" onClick={() => window.location.assign('/')}><LayoutDashboard size={22}/></button>
       </div>
@@ -108,8 +129,9 @@ export default function LineApp() {
     <main className="ipad-main">
       {error && <div className="ipad-alert" role="alert"><CircleAlert size={22}/><span>{error}</span><button className="ipad-icon" aria-label="Chiudi avviso" onClick={() => setError('')}><X size={20}/></button></div>}
       {uncertain && !error && <div className="ipad-alert amber" role="status"><CircleAlert size={22}/><span>Un’operazione è in attesa di conferma: se la ripeti non viene registrata due volte.</span></div>}
+      {state && devicesEnabled && <BridgeStatusPanel status={bridgeStatus(liveData.live, liveData.serverTime, deviceRun ? current!.id : null)} loading={!liveData.serverTime} noRun={current ? 'Lavorazione manuale' : 'Nessuna lavorazione'}/>}
       {!state ? <p className="ipad-loading"><RefreshCw size={20} className="spin"/> Collegamento al gestionale…</p>
-        : current ? <RunView key={current.id} state={state} sessionId={current.id} busy={busy} can={can} send={send} now={now}/>
+        : current ? <RunView key={current.id} state={state} sessionId={current.id} busy={busy} can={can} send={send} now={now} liveData={liveData}/>
         : <StartView state={state} busy={busy} can={can} send={send} today={today} devicesEnabled={devicesEnabled}/>}
       {day && day.totals.runs > 0 && <section className="ipad-card ipad-today" aria-label="Produzione di oggi">
         <h2>Oggi</h2>
@@ -123,14 +145,28 @@ export default function LineApp() {
 
 type ViewProps = { state: State; busy: boolean; can: (t: Action['type']) => boolean; send: (a: Action, m: string) => Promise<boolean> };
 
-function RunView({ state, sessionId, busy, can, send, now }: ViewProps & { sessionId: string; now: number }) {
+/** Stato del ponte, leggibile da lontano sul PC del reparto: agganciato, LOGO!, ultimo segnale, coda. */
+function BridgeStatusPanel({ status, loading, noRun }: { status: BridgeStatus; loading: boolean; noRun: string }) {
+  const tone = (v: boolean | null) => v === null ? '' : v ? 'ok' : 'bad';
+  const yesNo = (v: boolean | null, none: string) => v === null ? none : v ? 'Sì' : 'No';
+  return <section className="line-status" aria-label="Stato del ponte">
+    {status.silent && <p className="line-silent" role="alert"><CircleAlert size={26}/><span>{status.known ? `Ponte non risponde da ${status.ageS ?? '?'} s` : 'Ponte non risponde: nessun segnale ricevuto'}. Controlla il PC del reparto: ponte acceso, finestra non bloccata, rete.</span></p>}
+    <dl className="line-status-grid">
+      <div className={tone(status.hooked)}><dt>Ponte agganciato</dt><dd>{loading ? '…' : yesNo(status.hooked, noRun)}</dd></div>
+      <div className={tone(status.plcReachable)}><dt>LOGO! raggiungibile</dt><dd>{loading ? '…' : yesNo(status.plcReachable, 'Non noto')}</dd></div>
+      <div className={status.silent ? 'bad' : ''}><dt>Ultimo segnale del ponte</dt><dd>{loading ? '…' : status.lastSeenAt ? <>{clock(status.lastSeenAt)} <small>{status.ageS} s fa</small></> : 'Nessuno'}</dd></div>
+      {(status.queueLength ?? 0) > 0 && <div className="warn"><dt>Eventi in coda</dt><dd>{n(status.queueLength!)} <small>da inviare</small></dd></div>}
+    </dl>
+  </section>;
+}
+
+function RunView({ state, sessionId, busy, can, send, now, liveData }: ViewProps & { sessionId: string; now: number; liveData: LiveData }) {
   const s = state.sessions.find(x => x.id === sessionId)!; const p = state.products.find(x => x.id === s.productId);
   const [closing, setClosing] = useState(false); const [scrap, setScrap] = useState('0'); const [note, setNote] = useState(''); const [counted, setCounted] = useState(''); const [reason, setReason] = useState(''); const [ok, setOk] = useState(false); const [custom, setCustom] = useState('');
   const hours = (now - Date.parse(s.startedAt)) / 3_600_000;
   const area = productionArea(state); const autoLoad = state.settings?.autoLoad !== false;
   const add = (cartons: number) => { if (cartons > 0) void send({ type: 'production.count', sessionId, cartons }, `+${cartons} cartoni`); };
   const device = s.source === 'device';
-  const liveData = useLiveCount(device);
   const live = liveView(liveData.live, liveData.serverTime, s.id);
   async function close() {
     const scrapN = Number(scrap) || 0;

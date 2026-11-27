@@ -63,11 +63,11 @@ export async function recordHeartbeat(db: D1Database, deviceId: string, body: Re
 
 /** Lettura dal vivo per chi è dentro il gestionale (anche laboratorio): solo campi limitati dell'ultimo heartbeat,
  * nessun identificativo o nome del dispositivo. Il numero è un conteggio in corso, non un carico di magazzino. */
-export type LiveStatus = { lastSeenAt: string; at: string | null; plcReachable: boolean; sessionId: string | null; cartons: number | null };
+export type LiveStatus = { lastSeenAt: string; at: string | null; plcReachable: boolean; sessionId: string | null; cartons: number | null; queueLength: number | null };
 export async function liveStatus(db: D1Database): Promise<LiveStatus | null> {
   const row = await db.prepare('SELECT s.last_seen_at, s.payload FROM device_status s JOIN devices d ON d.id = s.device_id WHERE d.workspace_id = ? AND d.revoked_at IS NULL ORDER BY s.last_seen_at DESC LIMIT 1').bind(WORKSPACE_ID).first<{ last_seen_at: string; payload: string | null }>();
   if (!row) return null;
-  let status: { at?: unknown; plc?: { reachable?: unknown }; session?: { id?: unknown; cartons?: unknown } | null } = {};
+  let status: { at?: unknown; queueLength?: unknown; plc?: { reachable?: unknown }; session?: { id?: unknown; cartons?: unknown } | null } = {};
   try { status = row.payload ? JSON.parse(row.payload) : {}; } catch { status = {}; }
   const cartons = status.session?.cartons;
   return {
@@ -76,5 +76,6 @@ export async function liveStatus(db: D1Database): Promise<LiveStatus | null> {
     plcReachable: status.plc?.reachable === true,
     sessionId: typeof status.session?.id === 'string' ? status.session.id : null,
     cartons: typeof cartons === 'number' && Number.isSafeInteger(cartons) && cartons >= 0 ? cartons : null,
+    queueLength: typeof status.queueLength === 'number' && Number.isSafeInteger(status.queueLength) && status.queueLength >= 0 ? status.queueLength : null,
   };
 }

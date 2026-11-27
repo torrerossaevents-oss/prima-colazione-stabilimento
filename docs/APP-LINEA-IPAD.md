@@ -37,6 +37,27 @@ Un'app web installabile, non un'app dell'App Store. Si trova all'indirizzo del g
    - il numero grande mostra i **cartoni letti dalle fotocellule**, aggiornati ogni pochi secondi, con lo stato del ponte: «agganciato» (si può avviare la linea), «non ancora agganciato» (non avviare la linea) oppure «non si aggiorna da … s» (controllare il PC di linea). Il numero entra in magazzino solo alla chiusura.
 6. **Chiusura**: scarti con motivo, conferma. I cartoni buoni entrano in magazzino nell'area di carico scelta in Configurazione. Se il contapezzi è fermo si indicano i cartoni contati a mano.
 
+## Sul PC del reparto (27/11/2026)
+
+La stessa pagina `/linea` serve anche come schermo della linea sul PC del reparto, da leggere a distanza.
+
+- Su uno schermo largo (dai 1300 px in su) prodotto, lotto, scadenza e cartoni dal vivo sono molto più grandi. Sull'iPad resta tutto come prima.
+- In alto c'è sempre lo **stato del ponte**:
+  - **Ponte agganciato** sì/no: se c'è una lavorazione con fotocellule, dice se il ponte la sta seguendo;
+  - **LOGO! raggiungibile** sì/no;
+  - **ultimo segnale del ponte**, con l'ora e i secondi passati;
+  - **eventi in coda**, solo se ce ne sono.
+  - Se il ponte tace da più di 30 s compare la scritta rossa **«Ponte non risponde»**.
+- **Aggiornamento**:
+  - con una lavorazione da fotocellule aperta si legge ogni **3 s**; il ponte manda un segnale ogni 6 s, quindi il numero arriva con al massimo ~9 s di ritardo;
+  - senza lavorazione si legge ogni 10 s, solo per lo stato del ponte;
+  - quando il ponte chiude o prende una lavorazione la pagina si ricarica subito, invece di aspettare il giro di 15 s;
+  - costo: circa 1.200 letture all'ora per schermo aperto, entro i limiti gratuiti di Cloudflare insieme ai segnali del ponte.
+- **Schermo intero**: il pulsante con le quattro frecce in alto, dove il browser lo consente; sull'iPad non compare.
+- **Apertura automatica all'accensione** (Edge come app): conviene aprire direttamente `/linea`, cioè `msedge.exe --app=https://<indirizzo del gestionale>/linea --start-fullscreen`.
+  - Usare il profilo normale di Edge, **non** `--kiosk`: il kiosk usa una navigazione privata e chiederebbe il codice di Cloudflare Access a ogni avvio.
+  - Dal pulsante in alto a destra si passa al gestionale completo.
+
 ## Dati e sicurezza
 
 - Foto e testo sono letti **sull'iPad** (`@zxing/library` per il codice a barre, `tesseract.js` con il modello italiano per il testo, entrambi Apache-2.0). I file del lettore sono serviti dal nostro dominio protetto (`/ocr`, copiati da `node_modules` a ogni compilazione da `scripts/copy-ocr-assets.mjs`). Nessun servizio esterno, nessuna foto salvata.
