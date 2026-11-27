@@ -195,7 +195,7 @@ Teo: gli identificativi d'impasto sono tanti; per ora si tolgono completamente. 
 - Rete: il LOGO! va su un indirizzo statico fuori dall'intervallo DHCP del router; un conflitto di indirizzo faceva rispondere al ping un altro apparecchio. Controllo con `arp -a`. Riserva nel router ancora da fare. Nessun indirizzo o MAC nel repository.
 - Porta Modbus: sull'impianto il LOGO! non rispondeva sulla 502; si trova provando 502–510. `PROVA-INGRESSI.cmd` ora chiede anche la porta; i modelli `bridge/*.24ce.json` lo spiegano in `_port`. Il ponte distingue «Timeout del collegamento» (porta chiusa o accesso Modbus spento) da «Timeout della risposta» (collegato, nessuna risposta: `unitId`).
 - 20/11/2026: ingressi I1, I3, I4 verificati (filo allentato su I3 trovato e sistemato); lettura Modbus verificata (registri 0–5 = `[0, TOT, 0, CHIUS, 0, ANOM]`); ponte collegato al gestionale con token del dispositivo e token di servizio di Access; prima chiusura dal pulsante della linea: 6 cartoni, uguali al conteggio a mano, evento confermato dal gestionale.
-- Nota d'uso: CHIUDI va tenuto almeno 2 s; il ponte reagisce solo a richieste fatte mentre è in funzione.
+- Nota d'uso: CHIUDI va tenuto almeno 2 s. Se viene premuto a ponte spento, alla ripartenza il ponte chiude la lavorazione solo se la seguiva già prima dello spegnimento; una lavorazione seguita solo da quell'avvio non viene chiusa (AVVISO nel log): si preme di nuovo CHIUDI (dal ponte 1.3.1).
 - In corso: collaudo con almeno 100 cartoni contati anche a mano e casi particolari (`docs/COLLEGAMENTO-LOGO.md`). Pacchetto PC 1.2.0.
 
 ## Conteggio dal vivo (20/11/2026)
