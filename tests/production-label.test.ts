@@ -85,7 +85,9 @@ test('carico automatico disattivabile; chiusura dal ponte con carico', () => {
 test('una scadenza diversa per un lotto già presente è rifiutata all’avvio, non alla chiusura', () => {
   let s = act(base(), { type: 'production.start', ident: 'P1', code: '024', operator: 'Operatore prova' }); const id = activeSession(s)!.id;
   s = act(s, { type: 'production.count', sessionId: id, cartons: 3 }); s = act(s, { type: 'production.close', sessionId: id });
-  assert.throws(() => act(s, { type: 'production.start', ident: 'P1', code: '024', operator: 'Operatore prova', expiry: '2027-12-31' }), /scadenza/);
+  // Stesso giorno: vale il lotto unico del giorno. Giorno dopo, lotto scritto a mano con un'altra scadenza: rifiutato dal controllo sui lotti.
+  assert.throws(() => act(s, { type: 'production.start', ident: 'P1', code: '024', operator: 'Operatore prova', expiry: '2027-12-31' }), /ha già il lotto 261002/);
+  assert.throws(() => act(s, { type: 'production.start', ident: 'P1', code: '024', operator: 'Operatore prova', lotCode: '261002', expiry: '2027-12-31' }, ctx('2026-10-03T06:00:00.000Z')), /esiste già con scadenza 2027-10-02/);
 });
 
 test('rettifica dei cartoni: solo amministrazione, con causale e responsabile, anche sul magazzino', () => {

@@ -14,12 +14,20 @@ const act = (s: State, a: Action, now: string, extra: Context = {}) => applyActi
 const base = () => act(initialState(), { type: 'product.add', product: { code: 'C1', name: 'Cornetto PROVA', kind: 'finished', unit: 'CRT', unitsPerBox: 1, minStock: 0 } }, at('2026-11-02'));
 const start = (s: State, day: string, extra: Partial<Extract<Action, { type: 'production.start' }>> = {}, hour = 8) =>
   act(s, { type: 'production.start', code: 'C1', operator: 'Operatore prova', ident: 'I-PROVA', ...extra }, at(day, hour));
-const close = (s: State, day: string, hour = 12) => act(s, { type: 'production.close', sessionId: activeSession(s)!.id }, at(day, hour));
+// Chiude dopo aver contato almeno un cartone (una lavorazione chiusa a 0 cartoni non fissa il lotto).
+const close = (s: State, day: string, hour = 12) => {
+  const run = activeSession(s)!;
+  if (run.source === 'manual' && run.cartons === 0) s = act(s, { type: 'production.count', sessionId: run.id, cartons: 1 }, at(day, hour));
+  return act(s, { type: 'production.close', sessionId: run.id }, at(day, hour));
+};
 
 test('IDENT. obbligatorio all’avvio, salvato nella lavorazione e nello storico', () => {
   assert.throws(() => act(base(), { type: 'production.start', code: 'C1', operator: 'Operatore prova' }, at('2026-11-27')), /IDENT\./);
   assert.throws(() => start(base(), '2026-11-27', { ident: '   ' }), /IDENT\./);
-  assert.throws(() => start(base(), '2026-11-27', { ident: 'X'.repeat(31) }), /IDENT\./);
+  for (const bad of ['X'.repeat(9), '1^FS^JUS', '63~JR', 'A\\B', '63\n1', 'é<>']) {
+    assert.throws(() => start(base(), '2026-11-27', { ident: bad }), /al massimo 8 caratteri/, `avvio con ${JSON.stringify(bad)}`);
+  }
+  assert.equal(activeSession(start(base(), '2026-11-27', { ident: ' 66 PAST. ' }))!.ident, '66 PAST.', 'valori come quelli di oggi, spazi ai lati tolti');
   const s = start(base(), '2026-11-27', { ident: '63/1' });
   assert.equal(activeSession(s)!.ident, '63/1');
   assert.match(s.audit.at(-1)!.detail, /IDENT\. 63\/1/);
@@ -35,6 +43,7 @@ test('IDENT. cambiato durante la lavorazione: salvato, storico, conteggio intatt
   assert.deepEqual(run.identChanges, [{ at: at('2026-11-27', 10), from: '63/1', to: '72' }]);
   assert.match(s.audit.at(-1)!.detail, /63\/1 → 72/);
   assert.throws(() => act(s, { type: 'production.ident', sessionId: id, ident: '72' }, at('2026-11-27', 11)), /già 72/);
+  for (const bad of ['123456789', '7^2', '7~2']) assert.throws(() => act(s, { type: 'production.ident', sessionId: id, ident: bad }, at('2026-11-27', 11)), /al massimo 8 caratteri/);
   assert.ok(canRecord('laboratorio', 'production.ident'), 'l’operatore del laboratorio lo può cambiare');
   s = close(s, '2026-11-27');
   assert.throws(() => act(s, { type: 'production.ident', sessionId: id, ident: '80' }, at('2026-11-27', 13)), /chiusa/);
@@ -96,4 +105,31 @@ test('stesso lotto con scadenza diversa rifiutato anche senza carico a magazzino
   s = close(start(s, '2026-11-26', { lotCode: '261126', expiry: '2027-12-31' }), '2026-11-26');
   assert.equal(s.lots.length, 0, 'carico spento: nessun lotto in magazzino');
   assert.throws(() => start(s, '2026-11-27', { lotCode: '261126' }), /esiste già con scadenza 2027-12-31/);
+});
+
+test('un avvio sbagliato chiuso con 0 cartoni non fissa il lotto del giorno', () => {
+  let s = start(base(), '2026-11-27', { lotCode: '261126' });
+  s = act(s, { type: 'production.close', sessionId: activeSession(s)!.id }, at('2026-11-27', 9));
+  s = start(s, '2026-11-27', {}, 10);
+  assert.equal(activeSession(s)!.lotCode, '261127', 'si riparte con il lotto giusto');
+});
+
+test('continua il lotto quando oggi c’è già il lotto: vale quello di oggi, senza errore', () => {
+  let s = start(base(), '2026-11-27', { counting: 'manual' });
+  s = act(s, { type: 'production.count', sessionId: activeSession(s)!.id, cartons: 5 }, at('2026-11-27', 9));
+  s = close(s, '2026-11-27', 10);
+  s = start(s, '2026-11-27', { continueLot: true }, 11);
+  assert.equal(activeSession(s)!.lotCode, '261127');
+});
+
+test('entrata a mano con il lotto di una lavorazione chiusa e un’altra scadenza: rifiutata', () => {
+  let s = act(base(), { type: 'settings.update', settings: { autoLoad: false } }, at('2026-11-02'));
+  s = start(s, '2026-11-27', { counting: 'manual' });
+  s = act(s, { type: 'production.count', sessionId: activeSession(s)!.id, cartons: 4 }, at('2026-11-27', 9));
+  s = close(s, '2026-11-27', 10);
+  const pid = s.products[0].id;
+  assert.throws(() => act(s, { type: 'lot.receive', lot: { productId: pid, code: '261127', expiry: '2027-01-01', area: 'Area A', quantity: 4 } }, at('2026-11-27', 11)), /prodotto con scadenza 2027-11-27/);
+  s = act(s, { type: 'lot.receive', lot: { productId: pid, code: '261127', expiry: '2027-11-27', area: 'Area A', quantity: 4 } }, at('2026-11-27', 11));
+  s = start(s, '2026-11-27', {}, 12);
+  assert.equal(activeSession(s)!.lotCode, '261127', 'la produzione del giorno continua');
 });

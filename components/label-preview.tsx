@@ -46,8 +46,7 @@ export default function LabelPreview({ product, lotCode, expiry, ident, settings
         <div className="carton-label-data">
           <span className="carton-label-tiny">Da consumarsi preferibilmente entro il</span>
           <span className="carton-label-date">{itDate(expiry)}</span>
-          <span className="carton-label-lot">Lotto: {lotCode}</span>
-          {ident !== undefined && <span className="carton-label-lot">IDENT. {ident || '—'}</span>}
+          <span className="carton-label-lot">Lotto: {lotCode}{ident !== undefined && <> · IDENT. {ident || '—'}</>}</span>
         </div>
         {product.ean ? <Barcode code={product.ean}/> : <span className="carton-label-missing">EAN da indicare nella scheda prodotto</span>}
       </div>

@@ -203,9 +203,9 @@ function RunView({ state, sessionId, busy, can, send, now, liveData }: ViewProps
       <div><span className="ipad-code">Codice {s.productCode}</span><h1>{s.productName}</h1></div>
       <dl className="ipad-facts"><div><dt>Lotto</dt><dd>{s.lotCode}</dd></div><div><dt>Scadenza</dt><dd>{itDate(s.expiry)}</dd></div><div><dt>IDENT.</dt><dd>{s.ident ?? '—'}</dd></div><div><dt>Operatore</dt><dd>{s.operator}</dd></div><div><dt>Avviata</dt><dd>{time(s.startedAt)}</dd></div></dl>
       {can('production.ident') && (editingIdent
-        ? <div className="ipad-row"><label className="ipad-field grow"><span>Nuovo IDENT.</span><input value={newIdent} onChange={e => setNewIdent(e.target.value)} maxLength={30} placeholder={s.ident ?? 'Es. 63/1'} autoFocus/></label><button className="ipad-btn" disabled={busy} onClick={() => { setEditingIdent(false); setNewIdent(''); }}>Annulla</button><button className="ipad-btn primary" disabled={busy || !newIdent.trim() || newIdent.trim() === s.ident} onClick={() => void changeIdent()}><Check size={22}/>Salva IDENT.</button></div>
+        ? <div className="ipad-row"><label className="ipad-field grow"><span>Nuovo IDENT.</span><input value={newIdent} onChange={e => setNewIdent(e.target.value)} maxLength={8} placeholder={s.ident ?? 'Es. 63/1'} autoFocus/></label><button className="ipad-btn" disabled={busy} onClick={() => { setEditingIdent(false); setNewIdent(''); }}>Annulla</button><button className="ipad-btn primary" disabled={busy || !newIdent.trim() || newIdent.trim() === s.ident} onClick={() => void changeIdent()}><Check size={22}/>Salva IDENT.</button></div>
         : <button className="ipad-btn" disabled={busy} onClick={() => setEditingIdent(true)}>Cambia IDENT.</button>)}
-      {editingIdent && <p className="ipad-help">Il conteggio continua: non serve fermare né premere il pulsante. Il nuovo IDENT. resta nella lavorazione e nello storico.</p>}
+      {editingIdent && <p className="ipad-help">Al massimo 8 caratteri: lettere, cifre, spazio e / . -. Il conteggio continua: non serve fermare né premere il pulsante. Il nuovo IDENT. resta nella lavorazione e nello storico.</p>}
     </div>
     <div className="ipad-card ipad-counter">
       {device ? <div className="ipad-count" aria-live="polite"><span className="ipad-count-n">{live.cartons == null ? '—' : n(live.cartons)}</span><span>cartoni letti dalle fotocellule{live.state === 'live' && live.cartons && hours >= 0.05 ? ` · ${n(Math.round(live.cartons / hours))} all’ora` : ''}</span></div>
@@ -235,8 +235,9 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
   const [typed, setTyped] = useState('');
   const [chosen, setChosen] = useState<string | null>(null);
   const [operator, setOperator] = useState('');
-  const [ident, setIdent] = useState('');
-  const [lotChoice, setLotChoice] = useState<'today' | 'continue'>('today');
+  // IDENT. e scelta del lotto valgono per l'articolo letto: cambiando articolo tornano vuoti.
+  const [identFor, setIdentFor] = useState<{ id: string; value: string } | null>(null);
+  const [continueFor, setContinueFor] = useState<string | null>(null);
   const upload = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   // Article recognised from the barcode alone (no text reading needed); the frame is kept to read the text on request.
@@ -274,7 +275,9 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
   // Un solo lotto per prodotto e giorno; «continua il lotto» dell'ultimo giorno di produzione entro 7 giorni (Teo, 28/11/2026).
   const todaysLot = found ? todayLotFor(state, found.id, today) : undefined;
   const prevLot = found && !todaysLot ? previousLotFor(state, found.id, today) : undefined;
-  const continuing = Boolean(prevLot && lotChoice === 'continue');
+  const continuing = Boolean(prevLot && found && continueFor === found.id);
+  const ident = found && identFor?.id === found.id ? identFor.value : '';
+  const setIdent = (value: string) => { if (found) setIdentFor({ id: found.id, value }); };
   const lot = todaysLot?.lotCode ?? (continuing ? prevLot!.lotCode : productionLot(today));
   const expiry = todaysLot?.expiry ?? (continuing ? prevLot!.expiry : productionExpiry(today, months));
   const lastIdent = found ? [...state.sessions].filter(x => x.productId === found.id && x.ident).sort((a, b) => a.startedAt.localeCompare(b.startedAt)).at(-1)?.ident : undefined;
@@ -293,7 +296,7 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
   async function start() {
     if (!found) return;
     try { localStorage.setItem(OPERATOR_KEY, operator.trim()); } catch { /* not remembered */ }
-    if (await send({ type: 'production.start', code: found.code, operator: operator.trim(), ident: ident.trim(), ...(continuing ? { continueLot: true } : {}), counting: devicesEnabled ? 'device' : 'manual' }, `Produzione avviata: ${found.code}, lotto ${lot}`)) { setScan(null); setChosen(null); setIdent(''); setLotChoice('today'); }
+    if (await send({ type: 'production.start', code: found.code, operator: operator.trim(), ident: ident.trim(), ...(continuing ? { continueLot: true } : {}), counting: devicesEnabled ? 'device' : 'manual' }, `Produzione avviata: ${found.code}, lotto ${lot}`)) { setScan(null); setChosen(null); setIdentFor(null); setContinueFor(null); }
   }
   return <section className="ipad-start" aria-label="Avvio della produzione">
     <div className="ipad-card">
@@ -331,14 +334,14 @@ function StartView({ state, busy, can, send, today, devicesEnabled }: ViewProps 
       <h1 className="ipad-step"><span>2</span>Avvio della produzione</h1>
       <div className="ipad-found"><span className="ipad-code">Codice {found.code}{found.ean ? ` · EAN ${found.ean}` : ''}</span><h2>{found.name}</h2></div>
       {prevLot && <div className="ipad-row" role="group" aria-label="Lotto">
-        <button className={'ipad-btn' + (lotChoice === 'today' ? ' primary' : '')} aria-pressed={lotChoice === 'today'} onClick={() => setLotChoice('today')}>Lotto di oggi {productionLot(today)}</button>
-        <button className={'ipad-btn' + (lotChoice === 'continue' ? ' primary' : '')} aria-pressed={lotChoice === 'continue'} onClick={() => setLotChoice('continue')}>Continua il lotto del {itDate(prevLot.day)} · {prevLot.lotCode}</button>
+        <button className={'ipad-btn' + (!continuing ? ' primary' : '')} aria-pressed={!continuing} onClick={() => setContinueFor(null)}>Lotto di oggi {productionLot(today)}</button>
+        <button className={'ipad-btn' + (continuing ? ' primary' : '')} aria-pressed={continuing} onClick={() => setContinueFor(found.id)}>Continua il lotto del {itDate(prevLot.day)} · {prevLot.lotCode}</button>
       </div>}
       {todaysLot && <p className="ipad-help">Oggi questo articolo ha già il lotto {todaysLot.lotCode}: nello stesso giorno un articolo ha un solo lotto.</p>}
       <dl className="ipad-facts big"><div><dt>Lotto</dt><dd>{lot}</dd></div><div><dt>Scadenza</dt><dd>{itDate(expiry)}</dd></div><div><dt>Cartone</dt><dd>{found.piecesPerCarton ? `${found.piecesPerCarton} pezzi` : '—'}</dd></div></dl>
       <p className="ipad-help">{devicesEnabled ? 'Conteggio dal contapezzi: a fine produzione basta il pulsante sulla linea, la chiusura e il carico avvengono da soli. ' : 'Contapezzi non collegato: conterete i cartoni qui e chiuderete dall’iPad. '}{todaysLot ? 'Lotto e scadenza sono quelli già usati oggi. ' : continuing ? `Lotto e scadenza del ${itDate(prevLot!.day)}. ` : `Lotto = data di oggi (AAMMGG); scadenza = oggi + ${months} mesi. `}{productionArea(state) ? `Alla chiusura i cartoni entrano in ${productionArea(state)}.` : 'Area di carico non impostata: la chiusura non caricherà il magazzino.'}</p>
       <label className="ipad-field"><span>Operatore</span><input value={operator} onChange={e => setOperator(e.target.value)} placeholder="Nome di chi lavora sulla linea" autoComplete="name"/></label>
-      <label className="ipad-field"><span>IDENT.{lastIdent ? ` (ultimo per questo articolo: ${lastIdent})` : ''}</span><input value={ident} onChange={e => setIdent(e.target.value)} maxLength={30} placeholder="Identificativo dell’impasto, es. 63/1"/></label>
+      <label className="ipad-field"><span>IDENT.{lastIdent ? ` (ultimo per questo articolo: ${lastIdent})` : ''}</span><input value={ident} onChange={e => setIdent(e.target.value)} maxLength={8} placeholder="Identificativo dell’impasto, es. 63/1"/></label>
       <button className="ipad-btn primary wide" disabled={busy || !operator.trim() || !ident.trim() || !can('production.start')} onClick={() => void start()}><Play size={24}/>Avvia produzione</button>
       <LabelPreview product={found} lotCode={lot} expiry={expiry} ident={ident.trim()} settings={state.settings}/>
     </div>}

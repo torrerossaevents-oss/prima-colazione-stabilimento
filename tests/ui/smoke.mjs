@@ -167,6 +167,7 @@ await dialog().getByRole('alert').filter({ hasText: 'Il lotto deve essere la dat
 assert.equal(await dialog().getByLabel('Operatore').inputValue(), 'Operatore prova', 'dati inseriti conservati dopo l’errore sul lotto');
 const otherLot = autoLot === '250101' ? '250102' : '250101';
 await lotInput.fill(otherLot);
+{ const d = `${otherLot.slice(4, 6)}/${otherLot.slice(2, 4)}/${2001 + Number(otherLot.slice(0, 2))}`; await dialog().locator('.auto-lot').getByText(d).waitFor(); } // scadenza dalla data del lotto, come sul server
 const asked = new Promise(resolve => page.once('dialog', async d => { const text = d.message(); await d.dismiss(); resolve(text); }));
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click();
 assert.match(await asked, new RegExp(`Il lotto ${otherLot} .*non quella di oggi \\(${autoLot}\\)`));

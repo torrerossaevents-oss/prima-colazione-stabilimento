@@ -46,7 +46,7 @@ state = await act({ type: 'order.prepare', orderId: state.orders[1].id });
 state = await act({ type: 'order.create', order: { customer: 'Distributore Test Sud', destination: 'Magazzino di prova, Latina', date: day(0), lines: [{ lotId: lot('L2611G'), quantity: 60 }] } });
 state = await act({ type: 'order.prepare', orderId: state.orders[2].id });
 state = await act({ type: 'order.dispatch', orderId: state.orders[2].id, documentRef: 'DDT 412/2026 (prova)', quantities: [{ lotId: lot('L2611G'), quantity: 40 }], note: 'Il resto al prossimo giro' });
-for (const [code, lotCode, cartons] of [['00123', '261101', 200], ['00124', '261102', 150], ['00123', '261104', 54]]) {
+for (const [code, lotCode, cartons] of [['00123', '261101', 200], ['00124', '261102', 150], ['00123', '261101', 54]]) {
   state = await act({ type: 'production.start', ident: 'P1', code, operator: 'Operatore prova', lotCode, expiry: day(30) });
   const s = state.sessions.at(-1).id;
   state = await act({ type: 'production.count', sessionId: s, cartons });

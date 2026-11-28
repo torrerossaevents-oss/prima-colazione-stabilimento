@@ -185,3 +185,11 @@ test('daily production sheet: chronological flow, repeated article counted per r
  assert.deepEqual(sheet.totals,{runs:4,products:2,repeated:2,confirmedCartons:124,activeCartons:12,scrapCartons:0});
  assert.equal(productionDay(state.sessions,'2026-11-12').totals.confirmedCartons,99);
 });
+
+test('foglio del giorno: archivi di prima della regola «un lotto al giorno» mostrano ancora tutti i lotti',()=>{
+ let state=act(initialState(),{type:'product.add',product:{code:'A1',name:'A',kind:'finished',unit:'CRT',unitsPerBox:1,minStock:0}});
+ state=applyAction(state,{type:'production.start',ident:'P1',code:'A1',operator:'O',lotCode:'261113',expiry:'2026-12-31'},{...context,now:'2026-11-13T09:00:00.000Z'});
+ state=applyAction(state,{type:'production.close',sessionId:state.sessions[0].id},{...context,now:'2026-11-13T09:30:00.000Z'});
+ const legacy=structuredClone(state);legacy.sessions.push({...legacy.sessions[0],id:'legacy-2',lotCode:'261112',startedAt:'2026-11-13T10:00:00.000Z',closedAt:'2026-11-13T10:30:00.000Z'});
+ assert.deepEqual(productionDay(legacy.sessions,'2026-11-13').byProduct[0].lots,['261113','261112']);
+});

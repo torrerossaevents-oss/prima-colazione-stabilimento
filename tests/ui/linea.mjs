@@ -58,7 +58,7 @@ await page.locator('.ipad-facts').getByText(lot).waitFor();
 await page.getByLabel('Operatore').fill('Operatore prova');
 assert.equal(await page.getByRole('button', { name: 'Avvia produzione' }).isDisabled(), true, 'senza IDENT. non si avvia');
 await page.getByLabel(/^IDENT\./).fill('63/1');
-await page.locator('.carton-label').getByText('IDENT. 63/1').waitFor();
+await page.locator('.carton-label').getByText(/IDENT\. 63\/1/).waitFor();
 await page.getByRole('button', { name: 'Avvia produzione' }).click();
 await page.locator('.ipad-count-n').waitFor();
 await page.getByRole('button', { name: '+5' }).click(); await page.getByText('+5 cartoni').waitFor();
