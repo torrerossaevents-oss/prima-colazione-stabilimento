@@ -16,7 +16,7 @@ const product = { code: 'A1', name: 'Cornetto PROVA', kind: 'finished' as const,
 function closedByLine(settings: State['settings'], cartons = 37, anomalies: string[] = [], item: typeof product = product) {
   let s = act(initialState(), { type: 'product.add', product: item });
   if (settings) s = act(s, { type: 'settings.update', settings });
-  s = act(s, { type: 'production.start', code: 'A1', operator: 'Operatore prova', counting: 'device' });
+  s = act(s, { type: 'production.start', ident: 'P1', code: 'A1', operator: 'Operatore prova', counting: 'device' });
   const sessionId = s.sessions[0].id;
   return act(s, { type: 'production.deviceClose', sessionId, eventId: 'evt_prova_' + (++seq), cartons, counterStart: 1000, counterEnd: 1000 + cartons, closedAt: '2026-11-27T16:42:10.000Z', anomalies }, ctx({ device: { id: 'dev-prova', line: 'linea-1' } }));
 }
@@ -55,7 +55,7 @@ test('zero cartoni: niente da caricare, non è un errore; anomalie mostrate', ()
 test('il riquadro sparisce quando parte la lavorazione successiva; niente per una chiusura manuale', () => {
   let s = closedByLine({ productionArea: 'Cella' });
   assert.ok(lastLineClose(s));
-  s = act(s, { type: 'production.start', code: 'A1', operator: 'Operatore prova', counting: 'manual' }, ctx({ now: '2026-11-27T16:50:00.000Z' }));
+  s = act(s, { type: 'production.start', ident: 'P1', code: 'A1', operator: 'Operatore prova', counting: 'manual' }, ctx({ now: '2026-11-27T16:50:00.000Z' }));
   assert.equal(lastLineClose(s), null, 'lavorazione successiva avviata');
   s = act(s, { type: 'production.close', sessionId: s.sessions[1].id }, ctx({ now: '2026-11-27T17:00:00.000Z' }));
   assert.equal(lastLineClose(s), null, 'l’ultima chiusura è manuale: nessun riquadro del ponte');

@@ -62,7 +62,7 @@ export function buildTrialState(now: Date = new Date()): State {
 
   const produce = (day: string, [code, start, counts, end]: Run, index: number, closeIt: boolean, scrap = 0) => {
     // Lot and expiry come from the production day (AAMMGG, +12 months), as on the label.
-    run({ type: 'production.start', code, operator: operators[index % 2] }, at(day, start));
+    run({ type: 'production.start', code, operator: operators[index % 2], ident: `PROVA-${index + 1}` }, at(day, start));
     const session = state.sessions.at(-1)!;
     const step = closeIt ? Math.max(1, Math.floor((end - start) / (counts.length + 1))) : 10;
     counts.forEach((cartons, k) => { const when = start + step * (k + 1); if (closeIt || day !== today || when <= nowMinutes) run({ type: 'production.count', sessionId: session.id, cartons }, at(day, when)); });

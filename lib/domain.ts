@@ -10,7 +10,9 @@ export type Order = { id:string; customer:string; destination:string; date:strin
 export const PRODUCTION_LINE='linea-1';
 export type DeviceClose = {eventId:string;deviceId:string;counterStart:number;counterEnd:number;counterModulo?:number;deviceClosedAt:string;anomalies:string[]};
 /** cartons = cartoni letti; scrapCartons = scarti dichiarati alla chiusura. La quantità buona non viene caricata a magazzino. */
-export type Session = { id:string; productId:string; productCode:string; productName:string; unitsPerBox:number; unit?:string; line?:string; day:string; operator:string; lotCode:string; expiry:string; status:'active'|'closed'; cartons:number; startedAt:string; closedAt?:string; source:'manual'|'device'; stockLoaded:boolean; autoLoad?:boolean; loadedLotId?:string; loadedQuantity?:number; piecesPerCarton?:number; pieceWeightG?:number; corrections?:SessionCorrection[]; scrapCartons?:number; closeNote?:string; closedBy?:'manual'|'device'|'manual-override'; device?:DeviceClose };
+/** Cambio dell'IDENT. durante la lavorazione (decisione di Teo del 28/11/2026). */
+export type IdentChange = {at:string;from:string;to:string};
+export type Session = { id:string; productId:string; productCode:string; productName:string; unitsPerBox:number; unit?:string; line?:string; day:string; operator:string; lotCode:string; expiry:string; status:'active'|'closed'; cartons:number; startedAt:string; closedAt?:string; source:'manual'|'device'; stockLoaded:boolean; autoLoad?:boolean; loadedLotId?:string; loadedQuantity?:number; piecesPerCarton?:number; pieceWeightG?:number; ident?:string; identChanges?:IdentChange[]; continuedFrom?:{day:string;sessionId:string}; corrections?:SessionCorrection[]; scrapCartons?:number; closeNote?:string; closedBy?:'manual'|'device'|'manual-override'; device?:DeviceClose };
 /** Rettifica dei cartoni di una lavorazione (solo amministrazione): causale e responsabile obbligatori. */
 export type SessionCorrection = {id:string;at:string;delta:number;before:number;after:number;reason:string;responsible:string;actor?:string;stockDelta:number};
 /** Variazione esplicita del fisico di un lotto, registrata nell'evento che la causa. */
@@ -34,7 +36,8 @@ export type Action =
  | {type:'order.prepare'|'order.cancel';orderId:string}
  | {type:'order.dispatch';orderId:string;documentRef:string;quantities?:{lotId:string;quantity:number}[];note?:string}
  | {type:'order.document';orderId:string;documentRef:string}
- | {type:'production.start';code:string;operator:string;lotCode?:string;expiry?:string;counting?:'manual'|'device'}
+ | {type:'production.start';code:string;operator:string;ident?:string;lotCode?:string;expiry?:string;continueLot?:boolean;counting?:'manual'|'device'}
+ | {type:'production.ident';sessionId:string;ident:string}
  | {type:'production.adjust';sessionId:string;delta:number;reason:string;responsible:string}
  | {type:'settings.update';settings:Settings}
  | {type:'production.count';sessionId:string;cartons:number}
@@ -72,6 +75,36 @@ export function productionLotDay(code:string):string|undefined{
  const date=new Date(Date.UTC(year,month-1,day));
  if(month<1||month>12||day<1||date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day)return undefined;
  return `${year}-${code.slice(2,4)}-${code.slice(4,6)}`;
+}
+/** Un lotto si può continuare dall'ultimo giorno di produzione dello stesso prodotto, al massimo 7 giorni prima (Teo, 28/11/2026). */
+export const LOT_CONTINUE_DAYS=7;
+/** Massimo dei cambi di IDENT. conservati nella lavorazione (i più vecchi restano nello storico). */
+export const IDENT_CHANGES_KEPT=100;
+/** IDENT.: va dentro un campo dell'etichetta ZPL (a 48 punti, prima del codice a barre): al massimo 8 caratteri, senza ^ ~ \ né a capo. */
+export const IDENT_MAX=8;
+export const IDENT_PATTERN=/^[A-Za-z0-9À-ÖØ-öø-ÿ .\/-]+$/;
+export const IDENT_FORMAT='IDENT.: al massimo 8 caratteri tra lettere, cifre, spazio e / . -';
+function identText(value:unknown):string{
+ const ident=typeof value==='string'?value.trim():'';
+ if(!ident||ident.length>IDENT_MAX||!IDENT_PATTERN.test(ident))fail(`${IDENT_FORMAT}.`);
+ return ident;
+}
+export type LotChoice={day:string;lotCode:string;expiry:string;sessionId:string};
+const latestOf=(rows:Session[]):Session|undefined=>rows.reduce<Session|undefined>((a,s)=>!a||s.startedAt>=a.startedAt?s:a,undefined);
+/** Lotto già usato oggi per questo prodotto: nello stesso giorno un prodotto ha un solo lotto. */
+export function todayLotFor(state:State,productId:string,today:string):LotChoice|undefined{
+ // Una lavorazione chiusa con 0 cartoni non ha prodotto niente: non fissa il lotto, così un avvio sbagliato si corregge.
+ const s=latestOf(state.sessions.filter(x=>x.productId===productId&&x.day===today&&!(x.status==='closed'&&x.cartons===0)));
+ return s&&{day:s.day,lotCode:s.lotCode,expiry:s.expiry,sessionId:s.id};
+}
+/** Lotto dell'ultimo giorno in cui il prodotto è stato fatto, prima di oggi ed entro LOT_CONTINUE_DAYS giorni. */
+export function previousLotFor(state:State,productId:string,today:string):LotChoice|undefined{
+ const from=addDays(today,-LOT_CONTINUE_DAYS);
+ const rows=state.sessions.filter(x=>x.productId===productId&&x.day<today&&x.day>=from&&!(x.status==='closed'&&x.cartons===0));
+ if(!rows.length)return undefined;
+ const day=rows.reduce((last,x)=>x.day>last?x.day:last,rows[0].day);
+ const s=latestOf(rows.filter(x=>x.day===day))!;
+ return s&&{day:s.day,lotCode:s.lotCode,expiry:s.expiry,sessionId:s.id};
 }
 /** Scadenza: stesso giorno dopo N mesi; se quel giorno non esiste (29/02, 31) l'ultimo giorno del mese. */
 export function productionExpiry(day:string,months:number):string{
@@ -261,7 +294,7 @@ export function validateState(state:State):void{
  for(const order of state.orders)for(const line of order.lines){if(!lotIds.has(line.lotId))fail('Lotto ordine inesistente.');number(line.quantity,'Quantità richiesta',1);number(line.shipped,'Quantità spedita');if(line.shipped>line.quantity)fail('La quantità spedita supera quella richiesta.');}
  for(const session of state.sessions){number(session.cartons,'Cartoni');if(session.scrapCartons!==undefined&&(number(session.scrapCartons,'Scarti')>session.cartons))fail('Gli scarti superano i cartoni letti.');}
 }
-export type ProductionRun={id:string;productId:string;productCode:string;productName:string;lotCode:string;unit:string;unitsPerBox:number;operator:string;startedAt:string;closedAt?:string;status:'active'|'closed';cartons:number;scrapCartons:number;source:Session['source'];closedBy?:Session['closedBy'];runOfProduct:number;runsOfProduct:number;toVerify:boolean};
+export type ProductionRun={id:string;productId:string;productCode:string;productName:string;lotCode:string;ident?:string;identChanges?:number;unit:string;unitsPerBox:number;operator:string;startedAt:string;closedAt?:string;status:'active'|'closed';cartons:number;scrapCartons:number;source:Session['source'];closedBy?:Session['closedBy'];runOfProduct:number;runsOfProduct:number;toVerify:boolean};
 export type ProductionDayProduct={productId:string;productCode:string;productName:string;unit:string;unitsPerBox:number;runs:number;confirmedCartons:number;activeCartons:number;scrapCartons:number;firstStart:string;lastEnd?:string;lots:string[]};
 /**
  * Production sheet of one Europe/Rome day: every session in chronological order of start
@@ -272,7 +305,7 @@ export function productionDay(sessions:Session[],day:string){
  const runs=sessions.filter(s=>s.day===day).sort((a,b)=>a.startedAt.localeCompare(b.startedAt)||a.id.localeCompare(b.id));
  const count=new Map<string,number>();for(const s of runs)count.set(s.productId,(count.get(s.productId)??0)+1);
  const seen=new Map<string,number>();
- const flow:ProductionRun[]=runs.map(s=>{const n=(seen.get(s.productId)??0)+1;seen.set(s.productId,n);return {id:s.id,productId:s.productId,productCode:s.productCode,productName:s.productName,lotCode:s.lotCode,unit:s.unit??'',unitsPerBox:s.unitsPerBox,operator:s.operator,startedAt:s.startedAt,...(s.closedAt?{closedAt:s.closedAt}:{}),status:s.status,cartons:s.cartons,scrapCartons:s.scrapCartons??0,source:s.source,...(s.closedBy?{closedBy:s.closedBy}:{}),runOfProduct:n,runsOfProduct:count.get(s.productId)!,toVerify:s.closedBy==='manual-override'||(s.device?.anomalies.length??0)>0};});
+ const flow:ProductionRun[]=runs.map(s=>{const n=(seen.get(s.productId)??0)+1;seen.set(s.productId,n);return {id:s.id,productId:s.productId,productCode:s.productCode,productName:s.productName,lotCode:s.lotCode,...(s.ident?{ident:s.ident}:{}),...(s.identChanges?.length?{identChanges:s.identChanges.length}:{}),unit:s.unit??'',unitsPerBox:s.unitsPerBox,operator:s.operator,startedAt:s.startedAt,...(s.closedAt?{closedAt:s.closedAt}:{}),status:s.status,cartons:s.cartons,scrapCartons:s.scrapCartons??0,source:s.source,...(s.closedBy?{closedBy:s.closedBy}:{}),runOfProduct:n,runsOfProduct:count.get(s.productId)!,toVerify:s.closedBy==='manual-override'||(s.device?.anomalies.length??0)>0};});
  const products=new Map<string,ProductionDayProduct>();
  for(const r of flow){
   const p=products.get(r.productId)??{productId:r.productId,productCode:r.productCode,productName:r.productName,unit:r.unit,unitsPerBox:r.unitsPerBox,runs:0,confirmedCartons:0,activeCartons:0,scrapCartons:0,firstStart:r.startedAt,lots:[]};
@@ -382,6 +415,8 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
   const quantity=number(l.quantity,'Quantità',1);
   if(state.lots.some(row=>row.productId===lot.productId&&row.code===lot.code&&row.expiry!==lot.expiry))fail('Questo lotto è già presente con una scadenza diversa. Verifica i dati.');
   const running=activeSession(state);if(running&&running.productId===lot.productId&&running.lotCode===lot.code&&running.expiry!==lot.expiry)fail(`Il lotto ${lot.code} è in produzione con scadenza ${running.expiry}: usa la stessa scadenza.`);
+  // Un lotto ha una sola scadenza anche rispetto alle lavorazioni già chiuse (per esempio con il carico spento).
+  const produced=state.sessions.find(s=>s.productId===lot.productId&&s.lotCode===lot.code&&s.expiry!==lot.expiry);if(produced)fail(`Il lotto ${lot.code} è stato prodotto con scadenza ${produced.expiry}: usa la stessa scadenza.`);
   const target=state.lots.find(row=>row.productId===lot.productId&&row.code===lot.code&&row.area===lot.area)??(state.lots.push(lot),lot);
   number(target.quantity+quantity,'Giacenza');move(target,quantity,isReturn?'return':'receive');if(isReturn)target.blocked+=quantity;p.inUse=true;
   detail=isReturn?`Reso da controllare: ${quantity} ${p.unit} · ${p.code} · lotto ${target.code} · ${target.area}, bloccato fino alla verifica. Motivo: ${reason}. Riferimento: ${reference}.`:`Carico manuale: ${quantity} ${p.unit} · ${p.code} · lotto ${target.code} · ${target.area}.`;break;
@@ -445,17 +480,42 @@ export function applyAction(previous:State,action:Action,context:Context={}):Sta
  case 'order.document':{const order=orderById(action.orderId);const documentRef=text(action.documentRef,'Riferimento documento',120);if(!order.lines.some(line=>line.shipped>0))fail('Registra prima l’uscita della merce.');order.documentRef=documentRef;order.documents.push({reference:documentRef,at:now,quantities:[]});detail=`Ordine ${order.customer}: collegato documento ${documentRef}. Nessun nuovo scarico di magazzino.`;break;}
  case 'production.start':{
   if(activeSession(state))fail('Chiudi e salva la lavorazione attiva prima di iniziarne un’altra.');const p=productByScan(state,text(action.code,'Codice articolo',80))??fail('Codice sconosciuto o articolo non finito: avvio non consentito.');
-  // Lotto e scadenza dalla data di produzione (regola dell'etichetta), salvo valori indicati espressamente.
+  const ident=identText(action.ident);
+  const months=p.shelfLifeMonths??DEFAULT_SHELF_LIFE_MONTHS;
   // Un lotto scritto a mano deve essere una data di produzione vera AAMMGG; la conferma di una data diversa da oggi è nella finestra di avvio.
   const manualLot=action.lotCode===undefined||action.lotCode===''?undefined:text(action.lotCode,'Codice lotto',80);
   if(manualLot!==undefined&&!productionLotDay(manualLot))fail(`${PRODUCTION_LOT_FORMAT}.`);
-  const lotCode=manualLot??productionLot(today);
-  const expiry=action.expiry===undefined||action.expiry===''?productionExpiry(today,p.shelfLifeMonths??DEFAULT_SHELF_LIFE_MONTHS):date(action.expiry,'Scadenza');if(expiry<today)fail('La scadenza della produzione non può essere passata.');
-  const sameLot=state.lots.find(l=>l.productId===p.id&&l.code===lotCode&&l.expiry!==expiry);if(sameLot)fail(`Il lotto ${lotCode} è già in magazzino con scadenza ${sameLot.expiry}: usa la stessa scadenza o un altro lotto.`);
+  const manualExpiry=action.expiry===undefined||action.expiry===''?undefined:date(action.expiry,'Scadenza');
+  // Nello stesso giorno, per lo stesso prodotto, un solo lotto (Teo, 28/11/2026).
+  const todays=todayLotFor(state,p.id,today);
+  const previous=action.continueLot===true&&!todays?previousLotFor(state,p.id,today)??fail(`Nessuna produzione di ${p.code} negli ultimi ${LOT_CONTINUE_DAYS} giorni: non c’è un lotto da continuare.`):undefined;
+  let lotCode:string,expiry:string,continuedFrom:Session['continuedFrom'];
+  if(todays){
+   if((manualLot!==undefined&&manualLot!==todays.lotCode)||(previous&&previous.lotCode!==todays.lotCode)||(manualExpiry!==undefined&&manualExpiry!==todays.expiry))fail(`Oggi ${p.code} ha già il lotto ${todays.lotCode} con scadenza ${todays.expiry}: nello stesso giorno un prodotto ha un solo lotto.`);
+   lotCode=todays.lotCode;expiry=todays.expiry;
+  }else if(previous){
+   if((manualLot!==undefined&&manualLot!==previous.lotCode)||(manualExpiry!==undefined&&manualExpiry!==previous.expiry))fail('Continuando un lotto, lotto e scadenza sono quelli del lotto continuato.');
+   lotCode=previous.lotCode;expiry=previous.expiry;continuedFrom={day:previous.day,sessionId:previous.sessionId};
+  }else{
+   // Lotto e scadenza dalla data di produzione (regola dell'etichetta); un lotto di un altro giorno ha la scadenza calcolata dalla sua data.
+   lotCode=manualLot??productionLot(today);
+   expiry=manualExpiry??productionExpiry(productionLotDay(lotCode)!,months);
+  }
+  if(expiry<today)fail('La scadenza della produzione non può essere passata.');
+  const sameLot=state.lots.find(l=>l.productId===p.id&&l.code===lotCode&&l.expiry!==expiry)??state.sessions.find(s=>s.productId===p.id&&s.lotCode===lotCode&&s.expiry!==expiry);if(sameLot)fail(`Il lotto ${lotCode} esiste già con scadenza ${sameLot.expiry}: usa la stessa scadenza o un altro lotto.`);
   const counting=action.counting??'manual';if(counting!=='manual'&&counting!=='device')fail('Modalità di conteggio non valida.');
   if(counting==='device'&&!context.devicesEnabled)fail('Nessun ponte conta-cartoni attivo: avvia la lavorazione con conteggio manuale.');
-  const session:Session={id:id(),productId:p.id,productCode:p.code,productName:p.name,unitsPerBox:p.unitsPerBox,unit:p.unit,line:PRODUCTION_LINE,day:today,operator:text(action.operator,'Operatore',100),lotCode,expiry,status:'active',cartons:0,startedAt:now,source:counting,stockLoaded:false,...(p.piecesPerCarton?{piecesPerCarton:p.piecesPerCarton}:{}),...(p.pieceWeightG?{pieceWeightG:p.pieceWeightG}:{})};state.sessions.push(session);p.inUse=true;
-  detail=`Lavorazione ${counting==='device'?'con conteggio fotocellule':'manuale'} avviata: ${p.code} · ${p.name} · lotto ${session.lotCode}, scadenza ${session.expiry} · ${session.operator}.`;break;
+  const session:Session={id:id(),productId:p.id,productCode:p.code,productName:p.name,unitsPerBox:p.unitsPerBox,unit:p.unit,line:PRODUCTION_LINE,day:today,operator:text(action.operator,'Operatore',100),lotCode,expiry,ident,...(continuedFrom?{continuedFrom}:{}),status:'active',cartons:0,startedAt:now,source:counting,stockLoaded:false,...(p.piecesPerCarton?{piecesPerCarton:p.piecesPerCarton}:{}),...(p.pieceWeightG?{pieceWeightG:p.pieceWeightG}:{})};state.sessions.push(session);p.inUse=true;
+  detail=`Lavorazione ${counting==='device'?'con conteggio fotocellule':'manuale'} avviata: ${p.code} · ${p.name} · lotto ${session.lotCode}${continuedFrom?` (continuato dal ${continuedFrom.day.split('-').reverse().join('/')})`:''}, scadenza ${session.expiry} · IDENT. ${ident} · ${session.operator}.`;break;
+ }
+ case 'production.ident':{
+  // L'IDENT. si cambia in qualsiasi momento della lavorazione, senza toccare il conteggio (Teo, 28/11/2026).
+  const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.');
+  if(session.status!=='active')fail('La lavorazione è chiusa: l’IDENT. si cambia solo durante la lavorazione.');
+  const ident=identText(action.ident);const from=session.ident??'';
+  if(ident===from)fail(`L’IDENT. di questa lavorazione è già ${ident}.`);
+  session.identChanges=[...(session.identChanges??[]),{at:now,from,to:ident}].slice(-IDENT_CHANGES_KEPT);session.ident=ident;
+  detail=`IDENT. cambiato durante la lavorazione ${session.productCode} · lotto ${session.lotCode}: ${from||'—'} → ${ident}.`;break;
  }
  case 'production.count':{const session=state.sessions.find(row=>row.id===action.sessionId)??fail('Lavorazione non trovata.');if(session.status!=='active')fail('La lavorazione è chiusa.');if(session.source==='device')fail('Questa lavorazione è contata dalle fotocellule: non aggiungere cartoni a mano.');const cartons=number(action.cartons,'Cartoni da aggiungere',1);number(session.cartons+cartons,'Totale cartoni');session.cartons+=cartons;detail=`Conteggio manuale ${session.productCode}: +${cartons} cartoni, parziale ${session.cartons}.`;break;}
  case 'production.close':{

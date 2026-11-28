@@ -156,6 +156,7 @@ const autoLot = romeDay.slice(2).replaceAll('-', '');
 await dialog().locator('.auto-lot').getByText(autoLot).waitFor(); await dialog().locator('.carton-label').waitFor();
 assert.ok((await dialog().locator('.auto-lot').boundingBox()).height > 40, 'lot and expiry box fully visible inside the dialog');
 await dialog().getByLabel('Operatore').fill('Operatore prova');
+await dialog().getByLabel(/^IDENT\./).fill('63/1');
 // Lotto scritto a mano (27/11/2026): solo una data vera AAMMGG; una data diversa da oggi chiede conferma.
 const versionBeforeLot = (await api()).version;
 await dialog().getByText('Lotto o scadenza diversi').click();
@@ -166,6 +167,7 @@ await dialog().getByRole('alert').filter({ hasText: 'Il lotto deve essere la dat
 assert.equal(await dialog().getByLabel('Operatore').inputValue(), 'Operatore prova', 'dati inseriti conservati dopo l’errore sul lotto');
 const otherLot = autoLot === '250101' ? '250102' : '250101';
 await lotInput.fill(otherLot);
+{ const d = `${otherLot.slice(4, 6)}/${otherLot.slice(2, 4)}/${2001 + Number(otherLot.slice(0, 2))}`; await dialog().locator('.auto-lot').getByText(d).waitFor(); } // scadenza dalla data del lotto, come sul server
 const asked = new Promise(resolve => page.once('dialog', async d => { const text = d.message(); await d.dismiss(); resolve(text); }));
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click();
 assert.match(await asked, new RegExp(`Il lotto ${otherLot} .*non quella di oggi \\(${autoLot}\\)`));
@@ -175,6 +177,14 @@ assert.equal((await api()).version, versionBeforeLot, 'lotto non valido o confer
 await lotInput.fill('');
 log('lotto a mano: formato sbagliato rifiutato con messaggio chiaro, data diversa da oggi con richiesta di conferma');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
+// IDENT. scritto all'avvio e cambiato durante la lavorazione, senza fermarla (Teo, 28/11/2026).
+const facts = page.locator('.station-facts');
+await facts.getByText('63/1').waitFor();
+await facts.getByRole('button', { name: 'Cambia' }).click();
+await dialog().getByLabel('Nuovo IDENT.').fill('72'); await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
+await facts.getByText('72').waitFor();
+{ const run = (await api()).state.sessions.find(x => x.status === 'active'); assert.equal(run.ident, '72'); assert.deepEqual(run.identChanges.map(c => [c.from, c.to]), [['63/1', '72']]); }
+log('IDENT. scritto all’avvio e cambiato durante la lavorazione, salvato con lo storico del cambio');
 await page.getByRole('button', { name: 'Aggiungi cartoni' }).click(); await dialog().getByLabel('Cartoni da aggiungere').fill('200');
 await dialog().getByRole('button', { name: 'Conferma e salva' }).click(); await dialog().waitFor({ state: 'detached' });
 await page.getByRole('button', { name: 'Chiudi / salva lavorazione' }).click(); await dialog().getByRole('checkbox').check();
@@ -233,6 +243,7 @@ await page.goto(base + '/#production'); await page.reload();
 await page.getByRole('button', { name: 'Nuova lavorazione' }).first().click();
 await dialog().getByPlaceholder('Codice dell’etichetta').fill('00123'); await dialog().getByText(/^Codice 00123/).waitFor();
 await dialog().getByLabel('Operatore').fill('Operatore prova');
+await dialog().getByLabel(/^IDENT\./).fill('63/1');
 assert.equal(await dialog().locator('input[name=counting][value=device]').isChecked(), true, 'with a bridge the counting comes from the line by default');
 await dialog().getByRole('button', { name: 'Conferma e avvia' }).click(); await dialog().waitFor({ state: 'detached' });
 const runId = (await api()).state.sessions.find(x => x.status === 'active').id;
