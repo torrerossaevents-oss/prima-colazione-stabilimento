@@ -239,6 +239,10 @@ Piano di Teo, pezzo 2. `/linea` mostra in alto lo stato del ponte (agganciato, L
 
 Piano di Teo, pezzo 3. Dopo una chiusura dal pulsante della linea `/linea` mostra un riquadro fisso «Ultima chiusura: ore hh:mm – N cartoni – lotto X» con l'esito del carico. Se il carico non è stato fatto lo scrive in bianco su rosso, con il motivo (area non impostata, carico automatico disattivato) e cosa fare. Resta finché non parte la lavorazione successiva e sostituisce l'avviso temporaneo sull'iPad. La regola è in `lib/line-close.ts` e legge soltanto lo stato: il carico lo decide il server come prima. Test: `tests/line-close.test.ts` e passaggi in `tests/ui/linea.mjs`.
 
+## Etichette Zebra automatiche: piano (28/11/2026)
+
+La sessione sul PC del reparto ha completato E1: 101 modelli ZPL estratti da ZebraDesigner, identici a quello che oggi va alla coda della Zebra; si invia solo il blocco 2, mai il blocco con `^JUS`. Il piano E2–E5 (pezzi, test, compatibilità con il ponte 1.3.1, rischi, decisioni per Teo e domande per il PC del reparto) è in `docs/ETICHETTE-ZEBRA.md`. Nessun codice cambiato. Decisioni aperte di Teo: IDENT., «continua il lotto di ieri», ponte che stampa, unione e pubblicazione in autonomia.
+
 ## Prossimo passo
 
 1. Spostare il ponte sul PC del reparto (cartella sul disco del PC, `INSTALLA-AVVIO-AUTOMATICO.cmd` dalla cartella estratta) e verificare: dispositivo «Attivo»; di nuovo «Attivo» dopo un riavvio; `taskkill /F /IM node.exe` e ripartenza entro 60 s. Poi cancellare le copie dei `.local.json` dalla chiavetta e dallo ZIP.
