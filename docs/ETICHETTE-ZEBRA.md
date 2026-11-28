@@ -15,6 +15,56 @@ Bozza del 28/11/2026. Scritta dalla sessione cloud dopo il risultato di E1 manda
   - **scadenza**: oggi la calcola l'orologio della Zebra; la proposta è scriverla come testo, decisa dal gestionale;
   - **IDENT.**: un valore fisso scritto nel modello.
 
+## Risposte del PC del reparto (28/11/2026)
+
+Arrivate dopo la prima versione di questo documento. Cambiano alcune parti del piano: vedi «Conseguenze sul piano».
+
+**I 101 modelli** (contati con PowerShell; lo script della PR0 verrà rilanciato quando sarà pronto)
+- Dimensioni da 1.579 a 3.296 byte, in tutto circa 285 kB. **Nessuna grafica**: niente `^GFA`, `^XG`, `^IM`, `~DG`, `~DY`.
+- **Un solo campo lotto** `^FD\d{6}^FS` in tutti i 101 file.
+- **Scadenza** calcolata dalla Zebra (`^SLS` + `^SO2` + `^FC`) in 98 file: spostamento di 12 mesi in 97, di 15 mesi in 1. Negli altri 3 c'è una data fissa scritta.
+- **Riga IDENT.** in tutti i 101 file.
+- **Modalità di stampa**: `^MMT` in tutti i 101, nessun altro valore.
+- **Codifica**: `^CI28` mai nel blocco 1 e sempre nel blocco 2. Tutti i 101 file contengono caratteri non ASCII (°, è, à, ò) in UTF-8 sotto `^CI28`.
+
+**Stampante e driver**
+- La coda «TERMICO DIRETTO» usa il driver ZDesigner ZE511 300 dpi ZPL versione 3, datatype **RAW**, processore winprint. È in stato normale e non è condivisa.
+- La porta usa «ZDesigner Port Monitor» ed è **in rete**, non USB.
+- L'attività pianificata del ponte gira con lo stesso utente che vede e usa la coda (Interactive, Limited).
+- PowerShell è in FullLanguage, senza criteri di esecuzione impostati.
+- Prova senza stampa: `Add-Type` con `winspool.drv` compila in circa 0,5 s, `OpenPrinter("TERMICO DIRETTO")` riesce poi `ClosePrinter`, nessun documento creato. Antivirus e AppLocker non bloccano niente.
+- La Zebra era spenta (sabato). Modello e firmware (`~HI`), impostazioni dell'applicatore (`^HH`), orologio della Zebra e stato della porta 9100 si leggono a stampante accesa e linea ferma, **solo con comandi di lettura**, prima della prova di stampa.
+
+**Ponte e PC**
+- Node.js 24, cartella `bridge\data` scrivibile.
+- `intervals.syncMs` 10000, `intervals.heartbeatMs` 6000.
+- Nel gestionale c'è **un solo dispositivo** attivo: il ponte del reparto, l'unico collegato alla Zebra.
+- Se `taskkill /F` chiude anche i processi PowerShell figli del ponte si verifica dopo la PR9, con un processo di prova.
+
+**Modelli e ripetibilità**
+- 132 `.nlbl`: 103 nella cartella 100×80 e 29 in cartelle vecchie, non convertite. Dei 103, 101 sono convertiti; restano fuori il modello vuoto e un'etichetta con EAN di 11 cifre che ZebraDesigner rifiuta.
+- **Come rifare un modello dopo che Teo risalva un `.nlbl`:** in ZebraDesigner, pagina Stampa, stampante TERMICO DIRETTO, spunta «Stampa su file» e quantità 1. Il file che esce è identico alla cattura e non si stampa niente; non servono stampante virtuale né permessi di amministratore. Alla fine **si toglie di nuovo la spunta**.
+
+**Schema dei file sul PC**
+- `mappa-prodotti-etichette.json`:
+  - è indicizzato per **codice articolo del gestionale**;
+  - per ogni prodotto: nome, stato, nota, percorso `.nlbl`, file `.zpl`, titolo, codice stampato, formato, supporto, EAN, posizione ed esempio di lotto e IDENT., tipo, posizione e mesi della scadenza;
+  - stati: `ok`, `avviso` (si stampa come oggi, ma c'è un dato da far correggere a Teo), `bloccata` (codice o EAN di un altro prodotto: non stampare in automatico), `manca` (nessuna etichetta).
+- `elenco-etichette.json`: 132 voci con file, nome, cartella, appartenenza a 100×80, SHA-256 del `.nlbl`, file `.zpl`, codice normalizzato e stampato, titolo, avviso, nome doppio.
+
+**Dati riservati**
+- I nomi di cartelle e file `.nlbl`, e alcuni testi delle etichette, contengono **nomi di distributori e clienti**.
+- Possono stare nello stato privato del gestionale (D1) e nel backup. **Mai** in Git, nei test, nel pacchetto del ponte o in questo documento.
+
+### Conseguenze sul piano
+
+- **Invio:** si usa la **coda Windows in modo RAW** (`winspool.drv` da PowerShell), già provata senza stampare. La porta 9100 diretta non serve.
+- **Codifica:** il blocco 2 si manda **in UTF-8 così com'è**, senza BOM e senza ricodificare, perché contiene già `^CI28`. La sostituzione di lotto e scadenza scrive solo cifre e `/`.
+- **Modalità `^MM`:** tutti i modelli hanno `^MMT`, ed è quello che ZebraDesigner manda già oggi. La politica `mmPolicy` diventa «invia il blocco 2 com'è». Resta la lettura di `~HS` e `^HH` prima e dopo la prova a linea ferma.
+- **Scadenza:** si sostituisce il costrutto `^SLS`/`^SO2`/`^FC` con un testo fisso nella stessa posizione e con lo stesso carattere. I 3 file con la data fissa vanno trattati a parte: si sostituisce la data scritta, oppure restano «avviso».
+- **Catalogo nel gestionale:** lo produce lo script dai due file JSON e porta solo riferimenti e impronte, senza il testo ZPL. Nei test si usano solo modelli **PROVA** sintetici.
+- **Ritardo:** con `syncMs` 10000 il ponte vede la lavorazione nuova entro circa 10 s, poi servono circa 0,5 s per `Add-Type` e lo spool. Il tempo tra «Avvia lavorazione» e il primo cartone lo chiede a Teo il PC del reparto.
+
 ## Decisioni che servono a Teo
 
 Queste toccano regole che Teo ha fissato in `AGENTS.md`. Senza la sua risposta i pezzi relativi restano in bozza.
@@ -648,6 +698,8 @@ Restano solo da fonti web non verificate: media.printmode, porta 9100 chiusa per
 - Il catalogo nello stato aggiunge circa 30-50 kB letti a ogni GET e inclusi nel backup. I nomi delle cartelle potrebbero contenere nomi di clienti: vanno bene in D1, mai in Git, nei test o nel pacchetto.
 
 ## DOMANDE PER IL PC REPARTO
+
+**Risposte arrivate il 28/11: vedi «Risposte del PC del reparto».** Restano aperte solo le letture a Zebra accesa (`~HI`, `^HH`, `~HS`, orologio) e la prova di `taskkill` dopo la PR9.
 
 Riportare solo ciò che serve, **senza** indirizzi IP, MAC, password o token.
 
