@@ -65,7 +65,31 @@ Arrivate dopo la prima versione di questo documento. Cambiano alcune parti del p
 - **Catalogo nel gestionale:** lo produce lo script dai due file JSON e porta solo riferimenti e impronte, senza il testo ZPL. Nei test si usano solo modelli **PROVA** sintetici.
 - **Ritardo:** con `syncMs` 10000 il ponte vede la lavorazione nuova entro circa 10 s, poi servono circa 0,5 s per `Add-Type` e lo spool. Il tempo tra «Avvia lavorazione» e il primo cartone lo chiede a Teo il PC del reparto.
 
-## Decisioni che servono a Teo
+## Decisioni di Teo (28/11/2026)
+
+1. **IDENT.**
+   - L'operatore lo scrive all'avvio. Viene stampato sull'etichetta e salvato nella lavorazione.
+   - Durante la lavorazione si può cambiare quando si vuole, senza fermare niente e senza avviare o chiudere. Il nuovo IDENT. viene salvato e l'etichetta aggiornata parte subito verso la stampante.
+   - Sostituisce la regola del 17/11.
+2. **Continua il lotto di ieri.**
+   - «Ieri» è l'ultimo giorno in cui quel prodotto è stato fatto, al massimo 7 giorni prima (va bene il venerdì visto dal lunedì).
+   - Si continua con la sua scadenza.
+   - Nello stesso giorno, per lo stesso prodotto, un solo lotto.
+3. **Ponte:** può ricevere i dati dell'etichetta e dire se la stampante risponde, senza poter avviare o cambiare lavorazioni.
+4. **Unione e pubblicazione:** per questo lavoro sulle etichette la sessione cloud unisce e pubblica dopo la propria revisione, senza chiedere ogni volta. La stampa automatica resta spenta fino alla prova finale, che Teo fa con la sessione del PC del reparto.
+5. **Altre domande del documento:** le decidono la sessione cloud e quella del PC del reparto.
+
+### Scelte prese sulle altre domande
+
+- **Avvio:** con un modello `avviso`, `bloccata` o `manca` l'avvio resta consentito. Per `bloccata` e `manca` niente stampa automatica, e un messaggio chiaro dice di stampare da ZebraDesigner.
+- **Scadenza stampata:** è quella registrata dal gestionale, scritta come testo. Se i mesi del modello sono diversi dalla durata nella scheda del prodotto, vale la scheda e il catalogo segnala la differenza come avviso.
+- **Pulsante «Ristampa»:** non c'è. Il cambio di IDENT. manda già un'etichetta nuova; la prova a linea ferma si fa con lo strumento del ponte.
+- **Lavorazioni manuali** (senza contapezzi): niente stampa automatica, perché il ponte non le vede.
+- **LOGO! non leggibile:** l'etichetta parte lo stesso, perché la stampa non dipende dal conteggio.
+- **Pagina Linea:** la fotocamera e la creazione della scheda prodotto dalla foto escono. La fotocamera nella finestra di avvio del gestionale resta.
+- **Fasi:** E2 = controllo dei modelli e anteprima senza stampa, E3 = scelta dell'etichetta nella pagina Linea, E4 = invio alla coda Windows, E5 = prova finale a linea ferma e accensione.
+
+## Domande iniziali per Teo (prima versione, ora risposte sopra)
 
 Queste toccano regole che Teo ha fissato in `AGENTS.md`. Senza la sua risposta i pezzi relativi restano in bozza.
 
