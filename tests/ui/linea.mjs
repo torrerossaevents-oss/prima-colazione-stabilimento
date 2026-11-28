@@ -56,10 +56,19 @@ const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 
 const lot = today.slice(2).replaceAll('-', '');
 await page.locator('.ipad-facts').getByText(lot).waitFor();
 await page.getByLabel('Operatore').fill('Operatore prova');
+assert.equal(await page.getByRole('button', { name: 'Avvia produzione' }).isDisabled(), true, 'senza IDENT. non si avvia');
+await page.getByLabel(/^IDENT\./).fill('63/1');
+await page.locator('.carton-label').getByText('IDENT. 63/1').waitFor();
 await page.getByRole('button', { name: 'Avvia produzione' }).click();
 await page.locator('.ipad-count-n').waitFor();
 await page.getByRole('button', { name: '+5' }).click(); await page.getByText('+5 cartoni').waitFor();
 await page.getByRole('button', { name: '+10' }).click(); await page.locator('.ipad-count-n', { hasText: '15' }).waitFor();
+// IDENT. cambiato durante la lavorazione: il conteggio continua (Teo, 28/11/2026).
+await page.getByRole('button', { name: 'Cambia IDENT.' }).click();
+await page.getByLabel('Nuovo IDENT.').fill('72'); await page.getByRole('button', { name: 'Salva IDENT.' }).click();
+await page.locator('.ipad-facts').getByText('72').waitFor(); await page.locator('.ipad-count-n', { hasText: '15' }).waitFor();
+assert.equal((await api()).state.sessions.find(x => x.status === 'active').ident, '72');
+log('IDENT. 63/1 all’avvio, cambiato in 72 durante la lavorazione senza fermare il conteggio');
 await page.screenshot({ path: `${out}/linea-ipad.png` });
 log('produzione avviata dall’iPad, lotto ' + lot + ', 15 cartoni contati con i pulsanti grandi');
 
@@ -128,7 +137,7 @@ else {
   await chip('Ponte agganciato').getByText('Nessuna lavorazione').waitFor();
   await chip('LOGO! raggiungibile').getByText('Sì').waitFor();
   assert.match(await chip('Ultimo segnale del ponte').innerText(), /\d{2}:\d{2}:\d{2}\s+\d+ s fa/);
-  await post({ type: 'production.start', code, operator: 'Operatore prova', counting: 'device' });
+  await post({ type: 'production.start', code, operator: 'Operatore prova', ident: '63/1', counting: 'device' });
   await pc.getByRole('button', { name: 'Aggiorna' }).click();
   await chip('Ponte agganciato').getByText('No').waitFor();
   const run = (await api()).state.sessions.find(s => s.status === 'active');
@@ -183,7 +192,7 @@ else {
   log('ultima chiusura fissa: ore, 37 cartoni, lotto, carico fatto; resta dopo il ricaricamento');
   // Carico non eseguito: scritto in rosso (bianco su rosso pieno) con cosa fare.
   await post({ type: 'settings.update', settings: { autoLoad: false } });
-  await post({ type: 'production.start', code, operator: 'Operatore prova', counting: 'device' });
+  await post({ type: 'production.start', code, operator: 'Operatore prova', ident: '63/1', counting: 'device' });
   await pc.getByRole('button', { name: 'Aggiorna' }).click();
   await card.waitFor({ state: 'detached' });
   log('il riquadro sparisce quando parte la lavorazione successiva');

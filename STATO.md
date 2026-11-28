@@ -243,6 +243,18 @@ Piano di Teo, pezzo 3. Dopo una chiusura dal pulsante della linea `/linea` mostr
 
 La sessione sul PC del reparto ha completato E1: 101 modelli ZPL estratti da ZebraDesigner, identici a quello che oggi va alla coda della Zebra; si invia solo il blocco 2, mai il blocco con `^JUS`. Il piano E2–E5 (pezzi, test, compatibilità con il ponte 1.3.1, rischi, decisioni per Teo e domande per il PC del reparto) è in `docs/ETICHETTE-ZEBRA.md`. Nessun codice cambiato. Decisioni aperte di Teo: IDENT., «continua il lotto di ieri», ponte che stampa, unione e pubblicazione in autonomia.
 
+## IDENT., continua il lotto, un lotto al giorno (28/11/2026)
+
+Decisioni di Teo del 28/11, primo pezzo del lavoro sulle etichette Zebra.
+- **IDENT.**: obbligatorio all'avvio, sia nel gestionale sia nella pagina Linea. Si salva nella lavorazione e compare nell'anteprima dell'etichetta.
+- **Cambio dell'IDENT.** durante la lavorazione con `production.ident`, permesso anche al laboratorio, senza toccare il conteggio. Resta in `identChanges` e nello storico.
+- **«Continua il lotto»**: lotto e scadenza dell'ultimo giorno di produzione dello stesso prodotto, entro 7 giorni (`previousLotFor`).
+- **Un solo lotto** per prodotto e giorno (`todayLotFor`).
+- **Lotto di un altro giorno scritto a mano** (pezzo 1b): la scadenza parte dalla data del lotto.
+- **Stesso lotto con scadenza diversa** rifiutato anche quando il carico a magazzino è spento.
+- Ponte, conteggio e carico non cambiano.
+- Test: `tests/ident-lot.test.ts`, passaggi nuovi in `tests/ui/smoke.mjs` e `tests/ui/linea.mjs`.
+
 ## Prossimo passo
 
 1. Spostare il ponte sul PC del reparto (cartella sul disco del PC, `INSTALLA-AVVIO-AUTOMATICO.cmd` dalla cartella estratta) e verificare: dispositivo «Attivo»; di nuovo «Attivo» dopo un riavvio; `taskkill /F /IM node.exe` e ripartenza entro 60 s. Poi cancellare le copie dei `.local.json` dalla chiavetta e dallo ZIP.

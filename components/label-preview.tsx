@@ -32,7 +32,7 @@ function Barcode({ code }: { code: string }) {
 
 const itDate = (day: string) => day ? day.split('-').reverse().join('/') : '';
 
-export default function LabelPreview({ product, lotCode, expiry, settings, note = true }: { product: Partial<Product> & { code: string; name: string }; lotCode: string; expiry: string; settings?: Settings; note?: boolean }) {
+export default function LabelPreview({ product, lotCode, expiry, ident, settings, note = true }: { product: Partial<Product> & { code: string; name: string }; lotCode: string; expiry: string; ident?: string; settings?: Settings; note?: boolean }) {
   const net = product.piecesPerCarton && product.pieceWeightG ? product.piecesPerCarton * product.pieceWeightG : null;
   return <figure className="label-preview">
     <div className="carton-label" aria-label={`Anteprima etichetta ${product.name}`}>
@@ -47,6 +47,7 @@ export default function LabelPreview({ product, lotCode, expiry, settings, note 
           <span className="carton-label-tiny">Da consumarsi preferibilmente entro il</span>
           <span className="carton-label-date">{itDate(expiry)}</span>
           <span className="carton-label-lot">Lotto: {lotCode}</span>
+          {ident !== undefined && <span className="carton-label-lot">IDENT. {ident || '—'}</span>}
         </div>
         {product.ean ? <Barcode code={product.ean}/> : <span className="carton-label-missing">EAN da indicare nella scheda prodotto</span>}
       </div>

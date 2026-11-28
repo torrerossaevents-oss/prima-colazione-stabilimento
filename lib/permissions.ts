@@ -12,7 +12,7 @@ export const roleNames: Record<Role, string> = { amministrazione: 'Amministrazio
 /** Operations the laboratorio profile may record. Everything else is amministrazione only. */
 export const LAB_ACTIONS: ReadonlySet<Action['type']> = new Set<Action['type']>([
   'lot.receive', 'lot.return', 'lot.transfer',
-  'production.start', 'production.count', 'production.close',
+  'production.start', 'production.ident', 'production.count', 'production.close',
   'order.prepare', 'order.dispatch',
 ]);
 /** Back-office areas outside the operational log. */
